@@ -884,6 +884,15 @@ local function paintSlots()
         local b = _G["Character" .. s .. "Slot"]
         local e = b and extras[b]
         if e and e.backdrop then
+            -- Every piece of the slot's own art but the item icon, each
+            -- pass: Blizzard redraws slot frames and quality borders as
+            -- gear changes. The HIGHLIGHT layer (hover) stays.
+            local icon = b.icon or b.Icon or _G[b:GetName() .. "IconTexture"]
+            for _, r in ipairs({ b:GetRegions() }) do
+                if r:GetObjectType() == "Texture" and r ~= icon and r:GetDrawLayer() ~= "HIGHLIGHT" then
+                    r:SetAlpha(0)
+                end
+            end
             local q = GetInventoryItemQuality("player", b:GetID())
             if q and q >= 2 and C_Item and C_Item.GetItemQualityColor then
                 local r, g, bl = C_Item.GetItemQualityColor(q)
@@ -926,6 +935,14 @@ local function styleStats()
 end
 
 PS.SPECIAL.CharacterFrame = function(frame)
+    -- The race backdrop behind the model: Blizzard art, like the book's
+    -- parchment. The model stands on our glass instead.
+    for _, n in ipairs({ "CharacterModelFrameBackgroundTopLeft", "CharacterModelFrameBackgroundTopRight",
+        "CharacterModelFrameBackgroundBotLeft", "CharacterModelFrameBackgroundBotRight" }) do
+        fade(_G[n])
+    end
+    local ms = rawget(_G, "CharacterModelScene")
+    if ms then fade(ms.BackgroundOverlay) end
     for _, s in ipairs(SLOTS) do
         local b = _G["Character" .. s .. "Slot"]
         if b then styleSlot(b) end
