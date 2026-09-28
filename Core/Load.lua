@@ -229,8 +229,8 @@ ns.Config:AddPage("general", "General", function(L)
 
     L:Heading("Style")
     L:Dropdown("Style", "style", {
-        { "modern", "Modern: rounded glass, soft shadows" },
-        { "wick", "Wick: crisp borders, fel corners" },
+        { "modern", "Wick Modern: rounded glass, soft shadows" },
+        { "wick", "Wick OG: crisp borders, fel corners" },
     }, {
         setter = function(v)
             if v == ns:G().style then return end
@@ -239,7 +239,7 @@ ns.Config:AddPage("general", "General", function(L)
                 ReloadUI()
             end, "Reload")
         end,
-        tooltip = "Modern is borderless, lifted and airy, with fel kept for signals. Wick is the crisp look: single-pixel borders, a black edge and fel corners.",
+        tooltip = "Wick Modern is borderless, lifted and airy, with fel kept for signals. Wick OG is the original look: single-pixel borders, a black edge and fel corners.",
     })
     L:Button("Apply the style's spacing again", function()
         ns:ApplyStylePreset(true)
