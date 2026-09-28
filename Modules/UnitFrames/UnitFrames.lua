@@ -84,6 +84,7 @@ local defaults = {
     darkColor     = { 0.13, 0.12, 0.17, 1 },
     classBackdrop = true,          -- health background in the class colour, dim
     bgAlpha       = 0.25,
+    colorStrength = 0.85,          -- 1 is the game's colour as it is
     castColor     = { 0.31, 0.78, 0.47, 1 },
     castLocked    = { 0.45, 0.42, 0.50, 1 },
     smooth        = true,
@@ -184,10 +185,23 @@ function UF:ApplyColors()
     end
 end
 
+local issecretUF = rawget(_G, "issecretvalue")
+
 local function postUpdateHealthColor(health, unit, color)
     local bg = health.bg
     if not bg then return end
     local d = UF:db()
+    -- Colour strength: the game's class colours are light tones, and on a
+    -- flat fill a pale one (hunter, priest, rogue) reads nearly white.
+    -- Scaling the colour down keeps the hue and loses the glare. A colour
+    -- worked out from secret health (the gradient) is left as it is.
+    local m = d.colorStrength or 1
+    if color and m < 1 then
+        local r, g, b = color:GetRGB()
+        if not (issecretUF and (issecretUF(r) or issecretUF(g) or issecretUF(b))) then
+            health:SetStatusBarColor(r * m, g * m, b * m)
+        end
+    end
     if d.classBackdrop and color then
         local r, g, b = color:GetRGB()
         bg:SetVertexColor(r, g, b, d.bgAlpha or 0.25)

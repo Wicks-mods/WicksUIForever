@@ -24,6 +24,9 @@ ns.Config:AddPage("unitframes", "Unit Frames", function(L)
     L:Color("Dark colour", "darkColor", { disabled = function() return UF:db().healthColor ~= "dark" end })
     L:Toggle("Class colour behind the bar", "classBackdrop", { tooltip = "The empty part of the health bar in a dim class colour, so a dark bar still says who it is." })
     L:Slider("Behind the bar, strength", "bgAlpha", 0, 1, 0.05, { disabled = function() return not UF:db().classBackdrop end })
+    L:Slider("Colour strength", "colorStrength", 0.4, 1, 0.05, {
+        tooltip = "How bright the class and reaction colours are on the bars. 1 is the game's colour as it is; lower keeps the hue and takes the glare off pale ones like hunter and priest.",
+    })
     L:Color("Cast bar", "castColor")
     L:Color("Cast bar, cannot interrupt", "castLocked")
 

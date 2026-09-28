@@ -68,12 +68,13 @@ end
 function A:OnEnable()
     -- WickCore runs this protected and keeps quiet about failures unless
     -- its debug is on. A UI that fails to start must say so.
-    -- Profiles made before the shaded texture became the default move to
-    -- it once; a player who picks flat again afterwards keeps flat.
+    -- A short-lived build moved profiles to the shaded texture. Flat is
+    -- the default again, with colour strength taking the glare off, so
+    -- that move is undone once.
     local g = ns:G()
-    if not g.shadedDefault then
-        if g.statusbar == "Wick Flat" then g.statusbar = "Wick Shaded" end
-        g.shadedDefault = true
+    if g.shadedDefault and not g.flatRestored then
+        if g.statusbar == "Wick Shaded" then g.statusbar = "Wick Flat" end
+        g.flatRestored = true
     end
     local ok, err = xpcall(function()
         ns:UpdatePixel()
