@@ -357,7 +357,10 @@ local function styleIconButton(b)
     if done[b] then return end
     done[b] = true
     for _, k in ipairs({ "Border", "Background", "Glow", "BorderSelected", "SelectedTexture", "IconOverlay",
-        "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow", "SquareBorder" }) do fade(b[k]) end
+        "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow", "SquareBorder",
+        -- Icon tabs built on the tab template also carry its three pieces.
+        "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive",
+        "LeftHighlight", "MiddleHighlight", "RightHighlight" }) do fade(b[k]) end
     -- Art that lives on an unnamed inner frame of the button (the
     -- spellbook's category tabs keep their frame there). Our own panels
     -- carry wuiBG and are left alone.
@@ -381,6 +384,18 @@ local function styleIconButton(b)
         -- comes off, ours gives the corners.
         if b.IconMask and icon.RemoveMaskTexture then icon:RemoveMaskTexture(b.IconMask) end
         if b.IconMask then b.IconMask:Hide() end
+        -- Square it inside the button: some templates draw the icon taller
+        -- than the button it sits in (the spellbook tabs: 36x35 on 44x32).
+        local bw, bh = b:GetSize()
+        if bw and bh and bw > 0 and bh > 0 then
+            local side = math.floor(math.min(bw, bh) - 4)
+            local iw, ih = icon:GetSize()
+            if (iw or 0) > side or (ih or 0) > side or (iw ~= ih) then
+                icon:ClearAllPoints()
+                icon:SetPoint("CENTER", b, "CENTER", 0, 0)
+                icon:SetSize(side, side)
+            end
+        end
         ns:CropIcon(icon)
     end
     local bd = backdrop(b, "Default", false, 0)
@@ -454,7 +469,12 @@ local function scanButtons(frame, depth)
         local w, h = child:GetSize()
         w, h = w or 0, h or 0
         local isButton = kind == "Button" or kind == "CheckButton"
-        if kind == "Button" and child.Left and child.Right and (child.Middle or child.Center) then
+        if isButton and (child.Icon or child.icon) and not hasText(child) and not child.Name
+            and not (child:GetParent() and child:GetParent().Button == child) then
+            -- Icon tabs first: many are built on the tab template and carry
+            -- Left, Middle and Right, which would otherwise make them buttons.
+            styleIconButton(child)
+        elseif kind == "Button" and child.Left and child.Right and (child.Middle or child.Center) then
             styleButton(child)
         elseif kind == "EditBox" and child.Left and child.Right then
             styleEditBox(child)
