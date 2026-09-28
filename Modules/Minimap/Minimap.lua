@@ -3,8 +3,7 @@
 --
 -- The minimap stays where Edit Mode puts it; moving Blizzard's cluster
 -- ourselves would fight the layout editor for it. What changes is the
--- look: a square mask (addons may still swap masks here, they may not
--- zoom), our border and brackets in place of the ring, and zone, clock,
+-- look: a square mask, our border and brackets in place of the ring, and zone, clock,
 -- coordinates and mail drawn by us on top.
 --
 -- Addon minimap buttons (anything LibDBIcon made) are gathered into a
@@ -247,7 +246,7 @@ end
 
 ns.Config:AddPage("minimap", "Minimap", function(L)
     L:DB(db)
-    L:Note("The minimap stays where Edit Mode puts it. This client does not let addons zoom the map, so there is no mouse wheel zoom.")
+    L:Note("The minimap stays where Edit Mode puts it.")
     L:Toggle("Square", "square", { tooltip = "Switching back to round takes a reload." })
     L:Toggle("Hide the zoom buttons", "hideZoom")
     L:Toggle("Hide Blizzard's zone header and clock", "hideBlizzardText")
