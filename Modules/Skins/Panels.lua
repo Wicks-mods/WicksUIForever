@@ -31,6 +31,7 @@ ns.defaults.profile.panelskins = {
     buttons = true,
     tabs = true,
     exclude = "",           -- window names to leave alone, comma separated
+    include = "",           -- windows added with /wui skin
 }
 
 local function db() return PS:db() end
@@ -48,6 +49,9 @@ PS.WINDOWS = {
     "GuildRegistrarFrame", "ProfessionsFrame", "ItemSocketingFrame", "MacroFrame", "KeyBindingFrame",
     "BarberShopFrame", "TransmogFrame", "WardrobeFrame", "GuildFrame",
     "BattlefieldMapFrame", "OpacityFrame",
+    "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4", "ReadyCheckFrame", "ReadyCheckListenerFrame",
+    "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4", "LFGDungeonReadyDialog",
+    "LFDRoleCheckPopup", "RolePollPopup", "GuildInviteFrame", "PVPReadyDialog", "LFGInvitePopup",
 }
 
 local done = setmetatable({}, { __mode = "k" })
@@ -140,8 +144,14 @@ local function styleClose(b)
     x:SetText("x")
     x:SetTextColor(C.text[1], C.text[2], C.text[3])
     e.x = x
-    b:HookScript("OnEnter", function() x:SetTextColor(C.fel[1], C.fel[2], C.fel[3]) end)
-    b:HookScript("OnLeave", function() x:SetTextColor(C.text[1], C.text[2], C.text[3]) end)
+    -- The hover colour is a second X on the highlight layer, which the
+    -- client shows on mouseover itself; no hook on their scripts.
+    local xh = b:CreateFontString(nil, "HIGHLIGHT")
+    ns.Media:SetFont(xh, 14, "NONE")
+    xh:SetPoint("CENTER", 0, 1)
+    xh:SetText("x")
+    xh:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+    e.xh = xh
 end
 
 local function styleTab(tab)
@@ -185,11 +195,81 @@ local function tabsOf(frame)
 end
 
 -- Buttons one or two levels down that use the classic three-piece art.
+-- Text and search boxes: three-piece art, faded, with our field behind.
+local function styleEditBox(eb)
+    if done[eb] then return end
+    done[eb] = true
+    for _, k in ipairs({ "Left", "Middle", "Right", "Mid", "Center" }) do fade(eb[k]) end
+    backdrop(eb, "Shadow", false, 0)
+end
+
+-- Modern scroll bars: a track and a thumb, each Begin/Middle/End.
+local function styleScrollBar(sb)
+    if done[sb] then return end
+    done[sb] = true
+    local track = sb.Track
+    for _, k in ipairs({ "Begin", "Middle", "End" }) do fade(track[k]) end
+    fadeRegions(track)
+    local e = extras[sb] or {}
+    extras[sb] = e
+    if not e.line then
+        local line = track:CreateTexture(nil, "BACKGROUND")
+        line:SetPoint("TOP"); line:SetPoint("BOTTOM")
+        line:SetWidth(2)
+        line:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
+        Chrome:Register(line, "border", "texture")
+        e.line = line
+    end
+    local thumb = track.Thumb
+    if thumb then
+        for _, k in ipairs({ "Begin", "Middle", "End" }) do fade(thumb[k]) end
+        fadeRegions(thumb)
+        local te = extras[thumb] or {}
+        extras[thumb] = te
+        if not te.fill then
+            local fill = thumb:CreateTexture(nil, "ARTWORK")
+            fill:SetPoint("TOPLEFT", 2, 0)
+            fill:SetPoint("BOTTOMRIGHT", -2, 0)
+            fill:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.8)
+            Chrome:Register(fill, "fel", "texture", 0.8)
+            te.fill = fill
+        end
+    end
+    -- The arrow steppers keep their arrows, greyed to sit with the rest.
+    for _, k in ipairs({ "Back", "Forward" }) do
+        local b = sb[k]
+        if b then
+            for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }) do
+                local t = b[get] and b[get](b)
+                if t and t.SetDesaturated then t:SetDesaturated(true) end
+            end
+        end
+    end
+end
+
+-- Dropdown boxes: a background piece and an arrow.
+local function styleDropdown(dd)
+    if done[dd] then return end
+    done[dd] = true
+    fade(dd.Background)
+    for _, k in ipairs({ "Left", "Middle", "Right" }) do fade(dd[k]) end
+    backdrop(dd, "Shadow", false, 0)
+    if dd.Arrow and dd.Arrow.SetDesaturated then dd.Arrow:SetDesaturated(true) end
+    styleText(dd.Text)
+end
+
 local function scanButtons(frame, depth)
-    if depth > 3 or not frame.GetChildren then return end
+    if depth > 4 or not frame.GetChildren then return end
     for _, child in ipairs({ frame:GetChildren() }) do
-        if child:GetObjectType() == "Button" and child.Left and child.Right and child.Middle then
+        local kind = child:GetObjectType()
+        if kind == "Button" and child.Left and child.Right and child.Middle then
             styleButton(child)
+        elseif kind == "EditBox" and child.Left and child.Right then
+            styleEditBox(child)
+        elseif child.Track and child.Track.Thumb and child.Back and child.Forward then
+            styleScrollBar(child)
+        elseif child.Arrow and child.Background and child.Text then
+            styleDropdown(child)
         end
         if not child.isTopTab and not (child.GetObjectType and child:GetObjectType() == "ScrollFrame") then
             scanButtons(child, depth + 1)
@@ -459,9 +539,16 @@ function PS:Skin(frame)
     end
 end
 
+local function allNames()
+    local out = {}
+    for _, n in ipairs(PS.WINDOWS) do out[#out + 1] = n end
+    for _, n in ipairs(ns:List(db().include)) do out[#out + 1] = n end
+    return out
+end
+
 function PS:SkinAll()
     if not db().enable then return end
-    for _, n in ipairs(self.WINDOWS) do
+    for _, n in ipairs(allNames()) do
         local f = _G[n]
         if f then
             local ok, err = pcall(self.Skin, self, f)
@@ -473,8 +560,48 @@ end
 -- ============================================================
 -- Lifecycle
 -- ============================================================
+-- /wui skin: the window under the pointer, found by walking up to the
+-- frame that sits directly on UIParent, skinned and remembered.
+function PS:SkinUnderMouse()
+    local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
+    local f = foci and foci[1]
+    while f and f.GetParent and f:GetParent() and f:GetParent() ~= UIParent do f = f:GetParent() end
+    local name = f and f.GetName and f:GetName()
+    if not f or f == UIParent or f == WorldFrame then
+        ns.A:Print("point at a window first, then type /wui skin.")
+        return
+    end
+    if not name then
+        ns.A:Print("that window has no name, so it cannot be remembered. Send a screenshot to Wick.")
+        return
+    end
+    local list = ns:List(db().include)
+    local have = false
+    for _, n in ipairs(list) do if n == name then have = true end end
+    if not have then list[#list + 1] = name; db().include = table.concat(list, ",") end
+    done[f] = nil
+    self:Skin(f)
+    ns.A:Print(("skinned %s, and it will be skinned from now on. Undo it by removing it under Windows in the settings."):format(name))
+end
+
 function PS:Initialize()
     self:SkinAll()
+    -- Widgets a window makes after it first opens (list rows, dropdowns,
+    -- scroll bars) are caught by a rescan of whichever windows are open.
+    -- Hooking their OnShow instead would make Blizzard's own handler run
+    -- tainted, which this client punishes.
+    local tick = CreateFrame("Frame")
+    local acc = 0
+    tick:SetScript("OnUpdate", function(_, e)
+        acc = acc + e
+        if acc < 1 then return end
+        acc = 0
+        if not db().enable then return end
+        for _, n in ipairs(allNames()) do
+            local f = _G[n]
+            if f and f.IsShown and f:IsShown() and done[f] then scanButtons(f, 1) end
+        end
+    end)
     -- Load-on-demand windows appear with their addon.
     ns:On("ADDON_LOADED", function(_, addon)
         if type(addon) == "string" and addon:find("^Blizzard_") then
@@ -513,6 +640,9 @@ ns.Config:AddPage("panelskins", "Windows", function(L)
     L:Toggle("Fel corners", "brackets", { tooltip = "Takes effect after a reload." })
     L:Toggle("Buttons", "buttons")
     L:Toggle("Tabs", "tabs")
+    L:Note("Found a window still in the game's own look? Point at it and type |cff4FC778/wui skin|r. It is skinned on the spot and every time after.")
+    L:Input("Skinned with /wui skin", "include", { width = 520, span = 2,
+        tooltip = "Windows added with /wui skin. Remove a name to stop skinning it; takes effect after a reload." })
     L:Input("Leave these alone", "exclude", { width = 520, span = 2,
         tooltip = "Frame names separated by commas, for example  WorldMapFrame, AuctionHouseFrame. /fstack in game shows a frame's name. Takes effect after a reload." })
 end, { parent = "skins", onChange = function() PS:Update() end, order = 96 })

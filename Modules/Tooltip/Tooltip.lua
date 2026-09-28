@@ -148,7 +148,15 @@ function TT:Initialize()
         TDP.AddTooltipPostCall(Enum.TooltipDataType.Unit, onUnit)
         TDP.AddTooltipPostCall(Enum.TooltipDataType.Item, onItem)
     end
-    GameTooltip:HookScript("OnTooltipCleared", function(tt) setBorder(tt) end)
+    -- Everything that is not a unit or an item gets the plain border.
+    -- Through the tooltip data callbacks rather than HookScript: hooking a
+    -- script on GameTooltip would make Blizzard's own handler run tainted.
+    if TDP and TDP.AddTooltipPostCall and TDP.AllTypes then
+        TDP.AddTooltipPostCall(TDP.AllTypes, function(tt, data)
+            local t = data and data.type
+            if t ~= Enum.TooltipDataType.Unit and t ~= Enum.TooltipDataType.Item then setBorder(tt) end
+        end)
+    end
     self:StyleHealthBar()
 end
 
