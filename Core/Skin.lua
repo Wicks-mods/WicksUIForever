@@ -141,6 +141,14 @@ function ns:CropIcon(tex, zoom)
     tex:SetTexCoord(z, 1 - z, z, 1 - z)
 end
 
+-- Aura icons carry their own time-left text. The game's cooldown numbers
+-- (switched on for the action bars) would draw a second countdown on the
+-- swirl, so they are hidden on every aura button.
+function ns:QuietAuraCooldown(button)
+    local cd = button and button.Cooldown
+    if cd and cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
+end
+
 function ns:CreateText(parent, size, justify, outline, layer)
     local fs = parent:CreateFontString(nil, layer or "OVERLAY")
     ns.Media:SetFont(fs, size, outline)

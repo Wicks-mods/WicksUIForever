@@ -38,6 +38,22 @@ ns.Config:AddPage("unitframes", "Unit Frames", function(L)
         return out
     end, { tooltip = "For the text on every unit frame. The rest of the interface keeps the font under General." })
     L:Dropdown("Outline", "fontOutline", ns.Widgets.Values(ns.Media.outlines))
+    -- One size for every text on every frame. It writes each text's own
+    -- size, so a frame's page can still fine-tune one afterwards.
+    L:Slider("Text size", "textSize", 6, 24, 1, {
+        get = function() return UF:UnitDB("player").texts.left.size end,
+        setter = function(v)
+            for _, d in pairs(UF:db().units) do
+                if d.texts then
+                    for slot, td in pairs(d.texts) do
+                        td.size = slot == "power" and math.max(6, v - 2) or v
+                    end
+                end
+                if d.castbar then d.castbar.fontSize = math.max(6, v - 1) end
+            end
+        end,
+        tooltip = "Sets the text on every unit frame at once: names and health at this size, power and cast bars a little smaller. Each frame's own page can still change one text afterwards.",
+    })
     L:Toggle("Fel border on your target", "targetBorder", { tooltip = "Whichever party or raid frame belongs to what you are targeting gets a fel border." })
     L:Slider("Out of range alpha", "rangeAlpha", 0.1, 1, 0.05)
     L:Button("Preview group frames", function()

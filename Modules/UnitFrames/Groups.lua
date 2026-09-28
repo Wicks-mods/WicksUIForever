@@ -91,6 +91,7 @@ local function addHealerPieces(self, d)
         a:SetSize(d.centerSize, d.centerSize)
         a:SetPoint("CENTER", self, "CENTER", 0, 0)
         a.PostCreateButton = function(_, button)
+        ns:QuietAuraCooldown(button)
             if button.Icon then ns:CropIcon(button.Icon) end
             ns:CreateBackdrop(button, "Default", ns.mult)
         end
@@ -108,6 +109,7 @@ local function addHealerPieces(self, d)
         a:SetSize(d.hotSize * 3 + 2, d.hotSize)
         a:SetPoint("TOPRIGHT", self, "TOPRIGHT", -2, -2)
         a.PostCreateButton = function(_, button)
+        ns:QuietAuraCooldown(button)
             if button.Icon then ns:CropIcon(button.Icon, 0.15) end
             ns:CreateBackdrop(button, "None", ns.mult)
         end

@@ -36,6 +36,7 @@ local function db() return AU:db() end
 
 local function postCreate(size)
     return function(_, button)
+        ns:QuietAuraCooldown(button)
         if button.Icon then ns:CropIcon(button.Icon) end
         ns:CreateBackdrop(button, "Default", ns.mult)
         if button.Count then ns.Media:SetFont(button.Count, math.max(10, math.floor(size * 0.38)), "OUTLINE") end

@@ -165,6 +165,7 @@ local function style(self, unit)
         a:AddGroup("HARMFUL|PLAYER", { maxFrameCount = d.debuffCount })
         a:SetSize(d.debuffCount * (d.debuffSize + 2), d.debuffSize)
         a.PostCreateButton = function(_, button)
+        ns:QuietAuraCooldown(button)
             if button.Icon then ns:CropIcon(button.Icon) end
             ns:CreateBackdrop(button, "Default", ns.mult)
         end
@@ -180,6 +181,7 @@ local function style(self, unit)
         b:AddGroup("HELPFUL|RAID", { maxFrameCount = 4 })
         b:SetSize(4 * (d.buffSize + 2), d.buffSize)
         b.PostCreateButton = function(_, button)
+        ns:QuietAuraCooldown(button)
             if button.Icon then ns:CropIcon(button.Icon) end
             ns:CreateBackdrop(button, "Default", ns.mult)
         end
