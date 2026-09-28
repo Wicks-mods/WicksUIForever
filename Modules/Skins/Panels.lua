@@ -935,14 +935,9 @@ local function styleStats()
 end
 
 PS.SPECIAL.CharacterFrame = function(frame)
-    -- The race backdrop behind the model: Blizzard art, like the book's
-    -- parchment. The model stands on our glass instead.
-    for _, n in ipairs({ "CharacterModelFrameBackgroundTopLeft", "CharacterModelFrameBackgroundTopRight",
-        "CharacterModelFrameBackgroundBotLeft", "CharacterModelFrameBackgroundBotRight" }) do
-        fade(_G[n])
-    end
-    local ms = rawget(_G, "CharacterModelScene")
-    if ms then fade(ms.BackgroundOverlay) end
+    -- The race backdrop behind the model stays: Wick likes it. (It is
+    -- CharacterModelFrameBackground* plus BackgroundOverlay on the model
+    -- scene, should that ever change.)
     for _, s in ipairs(SLOTS) do
         local b = _G["Character" .. s .. "Slot"]
         if b then styleSlot(b) end
