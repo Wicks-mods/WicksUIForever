@@ -100,9 +100,8 @@ function A:OnEnable()
         y = O:Button(page, "Move frames", function() ns.Movers:Unlock() end, y - 2, 150)
     end)
 
-    if not ns:G().installed then
-        self:Print("loaded. Type |cff4FC778/wui|r for the settings, |cff4FC778/wui move|r to place frames, |cff4FC778/wui kb|r to bind keys.")
-        ns:G().installed = true
+    if not ns:G().installed and ns.Install then
+        C_Timer.After(2, function() ns:AfterCombat("install", function() ns.Install:Show(1) end) end)
     end
 end
 
@@ -115,6 +114,7 @@ local HELP = {
     "/wui kb  hover keybinding",
     "/wui reset  put every frame back where it started",
     "/wui errors  anything a module reported",
+    "/wui install  run the first-time setup again",
 }
 
 A:RegisterSlash(function(_, msg)
@@ -127,6 +127,8 @@ A:RegisterSlash(function(_, msg)
         if ns.Keybind then ns.Keybind:Toggle() end
     elseif cmd == "reset" then
         W:Confirm("Put every frame back where it started?", function() ns.Movers:ResetAll() end, "Reset")
+    elseif cmd == "install" or cmd == "setup" then
+        if ns.Install then ns.Install:Show(1) end
     elseif cmd == "errors" then
         if not ns.errors or #ns.errors == 0 then
             A:Print("nothing reported.")
