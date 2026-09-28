@@ -36,6 +36,7 @@ ns.defaults = {
             statusbar    = "Wick Flat",
             brackets     = true,     -- fel-green corners on the bigger panels
             edges        = true,     -- a black pixel outside every border
+            style        = "modern", -- modern (rounded glass, soft shadows) or wick (crisp borders, fel corners)
             classColors  = true,
             moversLocked = true,
             installed    = false,

@@ -57,21 +57,26 @@ local function styleSimple(b)
     local bg = b:CreateTexture(nil, "BACKGROUND", nil, -1)
     bg:SetAllPoints()
     bg:SetColorTexture(C.void[1], C.void[2], C.void[3], 0.6)
-    ns:SetTemplate(b, "None")
-    b.wuiBG:Hide()
+    if ns:Modern() then
+        ns:SetTemplate(b, "Default")
+        bg:Hide()
+    else
+        ns:SetTemplate(b, "None")
+        b.wuiBG:Hide()
+    end
 
     local hl = b:CreateTexture(nil, "HIGHLIGHT")
     hl:SetPoint("TOPLEFT", 1, -1); hl:SetPoint("BOTTOMRIGHT", -1, 1)
-    hl:SetColorTexture(1, 1, 1, 0.15)
+    ns:Fill(hl, 1, 1, 1, 0.12)
     b:SetHighlightTexture(hl)
     local pushed = b:CreateTexture(nil, "ARTWORK", nil, 2)
     pushed:SetPoint("TOPLEFT", 1, -1); pushed:SetPoint("BOTTOMRIGHT", -1, 1)
-    pushed:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.35)
+    ns:Fill(pushed, C.fel[1], C.fel[2], C.fel[3], 0.35)
     b:SetPushedTexture(pushed)
     if b.SetCheckedTexture then
         local checked = b:CreateTexture(nil, "ARTWORK", nil, 1)
         checked:SetPoint("TOPLEFT", 1, -1); checked:SetPoint("BOTTOMRIGHT", -1, 1)
-        checked:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.3)
+        ns:Fill(checked, C.fel[1], C.fel[2], C.fel[3], 0.3)
         b:SetCheckedTexture(checked)
     end
     local cd = b.cooldown or b.Cooldown or _G[b:GetName() .. "Cooldown"]

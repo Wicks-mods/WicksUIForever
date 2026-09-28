@@ -34,6 +34,16 @@ M.statusbars = {
 
 M.blank = "Interface\\Buttons\\WHITE8X8"
 
+-- The modern style's pieces, generated for Wick's UI: a rounded panel and
+-- an outline ring (9-sliced, 8 px margins, so corners keep their size at
+-- any frame size), a soft shadow (9-sliced, 28 px margins) and a rounded
+-- mask for icons.
+local TEX = "Interface\\AddOns\\WicksUI\\Media\\Textures\\"
+M.rounded   = TEX .. "rounded.png"
+M.ring      = TEX .. "ring.png"
+M.shadow    = TEX .. "shadow.png"
+M.roundmask = TEX .. "roundmask.png"
+
 M.outlines = { "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROMEOUTLINE" }
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)

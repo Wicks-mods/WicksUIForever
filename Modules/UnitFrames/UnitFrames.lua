@@ -228,8 +228,15 @@ end
 local function barBG(sb)
     local bg = sb:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
-    bg:SetTexture(ns.Media:Statusbar())
-    bg:SetVertexColor(C.void[1], C.void[2], C.void[3], 1)
+    if ns:Modern() then
+        -- A rounded track, faintly lighter than the glass it sits on.
+        bg:SetTexture(ns.Media.rounded)
+        if bg.SetTextureSliceMargins then bg:SetTextureSliceMargins(3, 3, 3, 3) end
+        bg:SetVertexColor(1, 1, 1, 0.07)
+    else
+        bg:SetTexture(ns.Media:Statusbar())
+        bg:SetVertexColor(C.void[1], C.void[2], C.void[3], 1)
+    end
     sb.bg = bg
     return bg
 end
@@ -379,8 +386,10 @@ local function style(self, unit)
     self:SetScript("OnLeave", UF.OnLeave)
 
     ns:SetTemplate(self, "Default")
-    self.wuiBG:SetColorTexture(C.void[1], C.void[2], C.void[3], 1)
-    Chrome:Register(self.wuiBG, "void", "texture")
+    if not ns:Modern() then
+        self.wuiBG:SetColorTexture(C.void[1], C.void[2], C.void[3], 1)
+        Chrome:Register(self.wuiBG, "void", "texture")
+    end
 
     -- Health
     local health = newBar(self)
@@ -573,14 +582,24 @@ function UF:Configure(self)
         portrait:Hide()
     end
 
-    -- Health above, power below, one pixel apart.
+    -- Crisp: health above, power below, one pixel apart, text in the bar.
+    -- Modern: the frame is a glass panel with padding, the name and health
+    -- text sit in a row above a slim bar, and power is a thin line under
+    -- it. Raid frames keep their text on the bar, having no room above it.
+    local modern = ns:Modern() and key ~= "raid"
     local health, power = self.Health, self.Power
-    local ph = d.power and d.powerHeight or 0
-    local gap = d.power and (d.powerGap or 1) or 0
+    local pad, nameRow = px, 0
+    if modern then
+        pad = h < 36 and 5 or 7
+        local lt = d.texts and d.texts.left
+        nameRow = ((lt and lt.size) or 12) + (h < 36 and 3 or 5)
+    end
+    local ph = d.power and (modern and math.min(d.powerHeight, 3) or d.powerHeight) or 0
+    local gap = d.power and (modern and 3 or (d.powerGap or 1)) or 0
     health:ClearAllPoints()
-    health:SetPoint("TOPLEFT", self, "TOPLEFT", px + pl, -px)
-    health:SetPoint("TOPRIGHT", self, "TOPRIGHT", -px - pr, -px)
-    health:SetHeight(math.max(1, h - 2 * px - ph - gap))
+    health:SetPoint("TOPLEFT", self, "TOPLEFT", pad + pl, -(pad + nameRow))
+    health:SetPoint("TOPRIGHT", self, "TOPRIGHT", -pad - pr, -(pad + nameRow))
+    health:SetHeight(math.max(2, h - 2 * pad - nameRow - ph - gap))
     for _, sub in ipairs({ health.HealingAll, health.DamageAbsorb, health.HealAbsorb }) do
         if sub then sub:SetWidth(math.max(1, w - pl - pr)) end
     end
@@ -623,8 +642,16 @@ function UF:Configure(self)
         if td and td.enable and td.tag and td.tag ~= "" then
             ns.Media:SetFont(fs, td.size, g.fontOutline, g.font)
             local anchorTo = (slot == "power" and d.power) and power or health
-            place(fs, anchorTo, td.point, td.x, td.y)
-            fs:SetJustifyH(justifyFor(td.point))
+            if modern and slot ~= "power" then
+                -- The row above the bar: name on the left, health on the right.
+                fs:ClearAllPoints()
+                local left = slot == "left" and not td.point:find("RIGHT")
+                fs:SetPoint(left and "BOTTOMLEFT" or "BOTTOMRIGHT", health, left and "TOPLEFT" or "TOPRIGHT", td.x or 0, 3)
+                fs:SetJustifyH(left and "LEFT" or "RIGHT")
+            else
+                place(fs, anchorTo, td.point, td.x, td.y)
+                fs:SetJustifyH(justifyFor(td.point))
+            end
             -- Names are cut to the frame, not by counting letters, since
             -- an enemy's name can be secret and so cannot be measured.
             if slot == "left" then fs:SetWidth(math.max(20, (w - pl - pr) * 0.62)) else fs:SetWidth(0) end
@@ -708,6 +735,29 @@ function UF:Configure(self)
         cb:SetStatusBarColor(cc[1], cc[2], cc[3], 1)
         cb.wuiLocked:SetVertexColor(lc[1], lc[2], lc[3], 1)
         if cb.SafeZone then cb.SafeZone:SetShown(cd.latency) end
+        -- Modern: a thin line with the spell name and time above it.
+        if ns:Modern() then
+            local line = 5
+            cb.wuiIconHolder:Hide()
+            cb.Text:ClearAllPoints()
+            cb.Text:SetPoint("BOTTOMLEFT", cb, "TOPLEFT", 0, 4)
+            cb.Text:SetPoint("RIGHT", cb.Time, "LEFT", -6, 0)
+            cb.Time:ClearAllPoints()
+            cb.Time:SetPoint("BOTTOMRIGHT", cb, "TOPRIGHT", 0, 4)
+            cb.Spark:SetHeight(line)
+            cb:ClearAllPoints()
+            if cd.detach then
+                local holder = cb.wuiHolder
+                holder:SetSize(cw, cs + 4 + line)
+                ns.Movers:Resize("castbar_" .. key)
+                cb:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT")
+                cb:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT")
+                cb:SetHeight(line)
+            else
+                cb:SetPoint("TOPRIGHT", self, "BOTTOMRIGHT", cd.x or 0, (cd.y or -4) - cs - 8 - (self.AdditionalPower and 8 or 0))
+                cb:SetSize(cw, line)
+            end
+        end
         setElement(self, "Castbar", cd.enable)
         if not cd.enable then cb:Hide() end
     end

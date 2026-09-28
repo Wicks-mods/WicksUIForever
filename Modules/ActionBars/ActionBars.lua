@@ -285,25 +285,31 @@ function AB:StyleButton(button)
     button.wuiEmpty = bg
 
     -- The border sits on the button itself, one physical pixel.
-    ns:SetTemplate(button, "None")
-    button.wuiBG:Hide()
+    -- Crisp: a border line only. Modern: a rounded glass tile with a lift.
+    if ns:Modern() then
+        ns:SetTemplate(button, "Default")
+        bg:Hide()
+    else
+        ns:SetTemplate(button, "None")
+        button.wuiBG:Hide()
+    end
 
     local hl = button:CreateTexture(nil, "HIGHLIGHT")
     hl:SetPoint("TOPLEFT", 1, -1)
     hl:SetPoint("BOTTOMRIGHT", -1, 1)
-    hl:SetColorTexture(1, 1, 1, 0.15)
+    ns:Fill(hl, 1, 1, 1, 0.12)
     button:SetHighlightTexture(hl)
 
     local pushed = button:CreateTexture(nil, "ARTWORK", nil, 2)
     pushed:SetPoint("TOPLEFT", 1, -1)
     pushed:SetPoint("BOTTOMRIGHT", -1, 1)
-    pushed:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.35)
+    ns:Fill(pushed, C.fel[1], C.fel[2], C.fel[3], 0.35)
     button:SetPushedTexture(pushed)
 
     local checked = button:CreateTexture(nil, "ARTWORK", nil, 1)
     checked:SetPoint("TOPLEFT", 1, -1)
     checked:SetPoint("BOTTOMRIGHT", -1, 1)
-    checked:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.25)
+    ns:Fill(checked, C.fel[1], C.fel[2], C.fel[3], 0.25)
     if button.SetCheckedTexture then button:SetCheckedTexture(checked) end
 
     local cd = button.cooldown
@@ -347,7 +353,7 @@ end
 -- Show the empty-slot fill only when the slot is shown empty.
 LAB.RegisterCallback(AB, "OnButtonUpdate", function(_, button)
     if not button.wuiEmpty then return end
-    button.wuiEmpty:SetShown(true)
+    button.wuiEmpty:SetShown(not ns:Modern())
     if button.wuiBorder then
         local equipped = button.IsEquipped and button:IsEquipped()
         ns:SetBorderColor(button, equipped and "fel" or "border")

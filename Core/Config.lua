@@ -318,7 +318,7 @@ local function build()
     frame:SetClampedToScreen(true)
     frame:EnableMouse(true)
     frame:SetMovable(true)
-    ns:SetTemplate(frame, "Default", { brackets = true })
+    ns:SetTemplate(frame, "Default", { brackets = true, alpha = ns:Modern() and 0.96 or nil })
     Chrome:CloseOnEscape(frame)
     frame:SetScript("OnHide", function() W.CloseMenu() end)
 

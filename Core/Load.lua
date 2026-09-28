@@ -45,6 +45,45 @@ ns:On("UI_SCALE_CHANGED", function() ns:UpdatePixel(); ns:RefreshBorders() end)
 ns:On("DISPLAY_SIZE_CHANGED", function() ns:UpdatePixel(); ns:RefreshBorders() end)
 
 -- ============================================================
+-- Style presets
+-- ============================================================
+-- A style needs its own spacing: the modern look is airier, with larger
+-- buttons and room for the name above each bar. Applied once when a
+-- profile first meets the style, or on request; sizes only, never
+-- positions, and afterwards the player's own sizes stand.
+local PRESETS = {
+    modern = {
+        bars = { size = 38, spacing = 6 },
+        units = { player = 50, target = 50, focus = 44, focustarget = 34, targettarget = 34, pet = 34, boss = 44, party = 46, raid = 44 },
+    },
+    wick = {
+        bars = { size = 34, spacing = 2 },
+        units = { player = 40, target = 40, focus = 32, focustarget = 26, targettarget = 26, pet = 26, boss = 36, party = 40, raid = 42 },
+    },
+}
+
+function ns:ApplyStylePreset(force)
+    local g = ns:G()
+    local style = g.style or "modern"
+    if not force and g.presetFor == style then return end
+    local p = PRESETS[style]
+    if not p then return end
+    local prof = ns.A.db.profile
+    if prof.actionbars and prof.actionbars.bars then
+        for _, d in pairs(prof.actionbars.bars) do
+            d.size, d.spacing = p.bars.size, p.bars.spacing
+        end
+    end
+    local uf = prof.unitframes and prof.unitframes.units
+    if uf then
+        for key, h in pairs(p.units) do
+            if uf[key] then uf[key].height = h end
+        end
+    end
+    g.presetFor = style
+end
+
+-- ============================================================
 -- Profile changes
 -- ============================================================
 local function onProfileChanged()
@@ -76,6 +115,7 @@ function A:OnEnable()
         if g.statusbar == "Wick Shaded" then g.statusbar = "Wick Flat" end
         g.flatRestored = true
     end
+    ns:ApplyStylePreset(false)
     -- Unit frames spent a day on Friz Quadrata while no good narrow face
     -- was bundled. Profiles still on that default move to the bundled one.
     local uf = ns.A.db.profile.unitframes
@@ -186,6 +226,25 @@ ns.Config:AddPage("general", "General", function(L)
     L:Toggle("Crisp borders", "pixelPerfect", { tooltip = "Draw borders one physical pixel wide at any scale.", set = function() ns:UpdatePixel(); ns:RefreshBorders() end })
     L:Toggle("Black edge around panels", "edges", { tooltip = "A one-pixel black line outside every border, which is what makes flat panels look solid.", set = function() ns:RefreshBorders() end })
     L:Toggle("Fel corners on panels", "brackets", { tooltip = "The Wick L-bracket corners on the larger panels. Takes effect after a reload." })
+
+    L:Heading("Style")
+    L:Dropdown("Style", "style", {
+        { "modern", "Modern: rounded glass, soft shadows" },
+        { "wick", "Wick: crisp borders, fel corners" },
+    }, {
+        setter = function(v)
+            if v == ns:G().style then return end
+            ns.Widgets:Confirm("Changing the style rebuilds every frame, so the interface reloads. Reload now?", function()
+                ns:G().style = v
+                ReloadUI()
+            end, "Reload")
+        end,
+        tooltip = "Modern is borderless, lifted and airy, with fel kept for signals. Wick is the crisp look: single-pixel borders, a black edge and fel corners.",
+    })
+    L:Button("Apply the style's spacing again", function()
+        ns:ApplyStylePreset(true)
+        ns:UpdateAll()
+    end, { tooltip = "Button sizes, gaps and frame heights to suit the style. Your positions are kept." })
 
     L:Heading("Look")
     L:Dropdown("Font", "font", function()

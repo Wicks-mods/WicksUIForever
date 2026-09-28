@@ -288,7 +288,10 @@ function DT:LayoutPanel(key)
             s:Hide()
         end
     end
-    p.wuiBG:SetShown(db().backdrop)
+    -- Modern info panels are floating text: no bar, no lift.
+    local bar = db().backdrop and not ns:Modern()
+    p.wuiBG:SetShown(bar)
+    if p.wuiShadow then p.wuiShadow:SetShown(bar) end
     p:SetShown(d.enable)
     ns.Movers:SetEnabled("info_" .. key, d.enable)
 end

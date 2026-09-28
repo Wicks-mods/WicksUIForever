@@ -19,6 +19,86 @@ local TEMPLATES = {
     None        = { bg = nil },
 }
 
+-- The modern style: rounded glass panels lifted by a soft shadow, no
+-- border lines, and a rounded fel ring where the crisp style would colour
+-- its border. The style is read once at load; switching it reloads.
+function ns:Modern() return ns:G().style == "modern" end
+
+local MODERN = {
+    Default     = { bg = "void",   alpha = 0.74 },
+    Transparent = { bg = "void",   alpha = 0.52 },
+    Shadow      = { bg = "shadow", alpha = 0.92 },
+    None        = { bg = nil },
+}
+
+local function slice(tex, m)
+    if tex.SetTextureSliceMargins then
+        tex:SetTextureSliceMargins(m, m, m, m)
+        if tex.SetTextureSliceMode then pcall(tex.SetTextureSliceMode, tex, 0) end
+    end
+end
+
+-- WickCore's theme repaint sets a flat colour on what it knows about,
+-- which would wipe a rounded texture, so modern panels keep their own
+-- list and are repainted by vertex colour instead.
+local glass = setmetatable({}, { __mode = "k" })
+local function paintGlass(tex, token, alpha)
+    local c = C[token] or C.void
+    tex:SetVertexColor(c[1], c[2], c[3], alpha or 1)
+    glass[tex] = { token = token, alpha = alpha }
+end
+if Chrome.OnThemeChanged then
+    Chrome:OnThemeChanged(function()
+        for tex, g in pairs(glass) do
+            local c = C[g.token] or C.void
+            tex:SetVertexColor(c[1], c[2], c[3], g.alpha or 1)
+        end
+    end)
+end
+
+local function modernTemplate(f, template, opts)
+    local t = MODERN[template or "Default"] or MODERN.Default
+    if not f.wuiBG then
+        f.wuiBG = f:CreateTexture(nil, "BACKGROUND", nil, -7)
+        f.wuiBG:SetAllPoints()
+    end
+    f.wuiBG:SetTexture(ns.Media.rounded)
+    slice(f.wuiBG, 8)
+    if t.bg then
+        paintGlass(f.wuiBG, t.bg, opts.alpha or t.alpha)
+        f.wuiBG:Show()
+    else
+        f.wuiBG:Hide()
+    end
+    -- The lift: a soft shadow reaching past the frame's edges.
+    local lifted = opts.shadow == true or (opts.shadow ~= false and (template == nil or template == "Default" or template == "Transparent"))
+    if lifted and t.bg and not f.wuiShadow then
+        local s = f:CreateTexture(nil, "BACKGROUND", nil, -8)
+        s:SetTexture(ns.Media.shadow)
+        slice(s, 28)
+        s:SetPoint("TOPLEFT", f, "TOPLEFT", -12, 10)
+        s:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 12, -14)
+        s:SetVertexColor(0, 0, 0, 0.6)
+        f.wuiShadow = s
+    end
+    -- The ring stands in for a coloured border: hidden at rest.
+    if not f.wuiRing then
+        local r = f:CreateTexture(nil, "BORDER", nil, 2)
+        r:SetTexture(ns.Media.ring)
+        slice(r, 8)
+        r:SetAllPoints()
+        r:Hide()
+        f.wuiRing = r
+    end
+    f.wuiBorder = f.wuiBorder or {}
+    ns:SetBorderColor(f, opts.border or "border")
+    f.wuiTemplate = template or "Default"
+    f.wuiModern = true
+    ns.skinned = ns.skinned or setmetatable({}, { __mode = "k" })
+    ns.skinned[f] = true
+    return f
+end
+
 local function paint(tex, token, alpha)
     local c = C[token] or C.void
     tex:SetColorTexture(c[1], c[2], c[3], alpha or c[4] or 1)
@@ -72,6 +152,7 @@ end
 -- or None (border only).
 function ns:SetTemplate(f, template, opts)
     opts = opts or {}
+    if ns:Modern() then return modernTemplate(f, template, opts) end
     local t = TEMPLATES[template or "Default"] or TEMPLATES.Default
     if not f.wuiBG then
         f.wuiBG = f:CreateTexture(nil, "BACKGROUND", nil, -8)
@@ -97,6 +178,20 @@ end
 
 -- A token name ("border", "fel") or an { r, g, b } table.
 function ns:SetBorderColor(f, color, alpha)
+    -- Modern: the resting border is no line at all; any other colour is
+    -- the rounded ring in that colour.
+    if f.wuiModern then
+        local r = f.wuiRing
+        if not r then return end
+        if color == "border" or color == nil then
+            r:Hide()
+        else
+            local c = type(color) == "string" and (C[color] or C.fel) or color
+            r:SetVertexColor(c[1] or c.r, c[2] or c.g, c[3] or c.b, alpha or 1)
+            r:Show()
+        end
+        return
+    end
     local b = f.wuiBorder
     if not b then return end
     for _, t in pairs(b) do
@@ -127,7 +222,7 @@ end
 function ns:RefreshBorders()
     if not ns.skinned then return end
     for f in pairs(ns.skinned) do
-        if f.wuiBorder then layoutBorder(f) end
+        if f.wuiBorder and not f.wuiModern then layoutBorder(f) end
     end
 end
 
@@ -135,10 +230,33 @@ end
 -- Widgets built on the template
 -- ============================================================
 
--- Icon cropped to lose Blizzard's baked-in border.
+-- A plain colour fill: flat in the crisp style, rounded in the modern one,
+-- so hover, press and active overlays follow the button's corners.
+function ns:Fill(tex, r, g, b, a)
+    if ns:Modern() then
+        tex:SetTexture(ns.Media.rounded)
+        if tex.SetTextureSliceMargins then tex:SetTextureSliceMargins(8, 8, 8, 8) end
+        tex:SetVertexColor(r, g, b, a or 1)
+    else
+        tex:SetColorTexture(r, g, b, a or 1)
+    end
+end
+
+-- Icon cropped to lose Blizzard's baked-in border. In the modern style
+-- the icon also gets the rounded mask, so its corners follow the panel.
 function ns:CropIcon(tex, zoom)
     local z = zoom or 0.08
     tex:SetTexCoord(z, 1 - z, z, 1 - z)
+    if ns:Modern() and tex.AddMaskTexture and tex.GetParent then
+        local parent = tex:GetParent()
+        if parent and parent.CreateMaskTexture and not tex.wuiMask then
+            local m = parent:CreateMaskTexture()
+            m:SetTexture(ns.Media.roundmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            m:SetAllPoints(tex)
+            tex:AddMaskTexture(m)
+            tex.wuiMask = m
+        end
+    end
 end
 
 -- Aura icons carry their own time-left text. The game's cooldown numbers

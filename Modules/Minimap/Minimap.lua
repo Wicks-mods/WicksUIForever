@@ -57,7 +57,9 @@ end
 function MM:Shape()
     local d = db()
     if d.square then
-        if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, SQUARE) end
+        -- Modern rounds the square's corners with the same mask the icons use.
+        local mask = ns:Modern() and ns.Media.roundmask or SQUARE
+        if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, mask) end
         blob(0)
         for _, t in ipairs(ringArt()) do t:SetAlpha(0) end
         self.chrome:Show()
@@ -226,6 +228,22 @@ function MM:Initialize()
     chrome:SetFrameLevel(Minimap:GetFrameLevel() + 5)
     ns:SetTemplate(chrome, "None", { brackets = true })
     self.chrome = chrome
+    -- Modern: no border line or corners, a soft lift under the map instead.
+    if ns:Modern() then
+        -- On a frame of its own one level under the map: our overlay draws
+        -- above the map, and a shadow there would darken the map itself.
+        local under = CreateFrame("Frame", nil, Minimap:GetParent() or UIParent)
+        under:SetFrameStrata(Minimap:GetFrameStrata())
+        under:SetFrameLevel(math.max(0, Minimap:GetFrameLevel() - 1))
+        under:SetAllPoints(Minimap)
+        local s = under:CreateTexture(nil, "BACKGROUND", nil, -8)
+        s:SetTexture(ns.Media.shadow)
+        if s.SetTextureSliceMargins then s:SetTextureSliceMargins(28, 28, 28, 28) end
+        s:SetPoint("TOPLEFT", Minimap, "TOPLEFT", -12, 10)
+        s:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", 12, -14)
+        s:SetVertexColor(0, 0, 0, 0.6)
+        chrome.wuiLift = s
+    end
     self:BuildText()
     self:Update()
 
