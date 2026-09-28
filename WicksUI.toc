@@ -1,0 +1,31 @@
+## Interface: 16001
+## Title: Wick's UI
+## Notes: A full interface replacement for WoW Forever. Action bars, unit frames, group frames, nameplates, auras, chat, minimap and skins, in the Wick look, with every part optional.
+## Author: Wick
+## Version: 0.1.0
+## Dependencies: WickCore
+## SavedVariables: WicksUIDB
+## X-oUF: WicksUI_oUF
+## X-Website: https://wicksmods.com
+## X-License: MIT with trademark carve-out. Bundled libraries keep their own licenses, see Libs.
+## X-WickCore: WickCore-1.0
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\WickGlow\WickGlow.lua
+Libs\LibActionButton-1.0\LibActionButton-1.0.lua
+Libs\oUF\oUF.xml
+
+Core\Init.lua
+Core\Util.lua
+Core\Media.lua
+Core\Skin.lua
+Core\Movers.lua
+Core\Widgets.lua
+Core\Config.lua
+
+Modules\ActionBars\ActionBars.lua
+Modules\ActionBars\Special.lua
+Modules\ActionBars\Keybind.lua
+
+Core\Load.lua
