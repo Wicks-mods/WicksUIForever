@@ -34,5 +34,6 @@ Modules\UnitFrames\Groups.lua
 Modules\UnitFrames\Options.lua
 
 Modules\Nameplates\Nameplates.lua
+Modules\Auras\Auras.lua
 
 Core\Load.lua
