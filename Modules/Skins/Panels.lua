@@ -368,7 +368,16 @@ local function styleIconButton(b)
         local t = tex(b, get); if t then t:SetAlpha(0) end
     end
     local icon = b.Icon or b.icon
-    if icon then ns:CropIcon(icon) end
+    -- An icon from Blizzard's UI art (an atlas: a dropdown arrow, a cog) is
+    -- a control glyph, not a spell or item picture. Cropping would cut it,
+    -- so it is greyed instead, like the other small controls.
+    local atlas = icon and icon.GetAtlas and icon:GetAtlas()
+    if icon and atlas then
+        icon:SetDesaturated(true)
+        icon:SetVertexColor(0.85, 0.85, 0.85)
+    elseif icon then
+        ns:CropIcon(icon)
+    end
     backdrop(b, "Default", false, 0)
     local ct = tex(b, "GetCheckedTexture")
     if ct then
