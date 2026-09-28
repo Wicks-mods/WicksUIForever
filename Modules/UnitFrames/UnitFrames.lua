@@ -169,6 +169,19 @@ function UF:ApplyColors()
     end
     oUF.colors.disconnected = oUF:CreateColor(0.45, 0.45, 0.45)
     oUF.colors.tapped = oUF:CreateColor(0.50, 0.50, 0.50)
+    -- Power in tones that sit with the dark panels. oUF's stock set is the
+    -- game's pure primaries, which glare on a flat bar.
+    local P = Enum.PowerType or {}
+    local power = {
+        MANA = { 0.31, 0.45, 0.78, P.Mana }, RAGE = { 0.78, 0.25, 0.25, P.Rage },
+        ENERGY = { 0.85, 0.78, 0.32, P.Energy }, FOCUS = { 0.78, 0.50, 0.28, P.Focus },
+        RUNIC_POWER = { 0.00, 0.72, 0.86, P.RunicPower },
+    }
+    for token, c in pairs(power) do
+        local color = oUF:CreateColor(c[1], c[2], c[3])
+        oUF.colors.power[token] = color
+        if c[4] then oUF.colors.power[c[4]] = color end
+    end
 end
 
 local function postUpdateHealthColor(health, unit, color)
