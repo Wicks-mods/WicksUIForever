@@ -86,7 +86,8 @@ function ns:GetModule(key) return ns.modules[key] end
 
 local function sortedModules()
     table.sort(ns.moduleOrder, function(a, b)
-        if a.order ~= b.order then return a.order < b.order end
+        local ao, bo = tonumber(a.order) or 100, tonumber(b.order) or 100
+        if ao ~= bo then return ao < bo end
         return a.key < b.key
     end)
     return ns.moduleOrder

@@ -66,10 +66,19 @@ function A:OnInitialize()
 end
 
 function A:OnEnable()
-    ns:UpdatePixel()
-    ns:ApplyScale()
-    ns:InitializeModules()
-    ns.Movers:PlaceAll()
+    -- WickCore runs this protected and keeps quiet about failures unless
+    -- its debug is on. A UI that fails to start must say so.
+    local ok, err = xpcall(function()
+        ns:UpdatePixel()
+        ns:ApplyScale()
+        ns:InitializeModules()
+        ns.Movers:PlaceAll()
+    end, function(e) return tostring(e) .. "\n" .. (debugstack and debugstack(2, 6, 0) or "") end)
+    if not ok then
+        ns.errors = ns.errors or {}
+        ns.errors[#ns.errors + 1] = "startup: " .. tostring(err)
+        self:Print("|cffff6060failed to start|r: " .. tostring(err):match("^[^\n]*"))
+    end
 
     self:RegisterLauncher({
         onClick = function(_, button)

@@ -35,5 +35,10 @@ Modules\UnitFrames\Options.lua
 
 Modules\Nameplates\Nameplates.lua
 Modules\Auras\Auras.lua
+Modules\Chat\Chat.lua
+Modules\Minimap\Minimap.lua
+Modules\Tooltip\Tooltip.lua
+Modules\DataTexts\DataTexts.lua
+Modules\DataTexts\DataBars.lua
 
 Core\Load.lua
