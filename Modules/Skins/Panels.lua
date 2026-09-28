@@ -673,11 +673,14 @@ local function styleEntry(f)
         lighten(f.Name)
         lighten(f.SubName, C.muted)
         lighten(f.RequiredLevel, C.muted)
+        -- Every pass, not once: switching category (to the pet's spells,
+        -- say) redraws the icon frame and shows it again.
+        fade(f.Backplate)
+        fade(f.Button.Border)
+        fade(f.Button.TrainableBackplate)
+        fade(f.Button.TrainableShadow)
         if not styledEntry[f] then
             styledEntry[f] = true
-            fade(f.Backplate)
-            fade(f.Button.Border)
-            fade(f.Button.TrainableBackplate)
             local e = extras[f.Button] or {}
             extras[f.Button] = e
             if not e.backdrop then
@@ -721,7 +724,40 @@ local function walkBook(frame, depth)
     end
 end
 
-local function skinSpellBook(sb)
+-- Our panel hugs the book: it ends a margin below the page controls and
+-- just outside the leftmost and rightmost pieces along the top, instead of
+-- filling the whole window, which Blizzard sizes for its book art. On the
+-- other tabs (talents) it covers the window again. Only our panel moves;
+-- their window keeps its size.
+local function fitBook(host, sb)
+    local e = host and extras[host]
+    local bd = e and e.backdrop
+    if not bd then return end
+    local paged = sb.PagedSpellsFrame
+    local pc = paged and paged.PagingControls
+    local hl, hr, hb = host:GetLeft(), host:GetRight(), host:GetBottom()
+    local key = "full"
+    local l, r, b = 0, 0, 0
+    if sb:IsVisible() and pc and pc:IsVisible() and hl and pc:GetBottom() then
+        local left = hl
+        local tabs = sb.CategoryTabSystem
+        if tabs and tabs:IsVisible() and tabs:GetLeft() then left = tabs:GetLeft() - 18 end
+        local right = hr
+        local close = host.CloseButton or host.ClosePanelButton
+        if close and close:IsVisible() and close:GetRight() then right = close:GetRight() + 8 end
+        l = math.max(0, math.floor(left - hl))
+        r = math.min(0, math.floor(right - hr))
+        b = math.max(0, math.floor(pc:GetBottom() - 16 - hb))
+        key = l .. "," .. r .. "," .. b
+    end
+    if e.fit == key then return end
+    e.fit = key
+    bd:ClearAllPoints()
+    bd:SetPoint("TOPLEFT", host, "TOPLEFT", l, 0)
+    bd:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", r, b)
+end
+
+local function skinSpellBook(sb, host)
     if not sb or done[sb] then return end
     done[sb] = true
     fadeRegions(sb)
@@ -744,7 +780,11 @@ local function skinSpellBook(sb)
         if acc < 0.3 then return end
         acc = 0
         walkBook(paged or sb, 1)
+        fitBook(host, sb)
     end)
+    -- The talents tab hides the book, and with it this poll: put the
+    -- panel back to the whole window then.
+    poll:SetScript("OnHide", function() fitBook(host, sb) end)
 end
 
 -- Gear slots: the slot frame goes, the icon gets our corners, and the
@@ -801,7 +841,7 @@ PS.SPECIAL.CharacterFrame = function(frame)
 end
 
 PS.SPECIAL.PlayerSpellsFrame = function(frame)
-    skinSpellBook(frame.SpellBookFrame)
+    skinSpellBook(frame.SpellBookFrame, frame)
     return "generic"
 end
 
