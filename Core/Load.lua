@@ -76,6 +76,13 @@ function A:OnEnable()
         if g.statusbar == "Wick Shaded" then g.statusbar = "Wick Flat" end
         g.flatRestored = true
     end
+    -- Unit frames spent a day on Friz Quadrata while no good narrow face
+    -- was bundled. Profiles still on that default move to the bundled one.
+    local uf = ns.A.db.profile.unitframes
+    if uf and not g.ptSans then
+        if uf.font == "Friz Quadrata" then uf.font = "Wick" end
+        g.ptSans = true
+    end
     local ok, err = xpcall(function()
         ns:UpdatePixel()
         ns:ApplyScale()

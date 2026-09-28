@@ -11,8 +11,14 @@ local ADDON, ns = ...
 local M = {}
 ns.Media = M
 
+local FONTS = "Interface\\AddOns\\WicksUI\\Media\\Fonts\\"
+
 M.fonts = {
-    ["Wick"]         = "Fonts\\ARIALN.TTF",       -- the clean condensed face, the default
+    -- PT Sans Narrow (ParaType, SIL Open Font License 1.1, bundled
+    -- unmodified; licence in Media/Fonts). The bold cut is the default.
+    ["Wick"]                = FONTS .. "PT_Sans-Narrow-Web-Bold.ttf",
+    ["PT Sans Narrow"]      = FONTS .. "PT_Sans-Narrow-Web-Regular.ttf",
+    ["PT Sans Narrow Bold"] = FONTS .. "PT_Sans-Narrow-Web-Bold.ttf",
     ["Friz Quadrata"] = "Fonts\\FRIZQT__.TTF",
     ["Arial Narrow"] = "Fonts\\ARIALN.TTF",
     ["Morpheus"]     = "Fonts\\MORPHEUS.TTF",
@@ -33,7 +39,7 @@ M.outlines = { "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROMEOUTLINE" }
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 if LSM then
     for name, path in pairs(M.fonts) do
-        if name:find("^Wick") then pcall(LSM.Register, LSM, "font", name, path) end
+        if name:find("^Wick") or name:find("^PT Sans") then pcall(LSM.Register, LSM, "font", name, path) end
     end
     for name, path in pairs(M.statusbars) do
         if name:find("^Wick") then pcall(LSM.Register, LSM, "statusbar", name, path) end

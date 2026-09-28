@@ -24,7 +24,9 @@ The bundled libraries under Libs/ are not covered by the above and keep their
 own licenses: oUF (MIT, Libs/oUF/LICENSE.txt), LibActionButton-1.0 (BSD,
 Libs/LibActionButton-1.0/LICENSE.txt), CallbackHandler-1.0 (BSD, Ace3
 Development Team, Libs/CallbackHandler-1.0/LICENSE.txt) and LibStub (public
-domain).
+domain). PT Sans Narrow (Media/Fonts) is copyright ParaType Ltd. and is
+bundled unmodified under the SIL Open Font License 1.1
+(Media/Fonts/PT_Sans_Narrow_OFL.txt).
 
 The "Wick", "Wick's UI", "WickCore", "Wick's Mods", and associated wordmark,
 logomark, and brand chrome (fel-green L-bracket corners, locked palette) are
