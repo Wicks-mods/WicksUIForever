@@ -356,7 +356,14 @@ end
 local function styleIconButton(b)
     if done[b] then return end
     done[b] = true
-    for _, k in ipairs({ "Border", "Background", "Glow", "BorderSelected", "SelectedTexture", "IconOverlay" }) do fade(b[k]) end
+    for _, k in ipairs({ "Border", "Background", "Glow", "BorderSelected", "SelectedTexture", "IconOverlay",
+        "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow", "SquareBorder" }) do fade(b[k]) end
+    -- Art that lives on an unnamed inner frame of the button (the
+    -- spellbook's category tabs keep their frame there). Our own panels
+    -- carry wuiBG and are left alone.
+    for _, child in ipairs({ b:GetChildren() }) do
+        if child:GetObjectType() == "Frame" and not child.wuiBG then fadeRegions(child) end
+    end
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
         local t = tex(b, get); if t then t:SetAlpha(0) end
     end
@@ -781,6 +788,18 @@ local function skinSpellBook(sb, host)
         acc = 0
         walkBook(paged or sb, 1)
         fitBook(host, sb)
+        -- The selected category tab: Blizzard shows its active square only
+        -- on that one, so its visibility says which, and ours rings it.
+        local ts = sb.CategoryTabSystem
+        if ts then
+            for _, tab in ipairs({ ts:GetChildren() }) do
+                local ex = extras[tab]
+                if ex and ex.backdrop then
+                    local act = tab.SquareBackgroundActive
+                    ns:SetBorderColor(ex.backdrop, (act and act:IsShown()) and "fel" or "border")
+                end
+            end
+        end
     end)
     -- The talents tab hides the book, and with it this poll: put the
     -- panel back to the whole window then.
