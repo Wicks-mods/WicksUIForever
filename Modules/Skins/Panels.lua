@@ -376,6 +376,11 @@ local function styleIconButton(b)
         icon:SetDesaturated(true)
         icon:SetVertexColor(0.85, 0.85, 0.85)
     elseif icon then
+        -- Blizzard's own icon mask trims the picture to a smaller, off-centre
+        -- shape; with ours on top the icon sits askew in our tile. Theirs
+        -- comes off, ours gives the corners.
+        if b.IconMask and icon.RemoveMaskTexture then icon:RemoveMaskTexture(b.IconMask) end
+        if b.IconMask then b.IconMask:Hide() end
         ns:CropIcon(icon)
     end
     local bd = backdrop(b, "Default", false, 0)
