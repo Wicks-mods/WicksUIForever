@@ -893,6 +893,8 @@ local function paintSlots()
                     r:SetAlpha(0)
                 end
             end
+            -- Forever draws the slot's frame on a BorderFrame child.
+            if b.BorderFrame then b.BorderFrame:SetAlpha(0) end
             local q = GetInventoryItemQuality("player", b:GetID())
             if q and q >= 2 and C_Item and C_Item.GetItemQualityColor then
                 local r, g, bl = C_Item.GetItemQualityColor(q)
