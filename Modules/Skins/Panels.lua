@@ -48,7 +48,7 @@ PS.WINDOWS = {
     "BankFrame", "ChatConfigFrame", "LegacyFrame", "StatisticsFrame", "TabardFrame", "PetitionFrame",
     "GuildRegistrarFrame", "ProfessionsFrame", "ItemSocketingFrame", "MacroFrame", "KeyBindingFrame",
     "BarberShopFrame", "TransmogFrame", "WardrobeFrame", "GuildFrame",
-    "BattlefieldMapFrame", "OpacityFrame",
+    "BattlefieldMapFrame", "OpacityFrame", "LFGListingFrame", "LFGBrowseFrame",
     "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4", "ReadyCheckFrame", "ReadyCheckListenerFrame",
     "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4", "LFGDungeonReadyDialog",
     "LFDRoleCheckPopup", "RolePollPopup", "GuildInviteFrame", "PVPReadyDialog", "LFGInvitePopup",
@@ -158,7 +158,7 @@ local function styleTab(tab)
     if not tab or done[tab] or not db().tabs then return end
     done[tab] = true
     for _, k in ipairs({ "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive",
-        "LeftHighlight", "MiddleHighlight", "RightHighlight" }) do fade(tab[k]) end
+        "LeftHighlight", "MiddleHighlight", "RightHighlight", "Background", "Border", "SelectedTexture" }) do fade(tab[k]) end
     local hl = tab.GetHighlightTexture and tab:GetHighlightTexture()
     if hl then hl:SetAlpha(0) end
     local bd = backdrop(tab, "Shadow", false, 3)
@@ -293,6 +293,50 @@ local function fadeFrameArt(f)
     fadeRegions(f)
 end
 
+-- Deeper strip for windows whose art sits on inner frames. Textures on
+-- plain Frames only, two levels down; buttons, check boxes, bars, models
+-- and scroll lists are content and are left alone, so icons and pictures
+-- survive.
+local CONTENT = { Button = true, CheckButton = true, EditBox = true, Slider = true, StatusBar = true,
+    ScrollFrame = true, ModelScene = true, PlayerModel = true, DressUpModel = true, Model = true,
+    Cooldown = true, SimpleHTML = true, MessageFrame = true, ScrollingMessageFrame = true }
+local function deepStrip(frame, depth)
+    if depth > 2 or not frame.GetChildren then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        local kind = child:GetObjectType()
+        if not CONTENT[kind] and not child.ScrollTarget and not child.ScrollBar then
+            fadeRegions(child)
+            fade(child.NineSlice)
+            deepStrip(child, depth + 1)
+        end
+    end
+end
+PS.DEEP = { LFGParentFrame = true, LFGListingFrame = true, LFGBrowseFrame = true }
+
+-- Quest log zone headers: pooled buttons with a collapse button. Their
+-- bar art goes, the text is lit; quest rows are left alone, since their
+-- textures are the tracked tick and the quest icons.
+local function styleQuestHeaders(root, depth)
+    if depth > 6 or not root.GetChildren then return end
+    for _, child in ipairs({ root:GetChildren() }) do
+        if child:IsShown() then
+            if child.CollapseButton and child:GetObjectType() == "Button" then
+                if not done[child] then
+                    done[child] = true
+                    fadeRegions(child)
+                    local hl = child.GetHighlightTexture and child:GetHighlightTexture()
+                    if hl then hl:SetAlpha(0) end
+                    backdrop(child, "Shadow", false, 0)
+                end
+                local text = child.ButtonText or child.Text or (child.GetFontString and child:GetFontString())
+                if text then text:SetTextColor(C.fel[1], C.fel[2], C.fel[3]) end
+            else
+                styleQuestHeaders(child, depth + 1)
+            end
+        end
+    end
+end
+
 -- The full world map. Its border, title and close button live on a
 -- BorderFrame of their own; the quest log beside it has its own art.
 PS.SPECIAL.WorldMapFrame = function(frame)
@@ -304,8 +348,9 @@ PS.SPECIAL.WorldMapFrame = function(frame)
         styleClose(bf.CloseButton)
         if bf.Tutorial then fade(bf.Tutorial) end
     end
-    local bd = backdrop(frame, "Default", db().brackets)
-    if bf then bd:SetParent(bf); bd:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1)) end
+    -- Our panel stays under the map: the border frame draws above the map
+    -- canvas, so a panel on it would cover the map.
+    backdrop(frame, "Default", db().brackets)
     local nav = frame.NavBar
     if nav then
         fadeRegions(nav)
@@ -324,14 +369,37 @@ PS.SPECIAL.WorldMapFrame = function(frame)
         fade(ql.Background)
         fade(ql.VerticalSeparator)
         if ql.DetailsFrame then fadeRegions(ql.DetailsFrame); fade(ql.DetailsFrame.BackFrame) end
+        deepStrip(ql, 1)
         scanButtons(ql, 1)
+        local qf = ql.QuestsFrame
+        if qf then
+            fadeRegions(qf)
+            if qf.ScrollFrame then fadeRegions(qf.ScrollFrame) end
+        end
+        local poll = CreateFrame("Frame", nil, ql)
+        local acc = 0.4
+        poll:SetScript("OnUpdate", function(_, e)
+            acc = acc + e
+            if acc < 0.4 then return end
+            acc = 0
+            styleQuestHeaders(ql, 1)
+        end)
+    end
+    local mm = bf and bf.MaximizeMinimizeFrame
+    if mm then
+        for _, b in ipairs({ mm:GetChildren() }) do
+            for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture" }) do
+                local t = b[get] and b[get](b)
+                if t and t.SetDesaturated then t:SetDesaturated(true) end
+            end
+        end
     end
     if frame.SidePanelToggle then scanButtons(frame.SidePanelToggle, 1) end
 end
 
 -- The small zone map (Shift-M). Blizzard sets its BorderFrame's alpha
 -- from the opacity slider, so the border's pieces are faded instead of
--- the border, and our panel hangs off the border so the slider fades it.
+-- the border, and our panel copies the border's alpha.
 PS.SPECIAL.BattlefieldMapFrame = function(frame)
     local bf = frame.BorderFrame
     fadeRegions(frame)
@@ -346,7 +414,18 @@ PS.SPECIAL.BattlefieldMapFrame = function(frame)
     bd:ClearAllPoints()
     bd:SetPoint("TOPLEFT", frame, "TOPLEFT", -2, 2)
     bd:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 2, -2)
-    if bf then bd:SetParent(bf); bd:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1)) end
+    -- Under the map, like the world map's, and following the border's
+    -- alpha so the opacity slider fades our panel with it.
+    if bf then
+        local acc = 0
+        bd:SetScript("OnUpdate", function(self, e)
+            acc = acc + e
+            if acc < 0.1 then return end
+            acc = 0
+            local a = bf:GetAlpha()
+            if math.abs(self:GetAlpha() - a) > 0.01 then self:SetAlpha(a) end
+        end)
+    end
     local tab = rawget(_G, "BattlefieldMapTab")
     if tab then
         fadeRegions(tab)
@@ -524,7 +603,9 @@ function PS:Skin(frame)
     fade(frame.BorderFrame and frame.BorderFrame.NineSlice)
     if frame.PortraitContainer then fade(frame.PortraitContainer) end
     if frame.portrait then fade(frame.portrait) end
+    if name and _G[name .. "Portrait"] then fade(_G[name .. "Portrait"]) end
     fadeRegions(frame)
+    if name and PS.DEEP[name] then deepStrip(frame, 1) end
     if frame.Inset then
         fade(frame.Inset.NineSlice)
         fade(frame.Inset.Bg)
