@@ -133,6 +133,7 @@ local defaults = {
     lockBars      = true,       -- the game's own Lock Action Bars
     keyDown       = true,       -- cast on key down, the game's own setting
     procGlow      = true,
+    matchedGame   = false,      -- set once the bars have been matched to the game's
     -- Fade
     fadeAlpha     = 0,          -- alpha of bars that follow the global fade
     fadeIn        = "combat,target,casting,mouseover",
@@ -452,7 +453,7 @@ function AB:CreateBar(id)
     bar:SetScript("OnLeave", function(self) AB:BarLeave(self) end)
 
     local d = self:db().bars[id]
-    ns:CreateMover(bar, "bar" .. id, "Bar " .. id, (d and d.point) or "CENTER,UIParent,CENTER,0,0",
+    ns:CreateMover(bar, "bar" .. id, self:Label(id), (d and d.point) or "CENTER,UIParent,CENTER,0,0",
         { groups = "actionbars", config = "actionbars.bar" .. id })
     self.bars[id] = bar
     return bar
@@ -610,7 +611,80 @@ end
 -- ============================================================
 -- Lifecycle
 -- ============================================================
+-- ============================================================
+-- Matching the game's bars
+-- ============================================================
+-- The game numbers its bars in a different order from the pages they
+-- show: its Action Bar 2 is page 6, the bottom left bar of old. Our bars
+-- are keyed by page, since that is what decides the spells on them and
+-- the keybinds they answer to, and they are named the way the game names
+-- them so "bar 2" means the same thing in both places.
+AB.GAME_NUMBER = { [1] = 1, [6] = 2, [5] = 3, [3] = 4, [4] = 5, [13] = 6, [14] = 7, [15] = 8 }
+
+function AB:Label(id)
+    local n = self.GAME_NUMBER[id]
+    if n then return "Action Bar " .. n end
+    return ("Extra bar, page %d"):format(id)
+end
+
+-- Which of the game's bars are switched on, from the game's own settings.
+local function gameShows(n)
+    if n == 1 then return true end
+    local S = rawget(_G, "Settings")
+    if not (S and S.GetValue) then return n <= 3 end
+    local ok, v = pcall(S.GetValue, "PROXY_SHOW_ACTIONBAR_" .. n)
+    if not ok or v == nil then return n <= 3 end
+    return v and true or false
+end
+
+-- Switch on the bars the game had on, name them its way and stack them
+-- the way its default layout does: 1, 2 and 3 up from the bottom, 4 and
+-- 5 down the right, 6 to 8 above. Runs once on its own; the Action Bars
+-- page can run it again.
+function AB:MatchGame()
+    local g = self:db()
+    local y, step = 40, 36
+    local stackTop = y
+    local order = { 1, 6, 5, 13, 14, 15 }
+    for _, id in ipairs(order) do
+        local d = g.bars[id]
+        local on = gameShows(self.GAME_NUMBER[id])
+        d.enable = on
+        d.perRow, d.buttons, d.growth = 12, 12, "BOTTOMLEFT"
+        if on then
+            d.point = ("BOTTOM,UIParent,BOTTOM,0,%d"):format(stackTop)
+            stackTop = stackTop + step
+        else
+            d.point = ("BOTTOM,UIParent,BOTTOM,0,%d"):format(stackTop)
+        end
+    end
+    for i, id in ipairs({ 3, 4 }) do
+        local d = g.bars[id]
+        d.enable = gameShows(self.GAME_NUMBER[id])
+        d.perRow, d.buttons, d.growth = 1, 12, "TOPRIGHT"
+        d.point = ("RIGHT,UIParent,RIGHT,%d,0"):format(-4 - (i - 1) * 36)
+    end
+    for _, id in ipairs({ 2, 7, 8, 9, 10 }) do g.bars[id].enable = false end
+    -- Stance and pet bars sit on top of the stack.
+    if g.stance then g.stance.point = ("BOTTOMLEFT,UIParent,BOTTOM,-216,%d"):format(stackTop + 4) end
+    if g.pet then g.pet.point = ("BOTTOMRIGHT,UIParent,BOTTOM,216,%d"):format(stackTop + 4) end
+
+    local movers = ns.A.db.profile.movers
+    local function reset(name, point)
+        movers[name] = nil
+        local m = ns.Movers.list[name]
+        if m then m.default = point end
+    end
+    for id, d in pairs(g.bars) do reset("bar" .. id, d.point) end
+    if g.stance then reset("stancebar", g.stance.point) end
+    if g.pet then reset("petbar", g.pet.point) end
+    g.matchedGame = true
+    ns.Movers:PlaceAll()
+end
+
 function AB:Initialize()
+    -- Before the bars exist, so their movers start where this puts them.
+    if not self:db().matchedGame then self:MatchGame() end
     self:DisableBlizzard()
     for _, id in ipairs(self.BAR_IDS) do self:CreateBar(id) end
     self:Update()
@@ -662,6 +736,13 @@ ns.Config:AddPage("actionbars", "Action Bars", function(L)
     L:Color("Out of range colour", "rangeColor")
     L:Color("Not enough power colour", "manaColor")
 
+    L:Button("Match the game's bars", function()
+        ns.Widgets:Confirm("Switch on the bars the game has switched on and stack them the way the game does? Your spells and keybinds stay as they are.", function()
+            AB:MatchGame()
+            AB:Update()
+        end, "Match")
+    end, { width = 180, tooltip = "Turns on the same bars as the game's own Action Bars settings and puts them back in the game's order." })
+
     L:Heading("Text")
     L:Dropdown("Font", "font", function()
         local out = {}
@@ -681,12 +762,14 @@ ns.Config:AddPage("actionbars", "Action Bars", function(L)
 end, { onChange = onChange, order = 10 })
 
 local function barPage(id)
-    ns.Config:AddPage("actionbars.bar" .. id, "Bar " .. id, function(L)
+    ns.Config:AddPage("actionbars.bar" .. id, AB:Label(id), function(L)
         L:DB(function() return AB:db().bars[id] end)
-        if id >= 7 and id <= 10 then
-            L:Note("This bar shows action page " .. id .. ", which the game also uses for stances and forms. Warriors, druids, rogues and priests will see their stance buttons here.")
-        elseif id >= 13 then
-            L:Note("This bar shows action page " .. id .. ", one of the three extra pages.")
+        if AB.GAME_NUMBER[id] then
+            L:Note(("The game's Action Bar %d: the same spells and the same keybinds. It shows action page %d."):format(AB.GAME_NUMBER[id], id))
+        elseif id >= 7 and id <= 10 then
+            L:Note("An extra bar the game does not have. It shows action page " .. id .. ", which the game also uses for stances and forms, so warriors, druids, rogues and priests will see their stance buttons here.")
+        else
+            L:Note("An extra bar the game does not have. It shows action page 2, the page the main bar turns to with Shift and the mouse wheel.")
         end
         L:Toggle("Enable", "enable")
         L:Toggle("Backdrop", "backdrop")
@@ -728,6 +811,6 @@ local function barPage(id)
             for k, v in pairs(fresh) do t[k] = v end
             ns.Movers:Reset("bar" .. id)
         end)
-    end, { parent = "actionbars", onChange = onChange, order = id })
+    end, { parent = "actionbars", onChange = onChange, order = AB.GAME_NUMBER[id] or (20 + id) })
 end
 for _, id in ipairs(AB.BAR_IDS) do barPage(id) end
