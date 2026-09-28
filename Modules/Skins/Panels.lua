@@ -130,6 +130,11 @@ end
 -- The small X in the corner, redrawn as ours.
 local function styleClose(b)
     if not b or done[b] then return end
+    -- A close button with a word on it ("Close") is an ordinary button;
+    -- our X on top of it would sit on the word.
+    local fs = b.Text or (b.GetFontString and b:GetFontString())
+    local word = fs and fs.GetText and fs:GetText()
+    if word and word ~= "" then styleButton(b) return end
     done[b] = true
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
         local t = b[get] and b[get](b)
@@ -258,11 +263,169 @@ local function styleDropdown(dd)
     styleText(dd.Text)
 end
 
+-- ============================================================
+-- The common widgets, found wherever they sit in a window
+-- ============================================================
+
+-- Blizzard's gold label text reads as the old look on glass; it becomes
+-- the Wick text colour. Other colours (quality, red warnings, greys)
+-- carry meaning and stay.
+local function isGold(fs)
+    local r, g, b = fs:GetTextColor()
+    return r and r > 0.85 and g > 0.6 and g < 0.9 and b < 0.3
+end
+local function recolorText(frame)
+    if not frame.GetRegions then return end
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:GetObjectType() == "FontString" and isGold(r) then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+    end
+end
+
+local function tex(b, get) return b[get] and b[get](b) end
+
+-- Small check boxes: our field, a rounded fel fill when checked.
+local function styleCheck(cb)
+    if done[cb] then return end
+    done[cb] = true
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        local t = tex(cb, get); if t then t:SetAlpha(0) end
+    end
+    local bd = backdrop(cb, "Shadow", false, 0)
+    bd:ClearAllPoints()
+    bd:SetPoint("TOPLEFT", 3, -3)
+    bd:SetPoint("BOTTOMRIGHT", -3, 3)
+    for _, get in ipairs({ "GetCheckedTexture", "GetDisabledCheckedTexture" }) do
+        local t = tex(cb, get)
+        if t then
+            t:SetDesaturated(false)
+            ns:Fill(t, C.fel[1], C.fel[2], C.fel[3], get == "GetCheckedTexture" and 1 or 0.4)
+            t:ClearAllPoints()
+            t:SetPoint("TOPLEFT", 6, -6)
+            t:SetPoint("BOTTOMRIGHT", -6, 6)
+        end
+    end
+end
+
+-- Sliders: a thin track and a fel handle.
+local function styleSlider(sl)
+    if done[sl] then return end
+    done[sl] = true
+    local thumb = sl.GetThumbTexture and sl:GetThumbTexture()
+    for _, r in ipairs({ sl:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r ~= thumb then r:SetAlpha(0) end
+    end
+    if thumb then
+        ns:Fill(thumb, C.fel[1], C.fel[2], C.fel[3], 1)
+        thumb:SetSize(10, 14)
+    end
+    local e = extras[sl] or {}
+    extras[sl] = e
+    if not e.track then
+        local track = sl:CreateTexture(nil, "BACKGROUND")
+        track:SetPoint("LEFT", 2, 0)
+        track:SetPoint("RIGHT", -2, 0)
+        track:SetHeight(3)
+        ns:Fill(track, C.border[1], C.border[2], C.border[3], 1)
+        e.track = track
+    end
+end
+
+-- Status bars in windows (skill bars and the like): our texture, their
+-- colour, their frame art gone.
+local function styleBar(sb)
+    if done[sb] then return end
+    done[sb] = true
+    local fill = sb:GetStatusBarTexture()
+    for _, r in ipairs({ sb:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r ~= fill then r:SetAlpha(0) end
+    end
+    for _, child in ipairs({ sb:GetChildren() }) do
+        if child:GetObjectType() == "Frame" then fadeRegions(child) end
+    end
+    local r, g, b = sb:GetStatusBarColor()
+    sb:SetStatusBarTexture(ns.Media:Statusbar())
+    -- Bars whose colour was in their art come out white on a flat texture.
+    if not r or (r > 0.95 and g > 0.95 and b > 0.95) then r, g, b = C.fel[1], C.fel[2], C.fel[3] end
+    sb:SetStatusBarColor(r, g, b)
+    backdrop(sb, "Shadow", false, 1)
+end
+
+-- Icon tabs and icon buttons (the character and profession side tabs,
+-- the spellbook's category icons): the gold frame goes, the icon gets our
+-- corners, and a checked tab wears the fel ring.
+local function styleIconButton(b)
+    if done[b] then return end
+    done[b] = true
+    for _, k in ipairs({ "Border", "Background", "Glow", "BorderSelected", "SelectedTexture", "IconOverlay" }) do fade(b[k]) end
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        local t = tex(b, get); if t then t:SetAlpha(0) end
+    end
+    local icon = b.Icon or b.icon
+    if icon then ns:CropIcon(icon) end
+    backdrop(b, "Default", false, 0)
+    local ct = tex(b, "GetCheckedTexture")
+    if ct then
+        ct:SetTexture(ns.Media.ring)
+        if ct.SetTextureSliceMargins then ct:SetTextureSliceMargins(8, 8, 8, 8) end
+        ct:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        ct:SetAllPoints(icon or b)
+    end
+    local e = extras[b] or {}
+    extras[b] = e
+    if not e.hover then
+        local h = b:CreateTexture(nil, "HIGHLIGHT")
+        h:SetAllPoints(icon or b)
+        ns:Fill(h, 1, 1, 1, 0.12)
+        e.hover = h
+    end
+end
+
+-- Small arrow and toggle buttons: their gold or red art greyed to sit
+-- with the rest. Their shapes stay; they are how the button is read.
+local function styleArrow(b)
+    if done[b] then return end
+    done[b] = true
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }) do
+        local t = tex(b, get)
+        if t and t.SetDesaturated then t:SetDesaturated(true); t:SetVertexColor(0.85, 0.85, 0.85) end
+    end
+end
+
+-- List rows (settings categories, map breadcrumbs): their bar art goes;
+-- our hover takes its place.
+local function styleRow(b)
+    if done[b] then return end
+    done[b] = true
+    fadeRegions(b)
+    local hl = tex(b, "GetHighlightTexture")
+    if hl then hl:SetAlpha(0) end
+    local e = extras[b] or {}
+    extras[b] = e
+    if not e.hover then
+        local h = b:CreateTexture(nil, "HIGHLIGHT")
+        h:SetPoint("TOPLEFT", 2, -1)
+        h:SetPoint("BOTTOMRIGHT", -2, 1)
+        ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.12)
+        e.hover = h
+    end
+end
+
+local function hasText(b)
+    local fs = b.Text or b.Label or b.text or (b.GetFontString and b:GetFontString())
+    if not (fs and fs.GetText) then return false end
+    local t = fs:GetText()
+    return t ~= nil and t ~= ""
+end
+
 local function scanButtons(frame, depth)
-    if depth > 4 or not frame.GetChildren then return end
+    if depth > 7 or not frame.GetChildren then return end
+    recolorText(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
         local kind = child:GetObjectType()
-        if kind == "Button" and child.Left and child.Right and child.Middle then
+        local w, h = child:GetSize()
+        w, h = w or 0, h or 0
+        local isButton = kind == "Button" or kind == "CheckButton"
+        if kind == "Button" and child.Left and child.Right and (child.Middle or child.Center) then
             styleButton(child)
         elseif kind == "EditBox" and child.Left and child.Right then
             styleEditBox(child)
@@ -270,8 +433,21 @@ local function scanButtons(frame, depth)
             styleScrollBar(child)
         elseif child.Arrow and child.Background and child.Text then
             styleDropdown(child)
+        elseif kind == "Slider" then
+            styleSlider(child)
+        elseif kind == "StatusBar" then
+            styleBar(child)
+        elseif kind == "CheckButton" and w <= 36 and h <= 36 and not (child.Icon or child.icon) then
+            styleCheck(child)
+        elseif isButton and (child.Icon or child.icon) and not child.Left and not child.Name
+            and not (child:GetParent() and child:GetParent().Button == child) then
+            styleIconButton(child)
+        elseif isButton and w <= 32 and h <= 32 and not hasText(child) then
+            styleArrow(child)
+        elseif kind == "Button" and w >= 110 and h <= 36 and hasText(child) and not child.CollapseButton then
+            styleRow(child)
         end
-        if not child.isTopTab and not (child.GetObjectType and child:GetObjectType() == "ScrollFrame") then
+        if kind ~= "ScrollFrame" then
             scanButtons(child, depth + 1)
         end
     end
@@ -300,18 +476,19 @@ end
 local CONTENT = { Button = true, CheckButton = true, EditBox = true, Slider = true, StatusBar = true,
     ScrollFrame = true, ModelScene = true, PlayerModel = true, DressUpModel = true, Model = true,
     Cooldown = true, SimpleHTML = true, MessageFrame = true, ScrollingMessageFrame = true }
-local function deepStrip(frame, depth)
-    if depth > 2 or not frame.GetChildren then return end
+local function deepStrip(frame, depth, limit)
+    if depth > (limit or 2) or not frame.GetChildren then return end
     for _, child in ipairs({ frame:GetChildren() }) do
         local kind = child:GetObjectType()
         if not CONTENT[kind] and not child.ScrollTarget and not child.ScrollBar then
             fadeRegions(child)
             fade(child.NineSlice)
-            deepStrip(child, depth + 1)
+            deepStrip(child, depth + 1, limit)
         end
     end
 end
-PS.DEEP = { LFGParentFrame = true, LFGListingFrame = true, LFGBrowseFrame = true }
+PS.DEEP = { LFGParentFrame = 2, LFGListingFrame = 2, LFGBrowseFrame = 2,
+    CharacterFrame = 4, ProfessionsBookFrame = 4, SettingsPanel = 3 }
 
 -- Quest log zone headers: pooled buttons with a collapse button. Their
 -- bar art goes, the text is lit; quest rows are left alone, since their
@@ -570,6 +747,59 @@ local function skinSpellBook(sb)
     end)
 end
 
+-- Gear slots: the slot frame goes, the icon gets our corners, and the
+-- quality the game drew as a coloured frame becomes a rounded ring in that
+-- colour, read while the window is open.
+local SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Shirt", "Tabard", "Wrist", "Hands", "Waist",
+    "Legs", "Feet", "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo" }
+
+local function styleSlot(b)
+    if done[b] then return end
+    done[b] = true
+    local name = b:GetName()
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture" }) do
+        local t = tex(b, get); if t then t:SetAlpha(0) end
+    end
+    fade(b.IconBorder)
+    fade(_G[name .. "Frame"])
+    fade(b.IconOverlay)
+    local icon = b.icon or b.Icon or _G[name .. "IconTexture"]
+    if icon then ns:CropIcon(icon) end
+    backdrop(b, "Default", false, 0)
+end
+
+local function paintSlots()
+    for _, s in ipairs(SLOTS) do
+        local b = _G["Character" .. s .. "Slot"]
+        local e = b and extras[b]
+        if e and e.backdrop then
+            local q = GetInventoryItemQuality("player", b:GetID())
+            if q and q >= 2 and C_Item and C_Item.GetItemQualityColor then
+                local r, g, bl = C_Item.GetItemQualityColor(q)
+                ns:SetBorderColor(e.backdrop, { r, g, bl })
+            else
+                ns:SetBorderColor(e.backdrop, "border")
+            end
+        end
+    end
+end
+
+PS.SPECIAL.CharacterFrame = function(frame)
+    for _, s in ipairs(SLOTS) do
+        local b = _G["Character" .. s .. "Slot"]
+        if b then styleSlot(b) end
+    end
+    local poll = CreateFrame("Frame", nil, frame)
+    local acc = 0.5
+    poll:SetScript("OnUpdate", function(_, e)
+        acc = acc + e
+        if acc < 0.5 then return end
+        acc = 0
+        paintSlots()
+    end)
+    return "generic"
+end
+
 PS.SPECIAL.PlayerSpellsFrame = function(frame)
     skinSpellBook(frame.SpellBookFrame)
     return "generic"
@@ -605,7 +835,7 @@ function PS:Skin(frame)
     if frame.portrait then fade(frame.portrait) end
     if name and _G[name .. "Portrait"] then fade(_G[name .. "Portrait"]) end
     fadeRegions(frame)
-    if name and PS.DEEP[name] then deepStrip(frame, 1) end
+    if name and PS.DEEP[name] then deepStrip(frame, 1, PS.DEEP[name]) end
     if frame.Inset then
         fade(frame.Inset.NineSlice)
         fade(frame.Inset.Bg)
