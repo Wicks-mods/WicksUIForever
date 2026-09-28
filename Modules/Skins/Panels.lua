@@ -805,7 +805,17 @@ local function skinSpellBook(sb, host)
                 local ex = extras[tab]
                 if ex and ex.backdrop then
                     local act = tab.SquareBackgroundActive
-                    ns:SetBorderColor(ex.backdrop, (act and act:IsShown()) and "fel" or "border")
+                    local active = act and act:IsShown()
+                    -- Every piece of the tab's own art but the icon, each
+                    -- pass: Blizzard switches pieces on as the selection
+                    -- moves. Our hover (the highlight layer) stays.
+                    for _, r in ipairs({ tab:GetRegions() }) do
+                        if r:GetObjectType() == "Texture" and r ~= tab.Icon and r ~= ex.hover
+                            and r:GetDrawLayer() ~= "HIGHLIGHT" then
+                            r:SetAlpha(0)
+                        end
+                    end
+                    ns:SetBorderColor(ex.backdrop, active and "fel" or "border")
                 end
             end
         end
