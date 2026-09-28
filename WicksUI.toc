@@ -33,4 +33,6 @@ Modules\UnitFrames\UnitFrames.lua
 Modules\UnitFrames\Groups.lua
 Modules\UnitFrames\Options.lua
 
+Modules\Nameplates\Nameplates.lua
+
 Core\Load.lua

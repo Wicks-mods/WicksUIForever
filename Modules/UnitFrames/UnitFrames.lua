@@ -319,14 +319,34 @@ local function buildClassPower(self)
     self.wuiClassPower = bars
 end
 
+-- Our own tooltip handlers. Blizzard's UnitFrame_OnEnter leaves a refresh
+-- timer on the tooltip that re-reads the unit from the frame and throws
+-- when a header child has none at that moment. This asks once, only for
+-- a unit that exists, and refreshes by being asked again on OnEnter.
+function UF.OnEnter(self)
+    local unit = self.unit or (self.GetAttribute and self:GetAttribute("unit"))
+    if not unit or not UnitExists(unit) then return end
+    GameTooltip_SetDefaultAnchor(GameTooltip, self)
+    GameTooltip:SetUnit(unit)
+    GameTooltip:Show()
+    self.wuiTooltip = true
+end
+
+function UF.OnLeave(self)
+    if self.wuiTooltip then
+        self.wuiTooltip = nil
+        GameTooltip:Hide()
+    end
+end
+
 local function style(self, unit)
     local key = keyFor(unit)
     self.wuiKey = key
     UF.all[self] = true
 
     self:RegisterForClicks("AnyUp")
-    self:SetScript("OnEnter", UnitFrame_OnEnter)
-    self:SetScript("OnLeave", UnitFrame_OnLeave)
+    self:SetScript("OnEnter", UF.OnEnter)
+    self:SetScript("OnLeave", UF.OnLeave)
 
     ns:SetTemplate(self, "Default")
     self.wuiBG:SetColorTexture(0, 0, 0, 0.85)
