@@ -168,8 +168,10 @@ function ns:Copy(t) return ns.Core.copy(t) end
 function ns:ClassColor(class)
     local Chrome = ns.Core.Chrome
     if Chrome and Chrome.ClassColor then
-        local c = Chrome:ClassColor(class)
-        if c then return c[1] or c.r, c[2] or c.g, c[3] or c.b end
+        -- WickCore hands back r, g, b as numbers; accept a colour table too.
+        local c, g, b = Chrome:ClassColor(class)
+        if type(c) == "number" then return c, g or 1, b or 1 end
+        if type(c) == "table" then return c[1] or c.r, c[2] or c.g, c[3] or c.b end
     end
     local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     if c then return c.r, c.g, c.b end
