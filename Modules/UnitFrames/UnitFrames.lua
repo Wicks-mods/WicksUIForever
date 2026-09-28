@@ -81,6 +81,8 @@ UF.unitDefaults = unit
 local defaults = {
     enable = true,
     healthColor   = "class",       -- class, dark, gradient
+    font          = "Friz Quadrata",  -- the game's own face; the narrow Arial breaks up at frame sizes
+    fontOutline   = "OUTLINE",
     darkColor     = { 0.13, 0.12, 0.17, 1 },
     classBackdrop = true,          -- health background in the class colour, dim
     bgAlpha       = 0.25,
@@ -376,7 +378,8 @@ local function style(self, unit)
     self:SetScript("OnLeave", UF.OnLeave)
 
     ns:SetTemplate(self, "Default")
-    self.wuiBG:SetColorTexture(0, 0, 0, 0.85)
+    self.wuiBG:SetColorTexture(C.void[1], C.void[2], C.void[3], 1)
+    Chrome:Register(self.wuiBG, "void", "texture")
 
     -- Health
     local health = newBar(self)
@@ -617,14 +620,18 @@ function UF:Configure(self)
         local td = d.texts and d.texts[slot]
         if fs.wuiTag then self:Untag(fs); fs.wuiTag = nil end
         if td and td.enable and td.tag and td.tag ~= "" then
-            ns.Media:SetFont(fs, td.size)
+            ns.Media:SetFont(fs, td.size, g.fontOutline, g.font)
             local anchorTo = (slot == "power" and d.power) and power or health
             place(fs, anchorTo, td.point, td.x, td.y)
             fs:SetJustifyH(justifyFor(td.point))
             -- Names are cut to the frame, not by counting letters, since
             -- an enemy's name can be secret and so cannot be measured.
             if slot == "left" then fs:SetWidth(math.max(20, (w - pl - pr) * 0.62)) else fs:SetWidth(0) end
-            self:Tag(fs, td.tag)
+            -- On a class-coloured bar a class-coloured name disappears, so
+            -- the name colour is dropped there and the name shows white.
+            local tag = td.tag
+            if g.healthColor == "class" then tag = tag:gsub("%[wui:namecolor%]", "") end
+            self:Tag(fs, tag)
             fs.wuiTag = td.tag
             fs:Show()
             if fs.UpdateTag then fs:UpdateTag() end
@@ -692,8 +699,8 @@ function UF:Configure(self)
         cb.wuiIconHolder:SetShown(cd.icon)
         cb.Text:SetShown(cd.showName)
         cb.Time:SetShown(cd.showTime)
-        ns.Media:SetFont(cb.Text, math.max(9, math.min(14, ch - 6)))
-        ns.Media:SetFont(cb.Time, math.max(9, math.min(14, ch - 6)))
+        ns.Media:SetFont(cb.Text, math.max(9, math.min(14, ch - 6)), g.fontOutline, g.font)
+        ns.Media:SetFont(cb.Time, math.max(9, math.min(14, ch - 6)), g.fontOutline, g.font)
         cb.Spark:SetHeight(ch)
         local cc, lc = g.castColor, g.castLocked
         cb:SetStatusBarColor(cc[1], cc[2], cc[3], 1)

@@ -177,6 +177,7 @@ ns.Config:AddPage("general", "General", function(L)
         ns:ApplyScale()
     end)
     L:Toggle("Crisp borders", "pixelPerfect", { tooltip = "Draw borders one physical pixel wide at any scale.", set = function() ns:UpdatePixel(); ns:RefreshBorders() end })
+    L:Toggle("Black edge around panels", "edges", { tooltip = "A one-pixel black line outside every border, which is what makes flat panels look solid.", set = function() ns:RefreshBorders() end })
     L:Toggle("Fel corners on panels", "brackets", { tooltip = "The Wick L-bracket corners on the larger panels. Takes effect after a reload." })
 
     L:Heading("Look")

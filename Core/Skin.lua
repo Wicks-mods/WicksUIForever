@@ -13,8 +13,8 @@ local C = Chrome.Colors
 local BLANK = "Interface\\Buttons\\WHITE8X8"
 
 local TEMPLATES = {
-    Default     = { bg = "void",   alpha = 0.92 },
-    Transparent = { bg = "void",   alpha = 0.65 },
+    Default     = { bg = "void",   alpha = 1 },
+    Transparent = { bg = "void",   alpha = 0.82 },
     Shadow      = { bg = "shadow", alpha = 1 },
     None        = { bg = nil },
 }
@@ -36,6 +36,17 @@ local function makeBorder(f)
         b[side] = t
     end
     f.wuiBorder = b
+    -- A black edge one pixel outside the border. It is what makes a flat
+    -- panel read as a solid object against the world rather than as an
+    -- outline drawn on it. Kept apart from the border, which recolours.
+    local e = {}
+    for _, side in ipairs({ "top", "bottom", "left", "right" }) do
+        local t = f:CreateTexture(nil, "BORDER", nil, 0)
+        t:SetColorTexture(0, 0, 0, 1)
+        if t.SetSnapToPixelGrid then t:SetSnapToPixelGrid(false); t:SetTexelSnappingBias(0) end
+        e[side] = t
+    end
+    f.wuiEdge = e
     return b
 end
 
@@ -46,6 +57,15 @@ local function layoutBorder(f)
     b.bottom:ClearAllPoints(); b.bottom:SetPoint("BOTTOMLEFT"); b.bottom:SetPoint("BOTTOMRIGHT"); b.bottom:SetHeight(px)
     b.left:ClearAllPoints();   b.left:SetPoint("TOPLEFT");    b.left:SetPoint("BOTTOMLEFT");  b.left:SetWidth(px)
     b.right:ClearAllPoints();  b.right:SetPoint("TOPRIGHT");  b.right:SetPoint("BOTTOMRIGHT"); b.right:SetWidth(px)
+    local e = f.wuiEdge
+    if e then
+        e.top:ClearAllPoints();    e.top:SetPoint("BOTTOMLEFT", f, "TOPLEFT", -px, 0);      e.top:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", px, 0);      e.top:SetHeight(px)
+        e.bottom:ClearAllPoints(); e.bottom:SetPoint("TOPLEFT", f, "BOTTOMLEFT", -px, 0);   e.bottom:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", px, 0);   e.bottom:SetHeight(px)
+        e.left:ClearAllPoints();   e.left:SetPoint("TOPRIGHT", f, "TOPLEFT", 0, 0);         e.left:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", 0, 0);    e.left:SetWidth(px)
+        e.right:ClearAllPoints();  e.right:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, 0);        e.right:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", 0, 0);   e.right:SetWidth(px)
+        local show = ns:G().edges ~= false
+        for _, t in pairs(e) do t:SetShown(show) end
+    end
 end
 
 -- Paint a frame as a Wick panel. template: Default, Transparent, Shadow

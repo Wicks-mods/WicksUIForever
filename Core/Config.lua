@@ -148,6 +148,8 @@ function Layout:Button(text, onClick, opts)
         onClick(...)
         Config:Changed(page)
     end, { disabled = opts.disabled, tooltip = opts.tooltip })
+    -- Wide enough for its label, whatever the label is.
+    b:SetWidth(math.min(COL_W, math.max(opts.width or 160, (b.text:GetStringWidth() or 0) + 24)))
     b:SetPoint("LEFT")
     holder.Refresh = function() b:Refresh() end
     return self:Place(holder, opts.span)

@@ -32,9 +32,15 @@ ns.Config:AddPage("unitframes", "Unit Frames", function(L)
 
     L:Heading("Behaviour")
     L:Toggle("Smooth bars", "smooth", { tooltip = "Bars slide to a new value instead of jumping. Takes effect after a reload." })
+    L:Dropdown("Font", "font", function()
+        local out = {}
+        for _, name in ipairs(ns.Media:List("font")) do out[#out + 1] = { name, name, name } end
+        return out
+    end, { tooltip = "For the text on every unit frame. The rest of the interface keeps the font under General." })
+    L:Dropdown("Outline", "fontOutline", ns.Widgets.Values(ns.Media.outlines))
     L:Toggle("Fel border on your target", "targetBorder", { tooltip = "Whichever party or raid frame belongs to what you are targeting gets a fel border." })
     L:Slider("Out of range alpha", "rangeAlpha", 0.1, 1, 0.05)
-    L:Button("Show group frames to place them", function()
+    L:Button("Preview group frames", function()
         if ns.UnitGroups then ns.UnitGroups:SetTestMode(not ns.UnitGroups.testing) end
     end, { tooltip = "Shows the party and raid frames with you in them, so they can be moved and sized without a group. Click again to stop." })
 end, { onChange = update, order = 20 })

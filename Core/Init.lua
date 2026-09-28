@@ -35,6 +35,7 @@ ns.defaults = {
             fontOutline  = "OUTLINE",
             statusbar    = "Wick Flat",
             brackets     = true,     -- fel-green corners on the bigger panels
+            edges        = true,     -- a black pixel outside every border
             classColors  = true,
             moversLocked = true,
             installed    = false,

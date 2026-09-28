@@ -237,22 +237,66 @@ end
 
 -- Show the frames with fake members while placing them, so there is
 -- something to see without a group.
-function G:SetTestMode(on)
-    self.testing = on
-    ns:AfterCombat("uf:grouptest", function()
-        for key, header in pairs(self.headers) do
-            local d = UF:UnitDB(key)
-            if on then
-                header:SetAttribute("showSolo", true)
-                header:SetAttribute("showPlayer", true)
-                header:SetVisibility("custom show")
-            else
-                applyAttributes(header, key, d)
-                header:SetVisibility("custom " .. (d.enable and d.visibility or "hide"))
-            end
-        end
-    end)
+-- A full group of you, to place and size the frames without a group.
+-- The header is told to lay out from a negative starting index, which
+-- makes it build every slot, and each slot is pointed at you and kept
+-- shown. Leaving puts the real attributes and unit watch back.
+local PREVIEW = { party = 5, raid = 25 }
+
+local function children(header)
+    local out = {}
+    for i = 1, 40 do
+        local c = header:GetAttribute("child" .. i)
+        if not c then break end
+        out[#out + 1] = c
+    end
+    return out
 end
+
+function G:SetTestMode(on)
+    if InCombatLockdown() then
+        ns.A:Print("group frames can be previewed once the fight is over.")
+        return
+    end
+    self.testing = on
+    for key, header in pairs(self.headers) do
+        local d = UF:UnitDB(key)
+        if on then
+            header:SetAttribute("showSolo", true)
+            header:SetAttribute("showPlayer", true)
+            header:SetAttribute("showParty", true)
+            header:SetAttribute("showRaid", true)
+            header:SetAttribute("groupFilter", nil)
+            header:SetAttribute("startingIndex", -(PREVIEW[key] - 1))
+            header:SetVisibility("custom show")
+            -- The header builds its slots a moment after it shows, so
+            -- point them at you now and again once they exist.
+            local function fill()
+                if not G.testing or InCombatLockdown() then return end
+                for _, c in ipairs(children(header)) do
+                    UnregisterUnitWatch(c)
+                    c:SetAttribute("unit", "player")
+                    c:Show()
+                    if c.UpdateAllElements then c:UpdateAllElements("WicksUI_Preview") end
+                end
+            end
+            fill()
+            C_Timer.After(0.2, fill)
+            C_Timer.After(1, fill)
+        else
+            header:SetAttribute("startingIndex", 1)
+            applyAttributes(header, key, d)
+            for _, c in ipairs(children(header)) do
+                c:SetAttribute("unit", nil)
+                RegisterUnitWatch(c)
+            end
+            header:SetVisibility("custom " .. (d.enable and d.visibility or "hide"))
+        end
+    end
+    ns.A:Print(on and "showing a full party and raid of you. Move them with /wui move; the same button ends the preview."
+        or "preview over, group frames are back to normal.")
+end
+
 
 function G:Initialize()
     self.headers, self.holders = {}, {}
