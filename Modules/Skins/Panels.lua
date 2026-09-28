@@ -378,7 +378,15 @@ local function styleIconButton(b)
     elseif icon then
         ns:CropIcon(icon)
     end
-    backdrop(b, "Default", false, 0)
+    local bd = backdrop(b, "Default", false, 0)
+    -- Hug the icon, not the button: on many icon tabs the icon is smaller
+    -- than the button and sits off centre, and a tile the button's size
+    -- would stick out from it.
+    if icon and not atlas then
+        bd:ClearAllPoints()
+        bd:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
+        bd:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
+    end
     local ct = tex(b, "GetCheckedTexture")
     if ct then
         ct:SetTexture(ns.Media.ring)
