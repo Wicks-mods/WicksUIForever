@@ -41,6 +41,7 @@ Modules\Tooltip\Tooltip.lua
 Modules\DataTexts\DataTexts.lua
 Modules\DataTexts\DataBars.lua
 Modules\Extras\Extras.lua
+Modules\Skins\Skins.lua
 
 Core\Install.lua
 

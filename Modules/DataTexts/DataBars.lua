@@ -99,7 +99,10 @@ function DB:UpdateRep()
 end
 
 function DB:Initialize()
-    for _, n in ipairs({ "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer", "StatusTrackingBarManager" }) do
+    -- Only the manager: the two containers call their parent (the manager)
+    -- from Edit Mode, so they must stay its children. Hiding the parent
+    -- hides them.
+    for _, n in ipairs({ "StatusTrackingBarManager" }) do
         local f = _G[n]
         if f then ns:Kill(f) end
     end
