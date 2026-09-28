@@ -539,7 +539,11 @@ function AB:LayoutBar(id)
         -- LAB's state 0 is "no header yet"; keep it on the bar's own page.
         b:SetState(0, "action", (math.max(1, tonumber(paging:match("(%d+)%s*$")) or id) - 1) * 12 + i)
 
-        b:UpdateConfig(buttonConfig(d, d))
+        -- The library draws the keybind text from the binding named here,
+        -- so each button carries the game's binding for its page and slot.
+        local cfg = buttonConfig(d, d)
+        cfg.keyBoundTarget = b.keyBoundTarget
+        b:UpdateConfig(cfg)
         if i > n then b:Hide(); b:SetAttribute("statehidden", true) else b:SetAttribute("statehidden", nil); b:Show() end
     end
 
