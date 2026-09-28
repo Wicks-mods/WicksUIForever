@@ -862,6 +862,36 @@ local function paintSlots()
     end
 end
 
+-- The stats panel is a scroll list, which the deeper strip leaves alone
+-- on purpose, so its pieces are named here: the panel's own frame, and
+-- each section header's bar (pooled entries with a Background and a Title).
+local function styleStats()
+    local sb = rawget(_G, "CharacterStatsPaneScrollBox")
+    if not sb then return end
+    fade(sb.Border); fade(sb.ClassBackground); fade(sb.Background)
+    if sb.ScrollBox and sb.ScrollBox.Shadows then fadeRegions(sb.ScrollBox.Shadows) end
+    local host = rawget(_G, "CharacterFrameRightPaneHost")
+    if host then fadeRegions(host) end
+    local target = sb.ScrollBox and sb.ScrollBox.ScrollTarget
+    if not target then return end
+    for _, row in ipairs({ target:GetChildren() }) do
+        if row.Title and row.Background then
+            row.Background:SetAlpha(0)
+            local e = extras[row] or {}
+            extras[row] = e
+            if not e.rule then
+                local rule = row:CreateTexture(nil, "ARTWORK")
+                rule:SetHeight(ns.mult or 1)
+                rule:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 6, 2)
+                rule:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -6, 2)
+                ns:Fill(rule, C.fel[1], C.fel[2], C.fel[3], 0.5)
+                e.rule = rule
+            end
+            row.Title:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+        end
+    end
+end
+
 PS.SPECIAL.CharacterFrame = function(frame)
     for _, s in ipairs(SLOTS) do
         local b = _G["Character" .. s .. "Slot"]
@@ -874,6 +904,7 @@ PS.SPECIAL.CharacterFrame = function(frame)
         if acc < 0.5 then return end
         acc = 0
         paintSlots()
+        styleStats()
     end)
     return "generic"
 end
