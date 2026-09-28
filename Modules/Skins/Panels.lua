@@ -97,13 +97,26 @@ end
 local function styleButton(b)
     if not b or done[b] or not db().buttons then return end
     done[b] = true
-    for _, k in ipairs({ "Left", "Middle", "Right", "LeftSeparator", "RightSeparator" }) do fade(b[k]) end
-    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }) do
+    -- Every texture the button has, whatever the template calls it: the
+    -- newer three-slice buttons use Left, Center and Right and swap their
+    -- atlases on press, and the old ones use Left, Middle and Right. Their
+    -- atlas swaps leave alpha alone, so this holds.
+    fadeRegions(b)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
         local t = b[get] and b[get](b)
         if t then t:SetAlpha(0) end
     end
-    local hl = b.GetHighlightTexture and b:GetHighlightTexture()
-    if hl then hl:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.18); hl:SetAllPoints() end
+    -- Our own hover, on the highlight layer so the client shows it itself.
+    local e = extras[b] or {}
+    extras[b] = e
+    if not e.hover then
+        local hover = b:CreateTexture(nil, "HIGHLIGHT")
+        hover:SetPoint("TOPLEFT", 2, -2)
+        hover:SetPoint("BOTTOMRIGHT", -2, 2)
+        hover:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.18)
+        Chrome:Register(hover, "fel", "texture", 0.18)
+        e.hover = hover
+    end
     backdrop(b, "Shadow", false, 1)
     local text = b.Text or (b.GetFontString and b:GetFontString())
     styleText(text)
