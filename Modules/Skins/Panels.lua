@@ -956,6 +956,73 @@ PS.SPECIAL.CharacterFrame = function(frame)
     return "generic"
 end
 
+-- Professions: the illustrations behind each profession stay (Wick likes
+-- them). The skill bars and the icon borders are ours, redone on every
+-- pass because Blizzard swaps its textured fill back in on each skill-up.
+local function flatBar(sb)
+    local fill = sb:GetStatusBarTexture()
+    for _, r in ipairs({ sb:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r ~= fill then r:SetAlpha(0) end
+    end
+    for _, child in ipairs({ sb:GetChildren() }) do
+        if child:GetObjectType() == "Frame" and not child.wuiBG then fadeRegions(child) end
+    end
+    local path = ns.Media:Statusbar()
+    if fill and fill:GetTexture() ~= path then
+        sb:SetStatusBarTexture(path)
+        sb:SetStatusBarColor(C.fel[1], C.fel[2], C.fel[3])
+    end
+    if not done[sb] then
+        done[sb] = true
+        backdrop(sb, "Shadow", false, 1)
+    end
+end
+
+local function flatIcon(b, icon)
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r ~= icon and r:GetDrawLayer() ~= "HIGHLIGHT" then r:SetAlpha(0) end
+    end
+    if not done[b] then
+        done[b] = true
+        ns:CropIcon(icon)
+        local bd = backdrop(b, "Default", false, 0)
+        bd:ClearAllPoints()
+        bd:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
+        bd:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
+    end
+end
+
+local function walkProfessions(frame, depth)
+    if depth > 7 or not frame.GetChildren then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if child:IsShown() then
+            local kind = child:GetObjectType()
+            if kind == "StatusBar" then
+                flatBar(child)
+            elseif kind == "Button" or kind == "CheckButton" then
+                local name = child.GetName and child:GetName()
+                local icon = child.Icon or child.icon or child.IconTexture or (name and _G[name .. "IconTexture"])
+                if icon and icon.GetObjectType and icon:GetObjectType() == "Texture" and not (icon.GetAtlas and icon:GetAtlas()) then
+                    flatIcon(child, icon)
+                end
+            end
+            walkProfessions(child, depth + 1)
+        end
+    end
+end
+
+PS.SPECIAL.ProfessionsFrame = function(frame)
+    local poll = CreateFrame("Frame", nil, frame)
+    local acc = 0.5
+    poll:SetScript("OnUpdate", function(_, e)
+        acc = acc + e
+        if acc < 0.5 then return end
+        acc = 0
+        walkProfessions(frame.BookPage or frame, 1)
+    end)
+    return "generic"
+end
+
 PS.SPECIAL.PlayerSpellsFrame = function(frame)
     skinSpellBook(frame.SpellBookFrame, frame)
     return "generic"
