@@ -496,8 +496,18 @@ PS.SPECIAL.PlayerSpellsFrame = function(frame)
     return "generic"
 end
 
+-- Holders the game keeps its windows in are the size of the screen and
+-- have no look of their own. A panel behind one blacks out the screen.
+local function screenSized(f)
+    local w, h = f:GetSize()
+    local W, H = UIParent:GetSize()
+    return w and h and W and H and w >= W * 0.9 and h >= H * 0.9
+end
+PS.screenSized = screenSized
+
 function PS:Skin(frame)
     if not frame or done[frame] or (frame.IsForbidden and frame:IsForbidden()) then return end
+    if screenSized(frame) then return end
     local name = frame:GetName()
     if name and excluded(name) then return end
     done[frame] = true
@@ -565,9 +575,19 @@ end
 function PS:SkinUnderMouse()
     local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
     local f = foci and foci[1]
-    while f and f.GetParent and f:GetParent() and f:GetParent() ~= UIParent do f = f:GetParent() end
-    local name = f and f.GetName and f:GetName()
-    if not f or f == UIParent or f == WorldFrame then
+    -- Up to the window, but never into a screen-sized holder: stop at the
+    -- last named frame below one.
+    local pick
+    while f and f ~= UIParent and f ~= WorldFrame do
+        if screenSized(f) then break end
+        if f.GetName and f:GetName() then pick = f end
+        local p = f.GetParent and f:GetParent()
+        if not p or p == UIParent then break end
+        f = p
+    end
+    f = pick
+    local name = f and f:GetName()
+    if not f then
         ns.A:Print("point at a window first, then type /wui skin.")
         return
     end
@@ -581,10 +601,38 @@ function PS:SkinUnderMouse()
     if not have then list[#list + 1] = name; db().include = table.concat(list, ",") end
     done[f] = nil
     self:Skin(f)
-    ns.A:Print(("skinned %s, and it will be skinned from now on. Undo it by removing it under Windows in the settings."):format(name))
+    self.lastAdded = name
+    ns.A:Print(("skinned %s, and it will be skinned from now on. |cff4FC778/wui unskin|r takes it back off."):format(name))
+end
+
+-- /wui unskin [name]: take a window off the list, the last one added by
+-- default. Our panel goes at once; the game's own art comes back on reload.
+function PS:Unskin(name)
+    local list = ns:List(db().include)
+    name = (name and name ~= "") and name or self.lastAdded or list[#list]
+    if not name then ns.A:Print("nothing has been added with /wui skin.") return end
+    local kept, found = {}, false
+    for _, n in ipairs(list) do if n == name then found = true else kept[#kept + 1] = n end end
+    db().include = table.concat(kept, ",")
+    local f = _G[name]
+    local e = f and extras[f]
+    if e and e.backdrop then e.backdrop:Hide() end
+    self.lastAdded = nil
+    if found then
+        ns.A:Print(("%s taken off the list. Reload to bring back the game's own look for it."):format(name))
+    else
+        ns.A:Print(("%s was not on the list."):format(name))
+    end
 end
 
 function PS:Initialize()
+    -- Drop anything screen-sized that an earlier /wui skin let through.
+    local kept = {}
+    for _, n in ipairs(ns:List(db().include)) do
+        local f = _G[n]
+        if not (f and f.GetSize and screenSized(f)) then kept[#kept + 1] = n end
+    end
+    db().include = table.concat(kept, ",")
     self:SkinAll()
     -- Widgets a window makes after it first opens (list rows, dropdowns,
     -- scroll bars) are caught by a rescan of whichever windows are open.
