@@ -28,4 +28,9 @@ Modules\ActionBars\ActionBars.lua
 Modules\ActionBars\Special.lua
 Modules\ActionBars\Keybind.lua
 
+Modules\UnitFrames\Tags.lua
+Modules\UnitFrames\UnitFrames.lua
+Modules\UnitFrames\Groups.lua
+Modules\UnitFrames\Options.lua
+
 Core\Load.lua
