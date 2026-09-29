@@ -180,13 +180,10 @@ local function lookExtras(f, template, opts)
         sh:SetColorTexture(0, 0, 0, h.alpha or 1)
         f.wuiHardShadow = sh
     end
-    if st.stripe and opts.brackets and not f.wuiStripe then
-        local s = f:CreateTexture(nil, "BORDER", nil, 3)
-        s:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -1)
-        s:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 1)
-        s:SetWidth(3)
-        paint(s, "text", 1)
-        f.wuiStripe = s
+    -- Edge marks and rivets on the big panels.
+    if opts.brackets then
+        if st.stripe and Chrome.Stripes then Chrome:Stripes(f) end
+        if st.rivets and Chrome.Rivets then Chrome:Rivets(f) end
     end
 end
 
