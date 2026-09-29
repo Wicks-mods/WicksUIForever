@@ -338,14 +338,18 @@ end
 local hiddenCooldowns = setmetatable({}, { __mode = "k" })
 local cdTicker = CreateFrame("Frame")
 cdTicker:SetScript("OnUpdate", function()
-    for cd in pairs(hiddenCooldowns) do cd:SetAlpha(0) end
+    -- In combat the client's aura buttons (and their cooldowns) are
+    -- forbidden to addons; they keep the alpha set before the fight, so
+    -- they are only left alone, never touched.
+    for cd in pairs(hiddenCooldowns) do
+        if not (cd.IsForbidden and cd:IsForbidden()) then cd:SetAlpha(0) end
+    end
 end)
 
 function ns:AuraCountdown(button, iconSize, show)
     local cd = button and button.Cooldown
     if cd then
-        cd.noCooldownCount = true   -- OmniCC-style addons stay off it
-        cd:SetAlpha(0)
+        if not (cd.IsForbidden and cd:IsForbidden()) then cd:SetAlpha(0) end
         hiddenCooldowns[cd] = true
     end
     local t = button and button.Time
@@ -369,7 +373,6 @@ function ns:QuietAuraCooldown(button)
     if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
     local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
     if fs then fs:SetAlpha(0) end
-    cd.noCooldownCount = true   -- and OmniCC-style addons stay off it too
 end
 
 -- Headings in the style's heading face, where it has one (Runic).
