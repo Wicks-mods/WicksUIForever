@@ -760,6 +760,14 @@ local function scanButtons(frame, depth)
             styleScrollBar(child)
         elseif child.Arrow and child.Background and child.Text then
             styleDropdown(child)
+        elseif child.Slider and child.Back and child.Forward then
+            -- A slider with arrows either side (the settings' sliders):
+            -- the arrows become our marks.
+            -- Bare marks, no tile: they sit either side of a thin track.
+            ns:Glyph(child.Back, "left", { tile = false, size = 12 })
+            ns:Glyph(child.Forward, "right", { tile = false, size = 12 })
+            done[child.Back], done[child.Forward] = true, true
+            if child.Slider:GetObjectType() == "Slider" then styleSlider(child.Slider) end
         elseif kind == "Slider" then
             styleSlider(child)
         elseif kind == "StatusBar" then

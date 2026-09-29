@@ -266,7 +266,9 @@ function CH:Panel()
     end
     local cf = _G.ChatFrame1
     self:Align()
-    p:ClearAllPoints()
+    -- Placed afresh: the fit is skipped when nothing has changed, and a
+    -- panel whose points were cleared has nowhere to be.
+    self.fitKey = nil
     self:FitPanel()
     local d = db()
     p.wuiBG:SetAlpha(d.panelAlpha / 0.65)
