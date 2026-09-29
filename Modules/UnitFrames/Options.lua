@@ -81,7 +81,7 @@ local function auraSection(L, key, which, title)
     L:Toggle("Only mine", "onlyMine")
     L:Dropdown("Side", "attach", SIDES)
     -- Starting from the right grows the row to the left, and from the left
-    -- to the right: the two go together unless changed below.
+    -- to the right (see buildAuras).
     L:Dropdown("Start from", "anchor", { { "TOPLEFT", "Left" }, { "TOPRIGHT", "Right" } }, {
         setter = function(v)
             local t = UF:UnitDB(key)[which]
@@ -89,7 +89,6 @@ local function auraSection(L, key, which, title)
             t.growthX = v:find("RIGHT") and "LEFT" or "RIGHT"
         end,
     })
-    L:Dropdown("Grow sideways", "growthX", { { "RIGHT", "Right" }, { "LEFT", "Left" } })
     L:Slider("Across", "x", -300, 300, 1)
     L:Slider("Up and down", "y", -300, 300, 1)
     L:Slider("Icon size", "size", 10, 48, 1)

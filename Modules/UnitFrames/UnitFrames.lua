@@ -314,7 +314,9 @@ local function buildAuras(self, which, d)
     local a = self:CreateAuras({
         layout = AnchorUtil and AnchorUtil.FlowLayoutAxis and AnchorUtil.FlowLayoutAxis.Horizontal or nil,
         initialAnchor = d.anchor,
-        growthX = d.growthX,
+        -- A row that starts on the right grows left, one on the left grows
+        -- right: the growth follows where the row starts.
+        growthX = (d.anchor or ""):find("RIGHT") and "LEFT" or ((d.anchor or ""):find("LEFT") and "RIGHT") or d.growthX,
         growthY = d.growthY,
         layoutLimit = d.perRow * (d.size + d.spacing),
     })
