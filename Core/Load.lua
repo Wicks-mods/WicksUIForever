@@ -279,7 +279,8 @@ ns.Config:AddPage("general", "General", function(L)
     L:Toggle("Black edge around panels", "edges", { tooltip = "A one-pixel black line outside every border, which is what makes flat panels look solid.", set = function() ns:RefreshBorders() end })
     L:Toggle("Fel corners on panels", "brackets", { tooltip = "The Wick L-bracket corners on the larger panels. Takes effect after a reload." })
 
-    L:Heading("Style")
+    L:Heading("Appearance")
+    L:Note("Shared by the whole suite: every Wick addon follows these, and they are the same settings WickCore's own panel shows.")
     L:Dropdown("Style", "style", {
         { "modern", "Wick Modern: rounded glass, soft shadows" },
         { "wick", "Wick OG: crisp borders, fel corners" },
@@ -288,7 +289,6 @@ ns.Config:AddPage("general", "General", function(L)
         setter = function(v)
             if v == (ns:Modern() and "modern" or "wick") then return end
             ns.Widgets:Confirm("Changing the style rebuilds every frame, and every Wick addon follows it, so the interface reloads. Reload now?", function()
-                ns:G().style = v
                 -- The suite's style lives in WickCore; the whole suite follows.
                 local Chrome = ns.Core and ns.Core.Chrome
                 if Chrome and Chrome.SetStyle then Chrome:SetStyle(v == "wick" and "og" or "modern") end
@@ -297,10 +297,27 @@ ns.Config:AddPage("general", "General", function(L)
         end,
         tooltip = "Wick Modern is borderless, lifted and airy, with fel kept for signals. Wick OG is the original look: single-pixel borders, a black edge and fel corners.",
     })
+    L:Dropdown("Class colours", "classColorSet", {
+        { "client", "The game's own" }, { "classic", "Classic era" },
+    }, {
+        get = function() return Chrome.classColorSet or "client" end,
+        setter = function(v) if Chrome.SetClassColorSet then Chrome:SetClassColorSet(v) end end,
+        tooltip = "The Classic set is the one the original game used.",
+    })
     L:Button("Apply the style's spacing again", function()
         ns:ApplyStylePreset(true)
         ns:UpdateAll()
-    end, { tooltip = "Button sizes, gaps and frame heights to suit the style. Your positions are kept." })
+    end, { tooltip = "Button sizes, gaps and frame heights to suit the style, for this profile only. Your positions are kept." })
+    -- The theme picker is WickCore's own, so the two panels can never
+    -- show different things.
+    local O = ns.Core and ns.Core.Options
+    if O and O.ThemeSection then
+        local holder = CreateFrame("Frame", nil, L.content)
+        holder:SetWidth(524)
+        local h = -O:ThemeSection(holder, 0, 0, { width = 524, noExtras = true })
+        holder:SetHeight(math.max(20, h))
+        L:Custom(holder)
+    end
 
     L:Heading("Look")
     L:Dropdown("Font", "font", function()
@@ -312,13 +329,6 @@ ns.Config:AddPage("general", "General", function(L)
     L:Slider("Font size", "fontSize", 8, 20, 1)
     L:Dropdown("Bar texture", "statusbar", function() return W.Values(ns.Media:List("statusbar")) end,
         { set = function() ns:RefreshStatusbars() end })
-    L:Dropdown("Class colours", "classColorSet", {
-        { "client", "The game's own" }, { "classic", "Classic era" },
-    }, {
-        get = function() return Chrome.classColorSet or "client" end,
-        setter = function(v) if Chrome.SetClassColorSet then Chrome:SetClassColorSet(v) end end,
-        tooltip = "Shared with every Wick addon. The Classic set is the one the original game used.",
-    })
 
     L:Heading("Frames")
     L:Button("Move frames", function() ns.Config:Hide(); ns.Movers:Unlock() end)

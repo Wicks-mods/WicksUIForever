@@ -36,7 +36,6 @@ ns.defaults = {
             statusbar    = "Wick Flat",
             brackets     = true,     -- fel-green corners on the bigger panels
             edges        = true,     -- a black pixel outside every border
-            style        = "modern", -- "modern" = Wick Modern (default), "wick" = Wick OG; the ids are saved, the names are labels
             classColors  = true,
             moversLocked = true,
             installed    = false,

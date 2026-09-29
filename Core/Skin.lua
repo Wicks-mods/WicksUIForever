@@ -28,7 +28,7 @@ local TEMPLATES = {
 function ns:Modern()
     local Chrome = ns.Core and ns.Core.Chrome
     if Chrome and Chrome.Modern then return Chrome:Modern() end
-    return ns:G().style == "modern"
+    return true
 end
 
 local MODERN = {
