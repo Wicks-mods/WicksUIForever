@@ -1083,6 +1083,60 @@ local function styleStats()
     end
 end
 
+-- The gear slots' pull-out arrows: Blizzard's yellow side tabs become our
+-- chevrons, pointing away from the slot the way the flyout opens.
+local function stylePopouts()
+    for _, name in ipairs(SLOTS) do
+        local slot = _G["Character" .. name .. "Slot"]
+        local pop = slot and slot.popoutButton
+        if pop then
+            local p, rel, rp = pop:GetPoint(1)
+            local dir = (p == "RIGHT" and rp == "LEFT" and "left") or (p == "LEFT" and rp == "RIGHT" and "right")
+                or (p == "TOP" and "up") or (p == "BOTTOM" and "up") or "right"
+            ns:Glyph(pop, dir, { tile = false, size = 12 })
+        end
+    end
+    -- The flyout of items to choose from: its gold frame goes for a card.
+    local fb = rawget(_G, "EquipmentFlyoutFrameButtons")
+    if fb and fb:IsVisible() then
+        for _, k in ipairs({ "bg1", "bg2", "bg3", "bg4" }) do fade(fb[k]) end
+        -- Grey, as it opens over the black card of the model.
+        local c = card(fb, "wuiCard", "TOPLEFT", fb, "BOTTOMRIGHT", fb, -2, 2, 2, -2)
+        if c.wuiTemplate ~= "Shadow" then ns:SetTemplate(c, "Shadow", { shadow = true }) end
+    end
+    -- The equipment sets pane: its gold inner frame and rule go; New Set
+    -- becomes a grey pill with our plus.
+    local pane = rawget(_G, "PaperDollFrame") and PaperDollFrame.EquipmentManagerPane
+    local side = pane or (rawget(_G, "PaperDollFrameNewSet") and PaperDollFrameNewSet:GetParent())
+    if side and side:IsVisible() then
+        fade(side.Border)
+        for _, r in ipairs({ side:GetRegions() }) do
+            local a = r:GetObjectType() == "Texture" and r:GetAtlas()
+            if a and (a:find("ScrollLine") or a:find("insideframe")) then r:SetAlpha(0) end
+        end
+    end
+    local ns_ = rawget(_G, "PaperDollFrameNewSet")
+    if ns_ then
+        fade(ns_.StateTexture)
+        if not done[ns_] then
+            done[ns_] = true
+            local bd = backdrop(ns_, "Shadow", false, 3)
+            for _, r in ipairs({ ns_:GetRegions() }) do
+                local a = r:GetObjectType() == "Texture" and r:GetAtlas()
+                if a and a:find("Icon%-Add") then
+                    r:SetTexture(ns.Media:Glyph("plus"))
+                    r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                    r:SetSize(14, 14)
+                end
+            end
+            local h = ns_:CreateTexture(nil, "HIGHLIGHT")
+            h:SetAllPoints(bd)
+            ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.15)
+        end
+        if ns_.StateTexture then ns_.StateTexture:SetAlpha(0) end
+    end
+end
+
 -- The portrait and titles tabs above the stats: their gold frames go, each
 -- icon sits on a black tile, the open one wears the accent ring.
 local function styleSidebarTabs()
@@ -1133,6 +1187,7 @@ PS.SPECIAL.CharacterFrame = function(frame)
         paintSlots()
         styleStats()
         styleSidebarTabs()
+        stylePopouts()
         -- The right pane as one black card; the arrow that folds it away
         -- greyed on a tile.
         local scene = rawget(_G, "CharacterModelScene")
