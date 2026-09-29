@@ -182,7 +182,21 @@ end
 -- ============================================================
 -- Profile changes
 -- ============================================================
-local function onProfileChanged()
+-- A copy or a reset keeps the same profile and fills it with what the
+-- player asked for, so those values are this style's as they stand: the
+-- profile is marked as in the style in use, with no swap that would put a
+-- snapshot or a preset over them. Switching to another profile is a
+-- profile that may have been left in another style, so it goes through
+-- the usual swap.
+function ns:AdoptStyle()
+    local g = ns:G()
+    local style = styleKey()
+    g.presetFor = style
+    lookHealth(g, style)
+end
+
+local function onProfileChanged(name, old)
+    if name == old or old == nil then ns:AdoptStyle() else ns:ApplyStylePreset(false) end
     ns:AfterCombat("profile", function()
         ns:ApplyScale()
         ns.Movers:PlaceAll()
