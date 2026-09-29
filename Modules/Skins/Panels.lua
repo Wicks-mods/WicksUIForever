@@ -1112,10 +1112,11 @@ local function flatRankBar(bar)
         frac = math.min(1, cur / max)
         e.name:SetText((label:gsub("%s*%d+%s*/%s*%d+.*$", "")))
         e.value:SetText(("%d | %d"):format(cur, max))
-    elseif bar.Mask and bar.Mask:GetRight() and l and width > 0 then
-        -- No label to read: fall back to where Blizzard slid the mask.
-        frac = math.max(0, math.min(1, (bar.Mask:GetRight() - l) / width))
     else
+        -- No label means no skill line loaded (a ghost opening the window,
+        -- say): an empty bar, not a guess from Blizzard's hidden art.
+        e.name:SetText("")
+        e.value:SetText("")
         frac = 0
     end
     e.bar:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
