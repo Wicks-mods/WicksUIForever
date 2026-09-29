@@ -1640,7 +1640,34 @@ local function styleTalents(tf)
     end
 end
 
+-- The beta's bug-report button (a bug in a gold ring, top left): kept, as
+-- it is how feedback reaches Blizzard, but as a small tile in our style.
+local function styleBugButton(b)
+    if not b or done[b] then return end
+    done[b] = true
+    fade(b.Ring); fade(b.RingPulse)
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "HIGHLIGHT" then r:SetAlpha(0) end
+    end
+    local icon = b.Bug
+    if icon then
+        icon:ClearAllPoints()
+        icon:SetPoint("CENTER", 0, 0)
+        icon:SetSize(22, 22)
+        ns:CropIcon(icon)
+        local bd = backdrop(b, "Default", false, 0)
+        bd:ClearAllPoints()
+        bd:SetPoint("TOPLEFT", icon, "TOPLEFT", -3, 3)
+        bd:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 3, -3)
+        ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+        local h = b:CreateTexture(nil, "HIGHLIGHT")
+        h:SetAllPoints(bd)
+        ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
+    end
+end
+
 PS.SPECIAL.PlayerSpellsFrame = function(frame)
+    styleBugButton(frame.TabSetBugButton)
     local tf = frame.TalentsFrame
     if tf then
         local poll = CreateFrame("Frame", nil, tf)
