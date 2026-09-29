@@ -303,10 +303,25 @@ local function styleFont(fs)
     fs:SetShadowColor(0, 0, 0, 0.8)
     fontSet[fs] = want
 end
+-- The brown and gold rules Blizzard lays across its windows (under a list,
+-- beside a heading, between panes) are a handful of textures used over
+-- and over; any of them, in any skinned window, goes.
+local RULES = { "scrollline", "divider", "separator", "horizontalbar", "headerline", "filigree" }
+local function isRule(atlas)
+    local a = atlas:lower()
+    for _, w in ipairs(RULES) do
+        if a:find(w, 1, true) then return true end
+    end
+    return false
+end
+
 local function recolorText(frame)
     if not frame.GetRegions then return end
     for _, r in ipairs({ frame:GetRegions() }) do
-        if r:GetObjectType() == "FontString" then
+        if r:GetObjectType() == "Texture" then
+            local a = r:GetAtlas()
+            if a and r:GetAlpha() > 0 and isRule(a) then r:SetAlpha(0) end
+        elseif r:GetObjectType() == "FontString" then
             styleFont(r)
             local cr, cg, cb = r:GetTextColor()
             local darkInk = cr and (cr * 0.3 + cg * 0.59 + cb * 0.11) < 0.35
