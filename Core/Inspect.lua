@@ -93,9 +93,31 @@ local function byPath(path)
     return type(obj) == "table" and obj.GetObjectType and obj or nil
 end
 
+-- The first shown aura button on a unit frame ("auras" is the target's),
+-- since aura buttons let the mouse through and a pointer never finds them.
+local function firstAura(unit)
+    local uf = rawget(_G, "WicksUI_" .. unit:gsub("^%l", string.upper))
+    if not uf then return nil end
+    for _, which in ipairs({ "wuibuffs", "wuidebuffs" }) do
+        local a = uf[which]
+        if a and a.GetChildren then
+            for _, b in ipairs({ a:GetChildren() }) do
+                if b:IsShown() and b.Cooldown then return b end
+            end
+        end
+    end
+end
+
 function I:Run(path)
     local f
-    if path and path ~= "" then
+    if path == "auras" or (path and path:match("^auras:")) then
+        local unit = path:match("^auras:(%a+)") or "target"
+        f = firstAura(unit)
+        if not f then
+            ns.A:Print(("no aura showing on the %s frame."):format(unit))
+            return
+        end
+    elseif path and path ~= "" then
         f = byPath(path)
         if not f then
             ns.A:Print(("no frame called %s. Use the name the frame stack shows."):format(path))

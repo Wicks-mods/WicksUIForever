@@ -173,6 +173,7 @@ local HELP = {
     "/wui skin  skin the window under the pointer, and keep skinning it",
     "/wui inspect  list what is under the pointer, for fixing a skin",
     "/wui inspect Name.Key  the same for a frame by the name /fstack shows",
+    "/wui inspect auras  the first aura on your target's frame (auras:player for yours)",
     "/wui unskin [name]  undo the last /wui skin, or the named one",
 }
 
