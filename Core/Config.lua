@@ -619,7 +619,7 @@ function Config:Show(key)
         local title = ns:CreateText(content, 18, "LEFT", "NONE")
         ns:HeadingFont(title, 18)
         title:SetPoint("TOPLEFT", PAD, -PAD)
-        title:SetText(page.title)
+        if Chrome.SetHeadingText then Chrome:SetHeadingText(title, page.title) else title:SetText(page.title) end
         L.y = -PAD - 30
         local ok, err = pcall(page.builder, L)
         page.buildError = not ok and tostring(err) or nil

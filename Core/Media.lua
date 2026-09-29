@@ -109,8 +109,16 @@ function M:SetFont(fs, size, outline, face)
     local g = ns:G()
     outline = outline or g.fontOutline
     if outline == "NONE" then outline = "" end
-    fs:SetFont(self:Font(face), size or g.fontSize, outline)
-    if outline == "" then
+    size = size or g.fontSize
+    -- A look whose face runs small sets the Wick font a little larger.
+    local Chrome = ns.Core and ns.Core.Chrome
+    local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    if st and st.uiBump and (face or g.font) == "Wick" then size = size + st.uiBump end
+    fs:SetFont(self:Font(face), size, outline)
+    if outline == "" and st and st.light then
+        -- Dark text on light panels takes no black shadow.
+        fs:SetShadowOffset(0, 0)
+    elseif outline == "" then
         fs:SetShadowOffset(1, -1)
         fs:SetShadowColor(0, 0, 0, 1)
     else

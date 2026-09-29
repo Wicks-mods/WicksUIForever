@@ -146,10 +146,12 @@ end
 local function layoutBorder(f)
     local b = f.wuiBorder
     local px = ns.mult or 1
-    b.top:ClearAllPoints();    b.top:SetPoint("TOPLEFT");     b.top:SetPoint("TOPRIGHT");     b.top:SetHeight(px)
-    b.bottom:ClearAllPoints(); b.bottom:SetPoint("BOTTOMLEFT"); b.bottom:SetPoint("BOTTOMRIGHT"); b.bottom:SetHeight(px)
-    b.left:ClearAllPoints();   b.left:SetPoint("TOPLEFT");    b.left:SetPoint("BOTTOMLEFT");  b.left:SetWidth(px)
-    b.right:ClearAllPoints();  b.right:SetPoint("TOPRIGHT");  b.right:SetPoint("BOTTOMRIGHT"); b.right:SetWidth(px)
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    local bpx = px * (st and st.borderPx or 1)
+    b.top:ClearAllPoints();    b.top:SetPoint("TOPLEFT");     b.top:SetPoint("TOPRIGHT");     b.top:SetHeight(bpx)
+    b.bottom:ClearAllPoints(); b.bottom:SetPoint("BOTTOMLEFT"); b.bottom:SetPoint("BOTTOMRIGHT"); b.bottom:SetHeight(bpx)
+    b.left:ClearAllPoints();   b.left:SetPoint("TOPLEFT");    b.left:SetPoint("BOTTOMLEFT");  b.left:SetWidth(bpx)
+    b.right:ClearAllPoints();  b.right:SetPoint("TOPRIGHT");  b.right:SetPoint("BOTTOMRIGHT"); b.right:SetWidth(bpx)
     local e = f.wuiEdge
     if e then
         e.top:ClearAllPoints();    e.top:SetPoint("BOTTOMLEFT", f, "TOPLEFT", -px, 0);      e.top:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", px, 0);      e.top:SetHeight(px)
@@ -163,8 +165,32 @@ end
 
 -- Paint a frame as a Wick panel. template: Default, Transparent, Shadow
 -- or None (border only).
+-- What a look adds: a solid offset shadow under panels and tiles (Rebel),
+-- an accent stripe down the left of the big panels (Arena).
+local function lookExtras(f, template, opts)
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    if not st or template == "None" then return end
+    if st.hardShadow and not f.wuiHardShadow and (template == nil or template == "Default" or template == "Transparent") then
+        local h = st.hardShadow
+        local sh = f:CreateTexture(nil, "BACKGROUND", nil, -8)
+        sh:SetPoint("TOPLEFT", f, "TOPLEFT", h.x, h.y)
+        sh:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", h.x, h.y)
+        sh:SetColorTexture(0, 0, 0, h.alpha or 1)
+        f.wuiHardShadow = sh
+    end
+    if st.stripe and opts.brackets and not f.wuiStripe then
+        local s = f:CreateTexture(nil, "BORDER", nil, 3)
+        s:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -1)
+        s:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 1)
+        s:SetWidth(3)
+        paint(s, "text", 1)
+        f.wuiStripe = s
+    end
+end
+
 function ns:SetTemplate(f, template, opts)
     opts = opts or {}
+    lookExtras(f, template, opts)
     if ns:Modern() then return modernTemplate(f, template, opts) end
     local t = TEMPLATES[template or "Default"] or TEMPLATES.Default
     if not f.wuiBG then

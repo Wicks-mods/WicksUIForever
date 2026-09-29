@@ -484,7 +484,7 @@ function W:Heading(parent, text, width)
     ns:HeadingFont(fs, 14)
     fs:SetPoint("BOTTOMLEFT", 0, 6)
     fs:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
-    fs:SetText(text)
+    if Chrome.SetHeadingText then Chrome:SetHeadingText(fs, text) else fs:SetText(text) end
     local line = f:CreateTexture(nil, "ARTWORK")
     line:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
     Chrome:Register(line, "border", "texture")

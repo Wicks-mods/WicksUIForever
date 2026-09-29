@@ -35,15 +35,27 @@ local PAGES = {
             for _, st in ipairs(Chrome.Styles) do
                 out[#out + 1] = { label = st.name, tip = st.blurb,
                     on = function() return currentStyle() == st.id end,
-                    pick = function() pendingStyle = st.id end }
+                    pick = function()
+                        pendingStyle = st.id
+                        if st.palette then Chrome:SetTheme(st.palette) end
+                    end }
             end
             return out
         end,
     },
     {
         title = "Colours",
-        text = "The palette, also shared by every Wick addon.\n\nYour class: the accent in your class colour, a new one on each character.\nFel: Wick's own green on violet-black.\nCustom: your own main and accent colours, picked under General, Appearance.",
+        text = "The palette, also shared by every Wick addon.\n\nThe look's own: the colours the style was made in (Wick Modern and Wick OG use Fel).\nYour class: the accent in your class colour, a new one on each character.\nFel: Wick's own green on violet-black.\nCustom: your own main and accent colours, picked under General, Appearance.",
         choices = {
+            { label = "The look's own",
+              on = function()
+                  local st = Chrome.StyleByID and Chrome.StyleByID[currentStyle()]
+                  return Chrome:ThemeSetting() == ((st and st.palette) or "fel")
+              end,
+              pick = function()
+                  local st = Chrome.StyleByID and Chrome.StyleByID[currentStyle()]
+                  Chrome:SetTheme((st and st.palette) or "fel")
+              end },
             { label = "My class", on = function() return Chrome:ThemeSetting() == "auto" end,
               pick = function() Chrome:SetTheme("auto") end },
             { label = "Fel", on = function() return Chrome:ThemeSetting() == "fel" end,
@@ -103,7 +115,7 @@ function I:Show(page)
     local f = self.frame
     if not f then
         f = CreateFrame("Frame", "WicksUI_Install", UIParent)
-        f:SetSize(520, 300)
+        f:SetSize(520, 340)
         f:SetPoint("CENTER", 0, 80)
         f:SetFrameStrata("DIALOG")
         f:EnableMouse(true)
@@ -128,9 +140,9 @@ function I:Show(page)
         f.text:SetPoint("TOPRIGHT", -18, -70)
         f.action = W:Button(f, "", 160, function() end)
         f.action:SetPoint("BOTTOMLEFT", 18, 50)
-        -- Up to six answers, three to a row, above the Back and Next buttons.
+        -- Up to nine answers, three to a row, above the Back and Next buttons.
         f.choices = {}
-        for i = 1, 6 do
+        for i = 1, 9 do
             local b = W:Button(f, "", CHOICE_W, function() end)
             local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
             b:SetPoint("BOTTOMLEFT", 18 + col * (CHOICE_W + 8), 84 - row * 34)

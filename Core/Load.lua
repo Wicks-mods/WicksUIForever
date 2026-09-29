@@ -60,11 +60,6 @@ local PRESETS = {
         bars = { size = 34, spacing = 2 },
         units = { player = 40, target = 40, focus = 32, focustarget = 26, targettarget = 26, pet = 26, boss = 36, party = 40, raid = 42 },
     },
-    -- Slate is dense: smaller buttons close together, shorter frames.
-    slate = {
-        bars = { size = 32, spacing = 1 },
-        units = { player = 36, target = 36, focus = 28, focustarget = 22, targettarget = 22, pet = 22, boss = 32, party = 36, raid = 38 },
-    },
 }
 
 -- The key a style's sizes are kept under. Wick OG predates the others and
