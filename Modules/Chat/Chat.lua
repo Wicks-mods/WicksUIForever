@@ -163,6 +163,8 @@ function CH:Panel()
     p:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", 6, -8)
     local d = db()
     p.wuiBG:SetAlpha(d.panelAlpha / 0.65)
+    -- The damage meter's panel follows this one.
+    if ns.Skins and ns.Skins.DamageMeter then pcall(ns.Skins.DamageMeter, ns.Skins) end
     p:SetShown(d.panel)
     p.copy:SetShown(d.copyButton)
 end
@@ -267,7 +269,7 @@ ns.Config:AddPage("chat", "Chat", function(L)
     L:DB(db)
     L:Note("The chat windows stay where Edit Mode puts them. Everything here is the look. Nothing in this module touches the messages themselves, which this client can hand over as secrets during an encounter.")
     L:Toggle("Wick panel behind the chat", "panel")
-    L:Slider("Panel alpha", "panelAlpha", 0, 1, 0.05)
+    L:Slider("Panel alpha", "panelAlpha", 0, 1, 0.05, { tooltip = "How solid the chat panel is. The damage meter's panel follows it, so the two match." })
     L:Toggle("Copy button on the panel", "copyButton")
     L:Toggle("Hide the chat buttons", "hideButtons", { tooltip = "The menu, channel and social buttons beside the chat. Takes effect after a reload." })
     L:Heading("Text")

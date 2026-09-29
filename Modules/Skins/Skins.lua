@@ -141,6 +141,14 @@ function SK:AlignMeterHeader(win)
     put(ss, "CENTER", sd, "CENTER", -24, 0)
 end
 
+-- The meter's panel takes the chat panel's see-through setting, so the two
+-- always match; Panel alpha on the Chat page sets both.
+function SK:MatchChat(p)
+    local chat = ns.A and ns.A.db and ns.A.db.profile and ns.A.db.profile.chat
+    local a = chat and chat.panelAlpha or 0.65
+    if p and p.wuiBG then p.wuiBG:SetAlpha(a / 0.65) end
+end
+
 function SK:DamageMeter()
     if not db().damageMeter then return end
     local dm = rawget(_G, "DamageMeter")
@@ -152,7 +160,14 @@ function SK:DamageMeter()
         strip(win)
         if win.Header then strip(win.Header) end
         if win.NineSlice then win.NineSlice:SetAlpha(0) end
-        if win:IsShown() then panelBehind(win, "Transparent") end
+        -- Blizzard's brown backing (on the window's MinimizeContainer) is
+        -- what tinted the meter; without it the meter is our glass, the
+        -- colour of the chat panel.
+        if win.MinimizeContainer then strip(win.MinimizeContainer) end
+        if win:IsShown() then
+            local p = panelBehind(win, "Transparent")
+            SK:MatchChat(p)
+        end
         ns:Glyph(win.MinimizeButton, "minus", { tileSize = 20 })
         ns:Glyph(win.SettingsDropdown, "gear", { tileSize = 20 })
         tileButton(win.SessionDropdown, "Background")
