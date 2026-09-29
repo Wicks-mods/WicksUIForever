@@ -104,6 +104,9 @@ function MM:Shape()
     for _, b in pairs(zoom) do if b then b:SetAlpha(d.hideZoom and 0 or 1); b:EnableMouse(not d.hideZoom) end end
     local zt = MinimapCluster and MinimapCluster.ZoneTextButton
     if zt then zt:SetAlpha(d.hideBlizzardText and 0 or 1); zt:EnableMouse(not d.hideBlizzardText) end
+    -- This client draws its own coordinates under the map; ours replace them.
+    local bc = MinimapCluster and MinimapCluster.MinimapContainer and MinimapCluster.MinimapContainer.PlayerCoords
+    if bc then bc:SetAlpha((d.coords and d.hideBlizzardText) and 0 or 1) end
     local clock = rawget(_G, "TimeManagerClockButton")
     if clock then clock:SetAlpha((d.clock and d.hideBlizzardText) and 0 or 1) end
 end
