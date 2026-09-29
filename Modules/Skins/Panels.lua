@@ -962,8 +962,79 @@ PS.SPECIAL.CharacterFrame = function(frame)
 end
 
 -- Professions: the illustrations behind each profession stay (Wick likes
--- them). The skill bars and the icon borders are ours, redone on every
--- pass because Blizzard swaps its textured fill back in on each skill-up.
+-- them); the frames around them go. Each profession keeps a colour of its
+-- own on its skill bar, read from the fill art Blizzard picks for it (or
+-- the bar's text), so Mining still reads as Mining once the art is flat.
+-- All of it is redone on every pass: Blizzard redraws bars on each skill-up
+-- and swaps pages as tabs change.
+local PROF_COLORS = {
+    alchemy = { 0.35, 0.75, 0.55 }, blacksmithing = { 0.66, 0.66, 0.72 },
+    enchanting = { 0.66, 0.46, 0.92 }, engineering = { 0.92, 0.70, 0.28 },
+    herbalism = { 0.70, 0.82, 0.30 }, inscription = { 0.42, 0.60, 0.92 },
+    jewelcrafting = { 0.32, 0.82, 0.86 }, leatherworking = { 0.72, 0.52, 0.32 },
+    mining = { 0.56, 0.64, 0.78 }, skinning = { 0.80, 0.58, 0.42 },
+    tailoring = { 0.86, 0.42, 0.50 }, cooking = { 0.92, 0.52, 0.26 },
+    fishing = { 0.32, 0.64, 0.88 }, firstaid = { 0.45, 0.80, 0.30 },
+    archaeology = { 0.78, 0.62, 0.42 },
+}
+
+local function textOf(frame)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:GetObjectType() == "FontString" then
+            local t = r:GetText()
+            if t and not (issecretvalue and issecretvalue(t)) and t ~= "" then return t end
+        end
+    end
+end
+
+local function profColor(bar, fill)
+    local keys = {}
+    local atlas = fill and fill.GetAtlas and fill:GetAtlas()
+    if atlas then keys[#keys + 1] = atlas end
+    local t = textOf(bar)
+    if t then keys[#keys + 1] = t end
+    for _, k in ipairs(keys) do
+        k = k:lower():gsub("[%s_%-]", "")
+        for prof, c in pairs(PROF_COLORS) do
+            if k:find(prof, 1, true) then return c end
+        end
+    end
+    return C.fel
+end
+
+-- The rank bars are frames, not status bars: a textured Fill seen through
+-- a Mask whose right edge Blizzard slides to the current skill. Ours is a
+-- flat bar pinned to that same edge, so it follows without being told.
+local function flatRankBar(bar)
+    local fill, mask = bar.Fill, bar.Mask
+    local e = extras[bar] or {}
+    extras[bar] = e
+    local c = profColor(bar, fill)
+    fade(bar.Background); fade(bar.Border); fade(bar.Flare)
+    if mask then
+        if fill:GetAlpha() > 0 then fill:SetAlpha(0) end
+        if not e.bar then
+            local t = bar:CreateTexture(nil, "ARTWORK", nil, 3)
+            t:SetTexture(ns.Media:Statusbar())
+            t:SetPoint("LEFT", fill, "LEFT", 0, 0)
+            t:SetPoint("RIGHT", mask, "RIGHT", 0, 0)
+            e.bar = t
+        end
+        e.bar:SetHeight(math.max(1, (fill:GetHeight() or 12) - 2))
+        e.bar:SetVertexColor(c[1], c[2], c[3], 1)
+    else
+        fill:SetTexture(ns.Media:Statusbar())
+        fill:SetVertexColor(c[1], c[2], c[3], 1)
+    end
+    if not done[bar] then
+        done[bar] = true
+        local bd = backdrop(bar, "Shadow", false, 0)
+        bd:ClearAllPoints()
+        bd:SetPoint("TOPLEFT", fill, "TOPLEFT", -1, 1)
+        bd:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", 1, -1)
+    end
+end
+
 local function flatBar(sb)
     local fill = sb:GetStatusBarTexture()
     for _, r in ipairs({ sb:GetRegions() }) do
@@ -972,11 +1043,10 @@ local function flatBar(sb)
     for _, child in ipairs({ sb:GetChildren() }) do
         if child:GetObjectType() == "Frame" and not child.wuiBG then fadeRegions(child) end
     end
+    local c = profColor(sb, fill)
     local path = ns.Media:Statusbar()
-    if fill and fill:GetTexture() ~= path then
-        sb:SetStatusBarTexture(path)
-        sb:SetStatusBarColor(C.fel[1], C.fel[2], C.fel[3])
-    end
+    if fill and fill:GetTexture() ~= path then sb:SetStatusBarTexture(path) end
+    sb:SetStatusBarColor(c[1], c[2], c[3])
     if not done[sb] then
         done[sb] = true
         backdrop(sb, "Shadow", false, 1)
@@ -997,14 +1067,40 @@ local function flatIcon(b, icon)
     end
 end
 
+-- The bronze frames around each profession's panel, the dividers, the
+-- boxes around the gear slots: known by the words in their atlas names.
+-- The illustrations and backgrounds are named otherwise and stay.
+local FRAME_WORDS = { "border", "frame", "divider", "edge", "corner", "trim" }
+local KEEP_WORDS = { "illustration", "background", "bg", "icon", "mask", "fill", "sidetab" }
+local function isFrameArt(atlas)
+    local a = atlas:lower()
+    for _, w in ipairs(KEEP_WORDS) do if a:find(w, 1, true) then return false end end
+    for _, w in ipairs(FRAME_WORDS) do if a:find(w, 1, true) then return true end end
+    return false
+end
+local function fadeFrameArt(frame)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local atlas = r:GetAtlas()
+            if atlas and r:GetAlpha() > 0 and isFrameArt(atlas) then r:SetAlpha(0) end
+        end
+    end
+end
+
 local function walkProfessions(frame, depth)
-    if depth > 7 or not frame.GetChildren then return end
+    if depth > 8 or not frame.GetChildren then return end
+    fadeFrameArt(frame)
+    fade(frame.NineSlice)
     for _, child in ipairs({ frame:GetChildren() }) do
         if child:IsShown() then
             local kind = child:GetObjectType()
+            local fill = child.Fill
             if kind == "StatusBar" then
                 flatBar(child)
-            elseif kind == "Button" or kind == "CheckButton" then
+            elseif fill and fill.GetObjectType and fill:GetObjectType() == "Texture"
+                and (child.Border or child.Background or child.Mask) then
+                flatRankBar(child)
+            elseif (kind == "Button" or kind == "CheckButton") and child:GetWidth() <= 64 and child:GetHeight() <= 64 then
                 local name = child.GetName and child:GetName()
                 local icon = child.Icon or child.icon or child.IconTexture or (name and _G[name .. "IconTexture"])
                 if icon and icon.GetObjectType and icon:GetObjectType() == "Texture" and not (icon.GetAtlas and icon:GetAtlas()) then
@@ -1016,6 +1112,53 @@ local function walkProfessions(frame, depth)
     end
 end
 
+-- The side tabs down the right edge are plain frames, not buttons, so the
+-- scanner passes them by: their gold tab shape goes, the icon loses the tab
+-- mask and gets our corners, and the open one wears the fel ring.
+local function styleSideTab(tab)
+    fade(tab.Background); fade(tab.TabGlow); fade(tab.HighlightTexture)
+    local e = extras[tab] or {}
+    extras[tab] = e
+    local icon = tab.Icon
+    if not done[tab] then
+        done[tab] = true
+        if icon then
+            if tab.Mask and icon.RemoveMaskTexture then icon:RemoveMaskTexture(tab.Mask) end
+            icon:ClearAllPoints()
+            icon:SetPoint("CENTER", -4, 0)
+            icon:SetSize(40, 40)
+            ns:CropIcon(icon)
+        end
+        local bd = backdrop(tab, "Default", false, 0)
+        bd:ClearAllPoints()
+        bd:SetPoint("TOPLEFT", icon or tab, "TOPLEFT", -2, 2)
+        bd:SetPoint("BOTTOMRIGHT", icon or tab, "BOTTOMRIGHT", 2, -2)
+        local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
+        ring:SetTexture(ns.Media.ring)
+        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
+        ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        ring:SetPoint("TOPLEFT", icon or tab, "TOPLEFT", -2, 2)
+        ring:SetPoint("BOTTOMRIGHT", icon or tab, "BOTTOMRIGHT", 2, -2)
+        e.ring = ring
+        local h = tab:CreateTexture(nil, "HIGHLIGHT")
+        h:SetAllPoints(icon or tab)
+        ns:Fill(h, 1, 1, 1, 0.12)
+    end
+    local sel = tab.SelectedTexture
+    if sel then sel:SetAlpha(0) end
+    e.ring:SetShown(sel and sel:IsShown() or false)
+end
+
+local function styleProfTabs(frame)
+    local tab = frame.ProfessionsOverviewTab
+    if tab then styleSideTab(tab) end
+    for i = 1, 12 do
+        tab = frame["Professions" .. i .. "Tab"]
+        if not tab then break end
+        styleSideTab(tab)
+    end
+end
+
 PS.SPECIAL.ProfessionsFrame = function(frame)
     local poll = CreateFrame("Frame", nil, frame)
     local acc = 0.5
@@ -1023,7 +1166,8 @@ PS.SPECIAL.ProfessionsFrame = function(frame)
         acc = acc + e
         if acc < 0.5 then return end
         acc = 0
-        walkProfessions(frame.BookPage or frame, 1)
+        styleProfTabs(frame)
+        walkProfessions(frame, 1)
     end)
     return "generic"
 end
