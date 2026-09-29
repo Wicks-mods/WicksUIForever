@@ -322,7 +322,8 @@ local function buildAuras(self, which, d)
     a.elementSpacing = d.spacing
     a.lineSpacing = d.spacing
     a.showCount = d.showCount
-    a.showDuration = d.showDuration
+    -- The time is the client's countdown (see ns:AuraCountdown), not ours.
+    a.showDuration = false
     a.showDebuffBorder = which == "debuffs"
     a.showStealableBorder = which == "buffs"
     a.tooltipAnchor = "ANCHOR_BOTTOMRIGHT"
@@ -331,7 +332,7 @@ local function buildAuras(self, which, d)
     a:AddGroup(filter, { maxFrameCount = d.perRow * math.max(1, d.rows) })
     a:SetSize(d.perRow * (d.size + d.spacing), math.max(1, d.rows) * (d.size + d.spacing))
     a.PostCreateButton = function(_, button)
-        ns:QuietAuraCooldown(button)
+        ns:AuraCountdown(button, d.size, d.showDuration)
         -- Our border on the client's button: a backdrop child a level down.
         if button.Icon then ns:CropIcon(button.Icon) end
         ns:CreateBackdrop(button, "Default", ns.mult)

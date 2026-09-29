@@ -34,9 +34,9 @@ ns.defaults.profile.auras = {
 
 local function db() return AU:db() end
 
-local function postCreate(size)
+local function postCreate(size, showTime)
     return function(_, button)
-        ns:QuietAuraCooldown(button)
+        ns:AuraCountdown(button, size, showTime)
         if button.Icon then ns:CropIcon(button.Icon) end
         ns:CreateBackdrop(button, "Default", ns.mult)
         if button.Count then ns.Media:SetFont(button.Count, math.max(10, math.floor(size * 0.38)), "OUTLINE") end
@@ -59,11 +59,12 @@ local function build(self, which, d)
     a.elementSpacing = d.spacing
     a.lineSpacing = d.rowSpacing
     a.showCount = d.showCount
-    a.showDuration = d.showDuration
+    -- The time is the client's countdown (see ns:AuraCountdown), not ours.
+    a.showDuration = false
     a.showDebuffBorder = which == "debuffs"
     a.cancelButton = which == "buffs" and "RightButtonUp" or nil
     a.tooltipAnchor = "ANCHOR_BOTTOMLEFT"
-    a.PostCreateButton = postCreate(d.size)
+    a.PostCreateButton = postCreate(d.size, d.showDuration)
     a:AddGroup(which == "buffs" and "HELPFUL" or "HARMFUL", { maxFrameCount = d.perRow * d.rows })
     a:SetSize(width, d.rows * (d.size + d.rowSpacing))
 

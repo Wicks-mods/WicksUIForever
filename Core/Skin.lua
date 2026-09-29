@@ -283,28 +283,35 @@ local function invisibleFont()
     return noCountdown
 end
 
--- The aura container turns the countdown numbers back on as it redraws a
--- button (the time then shows twice: ours and the client's), so every
--- button quieted here is quieted again every frame while shown; a slower
--- pass let the second time flash as a buff refreshed.
-local quieted = setmetatable({}, { __mode = "k" })
--- No test of what the cooldown reports (whether it shows, its alpha): in
--- combat those come back as secrets, which cannot be tested. Setting the
--- same values again is harmless, so it is simply done.
-local function hush(cd)
-    if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
-    local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
-    if fs then fs:SetAlpha(0) end
+-- An aura's time is the client's own countdown on its cooldown, centred
+-- and in our font. Ours (the aura library's duration text) is not made:
+-- the client's aura container keeps its countdown on however often it is
+-- switched off, so two timers showed. One, the client's, it is.
+local countdownFonts = {}
+local function countdownFont(size)
+    size = math.max(8, math.floor(size + 0.5))
+    local f = countdownFonts[size]
+    if not f then
+        f = CreateFont("WicksUI_AuraCountdown" .. size)
+        f:SetFont(ns.Media:Font(), size, "OUTLINE")
+        f:SetTextColor(1, 1, 1, 1)
+        countdownFonts[size] = f
+    end
+    return f
 end
-local hushTicker = CreateFrame("Frame")
-hushTicker:SetScript("OnUpdate", function()
-    for cd in pairs(quieted) do hush(cd) end
-end)
+
+function ns:AuraCountdown(button, iconSize, show)
+    local cd = button and button.Cooldown
+    if not cd then return end
+    cd.noCooldownCount = true   -- OmniCC-style addons stay off it
+    if show == false then return ns:QuietAuraCooldown(button) end
+    if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(false) end
+    if cd.SetCountdownFont then pcall(cd.SetCountdownFont, cd, countdownFont((iconSize or 24) * 0.42):GetName()) end
+end
 
 function ns:QuietAuraCooldown(button)
     local cd = button and button.Cooldown
     if not cd then return end
-    quieted[cd] = true
     if cd.SetCountdownFont then pcall(cd.SetCountdownFont, cd, invisibleFont():GetName()) end
     -- The aura container turns the numbers back on when it redraws the
     -- button, so the switch alone does not hold. The countdown's own text
