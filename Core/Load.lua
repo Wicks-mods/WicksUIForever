@@ -62,9 +62,12 @@ local PRESETS = {
     },
 }
 
--- Each style keeps the player's own sizes: leaving a style saves what it
--- had (general settings are per profile), and coming back to it puts them back. The preset is
--- only for a style this profile has never been in, or on request.
+-- Each style keeps the player's own sizes, and the minimap's shape (round
+-- suits one style, square the other): leaving a style saves what it had
+-- (general settings are per profile), and coming back to it puts them
+-- back. The preset is only for a style this profile has never been in, or
+-- on request, and it never touches the minimap.
+local MINIMAP_KEYS = { "square", "ring", "fill" }
 local function takeSizes(prof)
     local out = { bars = {}, units = {} }
     for id, d in pairs(prof.actionbars and prof.actionbars.bars or {}) do
@@ -72,6 +75,11 @@ local function takeSizes(prof)
     end
     for key, u in pairs(prof.unitframes and prof.unitframes.units or {}) do
         out.units[key] = { width = u.width, height = u.height }
+    end
+    local mm = prof.minimap
+    if mm then
+        out.minimap = {}
+        for _, k in ipairs(MINIMAP_KEYS) do out.minimap[k] = mm[k] end
     end
     return out
 end
@@ -84,6 +92,11 @@ local function putSizes(prof, saved)
     for key, s in pairs(saved.units or {}) do
         local u = prof.unitframes and prof.unitframes.units and prof.unitframes.units[key]
         if u then u.width, u.height = s.width or u.width, s.height or u.height end
+    end
+    if saved.minimap and prof.minimap then
+        for _, k in ipairs(MINIMAP_KEYS) do
+            if saved.minimap[k] ~= nil then prof.minimap[k] = saved.minimap[k] end
+        end
     end
 end
 

@@ -398,7 +398,7 @@ end
 
 ns.Config:AddPage("minimap", "Minimap", function(L)
     L:DB(db)
-    L:Note("Move the minimap with Edit Mode.")
+    L:Note("Move the minimap with Edit Mode. Its shape, ring and fill are kept for each style: set them in Wick Modern and in Wick OG, and each style comes back with its own.")
     L:Toggle("Square", "square", { tooltip = "Off gives back Blizzard's round map and its ring." })
     L:Toggle("Ring around the round map", "ring", { tooltip = "Blizzard's gold ring and north marker, on the round map only. With the ring the map keeps Blizzard's size so the ring fits; without it the map fills the box." })
     L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. The round map keeps Blizzard's size, so its ring fits." })
