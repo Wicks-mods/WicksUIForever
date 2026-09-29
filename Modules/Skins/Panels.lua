@@ -160,22 +160,7 @@ local function styleClose(b)
         if t then t:SetAlpha(0) end
     end
     fadeRegions(b)
-    local e = extras[b] or {}
-    extras[b] = e
-    local x = b:CreateFontString(nil, "OVERLAY")
-    ns.Media:SetFont(x, 14, "NONE")
-    x:SetPoint("CENTER", 0, 1)
-    x:SetText("x")
-    x:SetTextColor(C.text[1], C.text[2], C.text[3])
-    e.x = x
-    -- The hover colour is a second X on the highlight layer, which the
-    -- client shows on mouseover itself; no hook on their scripts.
-    local xh = b:CreateFontString(nil, "HIGHLIGHT")
-    ns.Media:SetFont(xh, 14, "NONE")
-    xh:SetPoint("CENTER", 0, 1)
-    xh:SetText("x")
-    xh:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
-    e.xh = xh
+    ns:Glyph(b, "close", { tile = false, size = 12 })
 end
 
 local function styleTab(tab)
@@ -475,9 +460,23 @@ end
 
 -- Small arrow and toggle buttons: their gold or red art greyed to sit
 -- with the rest. Their shapes stay; they are how the button is read.
+-- Arrow buttons whose direction can be read wear our glyph, looked at again
+-- on each scan in case the arrow turns (a pane that folds away).
+local arrowGlyphs = setmetatable({}, { __mode = "k" })
 local function styleArrow(b)
+    if arrowGlyphs[b] then
+        local dir = ns:ArrowDirection(b)
+        if dir then ns:Glyph(b, dir) end
+        return
+    end
     if done[b] then return end
     done[b] = true
+    local dir = ns:ArrowDirection(b)
+    if dir then
+        arrowGlyphs[b] = true
+        ns:Glyph(b, dir)
+        return
+    end
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }) do
         local t = tex(b, get)
         if t and t.SetDesaturated then t:SetDesaturated(true); t:SetVertexColor(0.85, 0.85, 0.85) end
@@ -518,7 +517,12 @@ local function styleFilter(b)
         if r:GetObjectType() == "Texture" and r ~= e.hover and r:GetAlpha() > 0 then
             local a = r:GetAtlas()
             if (a and a:lower():find("arrow")) or r == b.Arrow or r == b.Icon then
-                if r.SetDesaturated then r:SetDesaturated(true) end
+                local al = a and a:lower() or ""
+                local dir = (al:find("right") or al:find("next")) and "right"
+                    or ((al:find("down") or al:find("dropdown")) and "down") or "right"
+                r:SetTexture(ns.Media:Glyph(dir))
+                r:SetVertexColor(C.text[1], C.text[2], C.text[3], 1)
+                r:SetSize(12, 12)
             else
                 r:SetAlpha(0)
             end
@@ -576,7 +580,7 @@ local function scanButtons(frame, depth)
         elseif isButton and (child.Icon or child.icon) and not child.Left and not child.Name
             and not (child:GetParent() and child:GetParent().Button == child) then
             styleIconButton(child)
-        elseif isButton and w <= 32 and h <= 32 and not hasText(child) then
+        elseif arrowGlyphs[child] or (isButton and w <= 32 and h <= 32 and not hasText(child)) then
             styleArrow(child)
         elseif kind == "Button" and w >= 110 and h <= 36 and hasText(child) and not child.CollapseButton then
             styleRow(child)
@@ -653,27 +657,9 @@ end
 -- The maximise and minimise buttons some windows carry: Blizzard's red
 -- art gives way to a plain + and -, like our x.
 local function styleMaxMin(mm)
-    if not mm or done[mm] then return end
-    done[mm] = true
-        for key, mark in pairs({ MaximizeButton = "+", MinimizeButton = "-" }) do
-            local b = mm[key]
-            if b then
-                for _, r in ipairs({ b:GetRegions() }) do
-                    if r:GetObjectType() == "Texture" then r:SetAlpha(0) end
-                end
-                for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
-                    local t = b[get] and b[get](b)
-                    if t then t:SetAlpha(0) end
-                end
-                local fs = ns:CreateText(b, 14, "CENTER", "NONE")
-                fs:SetPoint("CENTER", 0, 1)
-                fs:SetText(mark)
-                local h = b:CreateTexture(nil, "HIGHLIGHT")
-                h:SetPoint("TOPLEFT", 2, -2)
-                h:SetPoint("BOTTOMRIGHT", -2, 2)
-                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
-            end
-        end
+    if not mm then return end
+    if mm.MaximizeButton then ns:Glyph(mm.MaximizeButton, "plus", { tile = false, size = 12 }) end
+    if mm.MinimizeButton then ns:Glyph(mm.MinimizeButton, "minus", { tile = false, size = 12 }) end
 end
 
 PS.SPECIAL.WorldMapFrame = function(frame)
@@ -730,7 +716,7 @@ PS.SPECIAL.WorldMapFrame = function(frame)
             if qsf.BorderFrame then fadeRegions(qsf.BorderFrame) end
             fade(qsf.Edge); fade(qsf.Background)
             if qsf.SearchBox then styleEditBox(qsf.SearchBox) end
-            if qsf.SettingsDropdown and qsf.SettingsDropdown.Icon then qsf.SettingsDropdown.Icon:SetDesaturated(true) end
+            if qsf.SettingsDropdown then ns:Glyph(qsf.SettingsDropdown, "gear", { tile = false, size = 13 }) end
         end
         local count = rawget(_G, "QuestLogCount")
         if count then
@@ -762,24 +748,9 @@ PS.SPECIAL.WorldMapFrame = function(frame)
     -- art greys on a black tile.
     local spt = frame.SidePanelToggle
     if spt then
-        for _, b in ipairs({ spt.OpenButton, spt.CloseButton }) do
-            if b and not done[b] then
-                done[b] = true
-                for _, r in ipairs({ b:GetRegions() }) do
-                    if r:GetObjectType() == "Texture" then
-                        local a = r:GetAtlas()
-                        if a and a:find("MapCornerShadow") then r:SetAlpha(0)
-                        elseif r:GetDrawLayer() == "HIGHLIGHT" then r:SetAlpha(0)
-                        elseif r.SetDesaturated then r:SetDesaturated(true) end
-                    end
-                end
-                local bd = backdrop(b, "Default", false, 2)
-                ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
-                local h = b:CreateTexture(nil, "HIGHLIGHT")
-                h:SetAllPoints(bd)
-                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
-            end
-        end
+        -- Hide pushes the quest log away to the right; show brings it back.
+        if spt.CloseButton then ns:Glyph(spt.CloseButton, "right") end
+        if spt.OpenButton then ns:Glyph(spt.OpenButton, "left") end
     end
 end
 
@@ -1179,16 +1150,7 @@ PS.SPECIAL.CharacterFrame = function(frame)
             card(host, "wuiPane", "TOPLEFT", host, "BOTTOMRIGHT", host, 4, -4, -6, 6)
         end
         local tog = rawget(_G, "CharacterFrameRightPaneToggleButton")
-        if tog then
-            for _, r in ipairs({ tog:GetRegions() }) do
-                if r:GetObjectType() == "Texture" and r:GetDrawLayer() ~= "HIGHLIGHT" and r.SetDesaturated then r:SetDesaturated(true) end
-            end
-            if not done[tog] then
-                done[tog] = true
-                local bd = backdrop(tog, "Default", false, 3)
-                ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
-            end
-        end
+        if tog then ns:Glyph(tog, ns:ArrowDirection(tog) or "left") end
     end)
     -- The grey window, as in the other full-skin windows.
     -- The character's name in the title in their class colour, like the
@@ -1410,23 +1372,8 @@ end
 -- Their own guard: the scanner has usually been through these already.
 local spun = setmetatable({}, { __mode = "k" })
 local function styleStepper(b, mark)
-    if not b or spun[b] then return end
-    spun[b] = true
-    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
-        local t = b[get] and b[get](b)
-        if t then t:SetAlpha(0) end
-    end
-    for _, r in ipairs({ b:GetRegions() }) do
-        if r:GetObjectType() == "Texture" then r:SetAlpha(0) end
-    end
-    backdrop(b, "Shadow", false, 1)
-    local fs = ns:CreateText(b, 12, "CENTER", "NONE")
-    fs:SetPoint("CENTER", 0, 0)
-    fs:SetText(mark)
-    local h = b:CreateTexture(nil, "HIGHLIGHT")
-    h:SetPoint("TOPLEFT", 2, -2)
-    h:SetPoint("BOTTOMRIGHT", -2, 2)
-    ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
+    if not b then return end
+    ns:Glyph(b, (mark == "<" and "left") or (mark == ">" and "right") or mark)
 end
 
 local function styleNumberBox(eb)
@@ -1876,14 +1823,7 @@ local function styleTalents(tf)
     treeCards(tf)
     -- The search options button: its yellow arrow greyed on a black tile.
     local so = tf.SearchOptionsDropdown
-    if so then
-        if so.Arrow and so.Arrow.SetDesaturated then so.Arrow:SetDesaturated(true) end
-        if not done[so] then
-            done[so] = true
-            local bd = backdrop(so, "Default", false, 1)
-            ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
-        end
-    end
+    if so then ns:Glyph(so, "down") end
     fade(tf.BackgroundBorder)
     -- The window-wide backing the painting sits on; its top 70 px are the
     -- gold bar across the top. The painting itself is ClassBackground.

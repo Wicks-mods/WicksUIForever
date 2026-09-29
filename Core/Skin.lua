@@ -317,3 +317,94 @@ function ns:RefreshStatusbars()
         for sb in pairs(ns.statusbars) do sb:SetStatusBarTexture(path) end
     end
 end
+
+-- ============================================================
+-- Glyph buttons
+-- ============================================================
+-- Blizzard's small buttons (page arrows, dropdown arrows, minimise, gear)
+-- carry their mark inside a bevelled square of their own art; on our tiles
+-- that reads as a box in a box. glyph() puts the button's art away and
+-- draws one of our flat marks on a black tile instead: the mark in the text
+-- colour, a second copy in the accent on the highlight layer, which the
+-- client shows on mouseover by itself (no hook on Blizzard's scripts).
+-- Called again, it only swaps the mark, so a toggle can change direction.
+local glyphs = setmetatable({}, { __mode = "k" })
+ns.glyphs = glyphs
+
+function ns:Glyph(b, name, opts)
+    if not b then return end
+    opts = opts or {}
+    local g = glyphs[b]
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
+        local t = b[get] and b[get](b)
+        if t and t:GetAlpha() > 0 then t:SetAlpha(0) end
+    end
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r:GetAlpha() > 0 and not (g and (r == g.mark or r == g.hover)) then
+            r:SetAlpha(0)
+        end
+    end
+    if not g then
+        g = {}
+        glyphs[b] = g
+        local size = opts.size or 14
+        if opts.tile ~= false then
+            local t = CreateFrame("Frame", nil, b)
+            t:SetPoint("CENTER", 0, 0)
+            t:SetSize(opts.tileSize or math.min(22, math.max(16, (b:GetWidth() or 20) - 2)), opts.tileSize or math.min(22, math.max(16, (b:GetHeight() or 20) - 2)))
+            t:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
+            ns:SetTemplate(t, "Default", { alpha = 0.9, shadow = false })
+            g.tile = t
+        end
+        local mark = b:CreateTexture(nil, "OVERLAY", nil, 6)
+        mark:SetSize(size, size)
+        mark:SetPoint("CENTER", 0, 0)
+        mark:SetVertexColor(C.text[1], C.text[2], C.text[3], 1)
+        g.mark = mark
+        local hover = b:CreateTexture(nil, "HIGHLIGHT", nil, 6)
+        hover:SetSize(size, size)
+        hover:SetPoint("CENTER", 0, 0)
+        hover:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        g.hover = hover
+    end
+    if g.name ~= name then
+        g.name = name
+        g.mark:SetTexture(ns.Media:Glyph(name))
+        g.hover:SetTexture(ns.Media:Glyph(name))
+    end
+    return g
+end
+
+-- Which way a Blizzard arrow button points, read from its art: the old page
+-- arrows by file, the newer ones by atlas name. nil when it cannot tell.
+local ARROW_FILES = {
+    [130869] = "left", [130868] = "left", [130867] = "left",
+    [130866] = "right", [130865] = "right", [130864] = "right",
+}
+function ns:ArrowDirection(b)
+    for _, get in ipairs({ "GetNormalTexture", "GetDisabledTexture" }) do
+        local t = b[get] and b[get](b)
+        if t then
+            local a = t.GetAtlas and t:GetAtlas()
+            if a then
+                a = a:lower()
+                for _, dir in ipairs({ "left", "right", "down", "up" }) do
+                    if a:find(dir) then return dir end
+                end
+                if a:find("prev") or a:find("back") then return "left" end
+                if a:find("next") or a:find("forward") then return "right" end
+                if a:find("collapse") then return "minus" end
+                if a:find("expand") then return "plus" end
+            end
+            local f = t.GetTexture and t:GetTexture()
+            if type(f) == "number" and ARROW_FILES[f] then return ARROW_FILES[f] end
+            if type(f) == "string" then
+                local l = f:lower()
+                if l:find("prevpage") then return "left" end
+                if l:find("nextpage") then return "right" end
+                if l:find("scrollup") then return "up" end
+                if l:find("scrolldown") then return "down" end
+            end
+        end
+    end
+end

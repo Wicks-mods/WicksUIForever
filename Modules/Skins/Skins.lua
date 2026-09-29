@@ -134,10 +134,10 @@ function SK:DamageMeter()
         if win.Header then strip(win.Header) end
         if win.NineSlice then win.NineSlice:SetAlpha(0) end
         if win:IsShown() then panelBehind(win, "Transparent") end
-        tileButton(win.MinimizeButton)
-        tileButton(win.SettingsDropdown)
+        ns:Glyph(win.MinimizeButton, "minus")
+        ns:Glyph(win.SettingsDropdown, "gear")
         tileButton(win.SessionDropdown, "Background")
-        tileButton(win.DamageMeterTypeDropdown)
+        ns:Glyph(win.DamageMeterTypeDropdown, "down")
         if win.SessionDropdown and win.SessionDropdown.SessionName then
             win.SessionDropdown.SessionName:SetTextColor(C.text[1], C.text[2], C.text[3])
         end

@@ -43,6 +43,8 @@ M.rounded   = TEX .. "rounded.png"
 M.ring      = TEX .. "ring.png"
 M.shadow    = TEX .. "shadow.png"
 M.roundmask = TEX .. "roundmask.png"
+-- Flat white marks for small buttons, tinted as they are drawn.
+function M:Glyph(name) return TEX .. "glyph-" .. name .. ".png" end
 
 M.outlines = { "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROMEOUTLINE" }
 
