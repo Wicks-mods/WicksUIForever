@@ -22,6 +22,7 @@ ns.Minimap = MM
 ns.defaults.profile.minimap = {
     enable = true,
     square = true,
+    fill = true,                 -- the map fills Blizzard's minimap box, to its top right corner
     hideZoom = true,
     hideBlizzardText = true,     -- Blizzard's zone header, replaced by ours
     zone = true, zoneSize = 12, zoneInside = true,
@@ -32,6 +33,7 @@ ns.defaults.profile.minimap = {
 }
 
 local SQUARE = "Interface\\BUTTONS\\WHITE8X8"
+local ROUND = "Textures\\MinimapMask"
 local function db() return MM:db() end
 
 local function ringArt()
@@ -54,8 +56,29 @@ end
 -- ============================================================
 -- Shape
 -- ============================================================
+-- Blizzard's minimap box (the cluster Edit Mode moves) is larger than the
+-- map, with a strip along the top for the zone header. Filling it puts the
+-- map in the box's top right corner at the box's full width, so a box
+-- pushed into the screen's corner puts the map there too. Blizzard lays
+-- the cluster out again after Edit Mode, so this is checked each tick.
+function MM:Fill()
+    local d = db()
+    local cl = rawget(_G, "MinimapCluster")
+    if not (d.fill and cl) or InCombatLockdown() then return end
+    local w, h = cl:GetSize()
+    if not (w and w > 0) then return end
+    local size = math.floor(math.min(w, h))
+    if math.abs((Minimap:GetWidth() or 0) - size) > 0.5 then Minimap:SetSize(size, size) end
+    local p, rel = Minimap:GetPoint(1)
+    if p ~= "TOPRIGHT" or rel ~= cl or Minimap:GetNumPoints() ~= 1 then
+        Minimap:ClearAllPoints()
+        Minimap:SetPoint("TOPRIGHT", cl, "TOPRIGHT", 0, 0)
+    end
+end
+
 function MM:Shape()
     local d = db()
+    self:Fill()
     if d.square then
         -- Modern rounds the square's corners with the same mask the icons use.
         local mask = ns:Modern() and ns.Media.roundmask or SQUARE
@@ -69,8 +92,14 @@ function MM:Shape()
             if w and w > 0 then c:SetSize(w, h) end
         end
     else
+        -- Round again, Blizzard's own mask and ring back, at once.
+        if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, ROUND) end
+        blob(1)
+        for _, t in ipairs(ringArt()) do t:SetAlpha(1) end
         self.chrome:Hide()
     end
+    -- The soft lift is square-cornered; it only belongs under the square map.
+    if self.chrome.wuiLift then self.chrome.wuiLift:SetShown(d.square) end
     local zoom = { Minimap.ZoomIn, Minimap.ZoomOut, rawget(_G, "MinimapZoomIn"), rawget(_G, "MinimapZoomOut") }
     for _, b in pairs(zoom) do if b then b:SetAlpha(d.hideZoom and 0 or 1); b:EnableMouse(not d.hideZoom) end end
     local zt = MinimapCluster and MinimapCluster.ZoneTextButton
@@ -148,7 +177,7 @@ function MM:BuildText()
     local elapsed = 0
     chrome:SetScript("OnUpdate", function(_, e)
         elapsed = elapsed + e
-        if elapsed >= 0.5 then elapsed = 0; MM:Tick() end
+        if elapsed >= 0.5 then elapsed = 0; MM:Tick(); MM:Fill() end
     end)
 end
 
@@ -264,8 +293,9 @@ end
 
 ns.Config:AddPage("minimap", "Minimap", function(L)
     L:DB(db)
-    L:Note("The minimap stays where Edit Mode puts it.")
-    L:Toggle("Square", "square", { tooltip = "Switching back to round takes a reload." })
+    L:Note("Move the minimap with Edit Mode.")
+    L:Toggle("Square", "square", { tooltip = "Off gives back Blizzard's round map and its ring." })
+    L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. Turning this off takes a reload." })
     L:Toggle("Hide the zoom buttons", "hideZoom")
     L:Toggle("Hide Blizzard's zone header and clock", "hideBlizzardText")
     L:Toggle("Gather addon buttons into a flyout", "collect", { tooltip = "Buttons made by LibDBIcon, which is most of them. Takes effect after a reload when switched off." })
