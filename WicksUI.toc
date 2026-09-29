@@ -42,6 +42,14 @@ Modules\Tooltip\Tooltip.lua
 Modules\DataTexts\DataTexts.lua
 Modules\DataTexts\DataBars.lua
 Modules\Extras\Extras.lua
+Modules\Comforts\Comforts.lua
+Modules\Comforts\Tooltips.lua
+Modules\Comforts\Loot.lua
+Modules\Comforts\Vendor.lua
+Modules\Comforts\Quests.lua
+Modules\Comforts\Client.lua
+Modules\Comforts\Glow.lua
+Modules\Comforts\Fixes.lua
 Modules\Skins\Skins.lua
 Modules\Skins\Panels.lua
 

@@ -513,7 +513,7 @@ end
 -- Confirm dialog
 -- ============================================================
 local confirm
-function W:Confirm(text, onYes, yesText)
+function W:Confirm(text, onYes, yesText, noText)
     if not confirm then
         confirm = CreateFrame("Frame", "WicksUIConfirm", UIParent)
         confirm:SetSize(340, 110)
@@ -533,6 +533,7 @@ function W:Confirm(text, onYes, yesText)
     end
     confirm.text:SetText(text)
     confirm.yes.text:SetText(yesText or "Yes")
+    confirm.no.text:SetText(noText or "Cancel")
     confirm.fn = onYes
     confirm:SetHeight(math.max(110, confirm.text:GetStringHeight() + 60))
     confirm:Show()
