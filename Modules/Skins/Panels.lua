@@ -379,7 +379,11 @@ local function styleBar(sb)
     local r, g, b = sb:GetStatusBarColor()
     sb:SetStatusBarTexture(ns.Media:Statusbar())
     -- Bars whose colour was in their art come out white on a flat texture.
-    if not r or (r > 0.95 and g > 0.95 and b > 0.95) then r, g, b = C.fel[1], C.fel[2], C.fel[3] end
+    -- They get the accent, deepened so the numbers Blizzard writes on the
+    -- bar in white still read against it.
+    if not r or (r > 0.95 and g > 0.95 and b > 0.95) then
+        r, g, b = C.fel[1] * 0.5, C.fel[2] * 0.5, C.fel[3] * 0.5
+    end
     sb:SetStatusBarColor(r, g, b)
     backdrop(sb, "Shadow", false, 1)
 end
