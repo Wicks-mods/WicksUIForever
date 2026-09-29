@@ -313,6 +313,22 @@ local function isRule(atlas)
     return false
 end
 
+-- Text Blizzard inks for parchment inside the string itself (a quest title
+-- in gossip is "|cff000000Name|r"): a colour code beats SetTextColor, so a
+-- dark code at the front is swapped for our text colour.
+local function lum(r, g, b) return r * 0.3 + g * 0.59 + b * 0.11 end
+local function lightenInline(fs)
+    local t = fs:GetText()
+    if type(t) ~= "string" or (issecretvalue and issecretvalue(t)) or t:sub(1, 2) ~= "|c" then return end
+    local hex = t:match("^|c%x%x(%x%x%x%x%x%x)")
+    if not hex then return end
+    local r, g, b = tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
+    if lum(r, g, b) >= 0.35 then return end
+    local c = C.text
+    local ours = ("|cff%02x%02x%02x"):format(math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
+    fs:SetText(ours .. t:sub(11))
+end
+
 local function recolorText(frame)
     if not frame.GetRegions then return end
     for _, r in ipairs({ frame:GetRegions() }) do
@@ -324,6 +340,7 @@ local function recolorText(frame)
             local cr, cg, cb = r:GetTextColor()
             local darkInk = cr and (cr * 0.3 + cg * 0.59 + cb * 0.11) < 0.35
             if isGold(r) or darkInk then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+            lightenInline(r)
         end
     end
 end
@@ -2300,11 +2317,16 @@ for _, name in ipairs({ "GossipFrame", "QuestFrame", "QuestLogPopupDetailFrame",
         fullSkin(frame, function(f)
             local host = f.Inset or f
             if host:IsVisible() then
+                local c
                 if host == f then
-                    card(f, "wuiContent", "TOPLEFT", f, "BOTTOMRIGHT", f, 8, -62, -8, 34)
+                    c = card(f, "wuiContent", "TOPLEFT", f, "BOTTOMRIGHT", f, 8, -62, -8, 34)
                 else
-                    card(host, "wuiContent", "TOPLEFT", host, "BOTTOMRIGHT", host, 4, -4, -4, 4)
+                    c = card(host, "wuiContent", "TOPLEFT", host, "BOTTOMRIGHT", host, 4, -4, -4, 4)
                 end
+                -- Above the window's own panel (which sits a level under the
+                -- window), under the text and buttons.
+                local want = f:GetFrameLevel()
+                if c:GetFrameLevel() ~= want then c:SetFrameLevel(want) end
             end
         end)
         return "generic"
