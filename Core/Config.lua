@@ -321,10 +321,13 @@ local function makeScroll(parent)
     thumb:RegisterForDrag("LeftButton")
 
     local function layout()
+        local th = track:GetHeight()
+        -- Before the window is first drawn its sizes read as nothing; the
+        -- OnShow below lays it out again once they are real.
+        if not th or th <= 0 or sf:GetHeight() <= 0 then return end
         local max = maxScroll()
         if max <= 0 then track:Hide(); return end
         track:Show()
-        local th = track:GetHeight()
         local h = math.max(24, th * sf:GetHeight() / child:GetHeight())
         thumb:SetHeight(h)
         local y = (th - h) * (sf:GetVerticalScroll() / max)
@@ -356,6 +359,7 @@ local function makeScroll(parent)
         layout()
     end)
     sf:SetScript("OnSizeChanged", layout)
+    sf:SetScript("OnShow", function() C_Timer.After(0, layout) end)
     child:SetScript("OnSizeChanged", layout)
     sf.child = child
     return sf
@@ -473,7 +477,7 @@ function Config:Show(key)
     page.content:Show()
     scroll.child:SetHeight(page.content:GetHeight())
     scroll:SetVerticalScroll(0)
-    if scroll.layoutBar then scroll.layoutBar() end
+    if scroll.layoutBar then C_Timer.After(0, scroll.layoutBar) end
     self:RefreshPage(page)
     drawNav()
     frame:Show()
