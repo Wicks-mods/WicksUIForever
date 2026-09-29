@@ -160,7 +160,14 @@ function I:Show(text)
         self.win = win
     end
     win.eb:SetText(text)
+    win.eb:ClearFocus()
     win:Show()
-    win.eb:SetFocus()
-    win.eb:HighlightText()
+    -- Focus waits a moment: run from a keybound macro, the key's own
+    -- character would otherwise land in the box and replace the dump.
+    C_Timer.After(0.15, function()
+        if not win:IsShown() then return end
+        win.eb:SetText(text)
+        win.eb:SetFocus()
+        win.eb:HighlightText()
+    end)
 end

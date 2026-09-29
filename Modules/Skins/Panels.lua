@@ -692,8 +692,22 @@ PS.SPECIAL.WorldMapFrame = function(frame)
             acc = 0
             styleQuestHeaders(ql, 1)
         end)
-        -- The quest log as a black card beside the map.
+        -- The quest log as a black card beside the map. Its gold frame, the
+        -- filigree on top and the gradient along the bottom go; the search
+        -- box and the quest count become grey pills.
         card(ql, "wuiLog", "TOPLEFT", ql, "BOTTOMRIGHT", ql, 2, -2, -2, 4)
+        local qsf = rawget(_G, "QuestScrollFrame")
+        if qsf then
+            if qsf.BorderFrame then fadeRegions(qsf.BorderFrame) end
+            fade(qsf.Edge); fade(qsf.Background)
+            if qsf.SearchBox then styleEditBox(qsf.SearchBox) end
+            if qsf.SettingsDropdown and qsf.SettingsDropdown.Icon then qsf.SettingsDropdown.Icon:SetDesaturated(true) end
+        end
+        local count = rawget(_G, "QuestLogCount")
+        if count then
+            fade(count.Left); fade(count.Right); fade(count.Middle)
+            backdrop(count, "Shadow", false, 0)
+        end
     end
     -- The full-skin look: the window is the grey panel, the breadcrumb bar
     -- a black card with its crumbs as grey pills, and the gamepad-era
@@ -716,8 +730,25 @@ PS.SPECIAL.WorldMapFrame = function(frame)
     end
     if mm and not done[mm] then
         done[mm] = true
-        local bd = backdrop(mm, "Default", false, -2)
-        ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+        for key, mark in pairs({ MaximizeButton = "+", MinimizeButton = "-" }) do
+            local b = mm[key]
+            if b then
+                for _, r in ipairs({ b:GetRegions() }) do
+                    if r:GetObjectType() == "Texture" then r:SetAlpha(0) end
+                end
+                for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
+                    local t = b[get] and b[get](b)
+                    if t then t:SetAlpha(0) end
+                end
+                local fs = ns:CreateText(b, 14, "CENTER", "NONE")
+                fs:SetPoint("CENTER", 0, 1)
+                fs:SetText(mark)
+                local h = b:CreateTexture(nil, "HIGHLIGHT")
+                h:SetPoint("TOPLEFT", 2, -2)
+                h:SetPoint("BOTTOMRIGHT", -2, 2)
+                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
+            end
+        end
     end
     -- The quest log toggle at the map's corner: its corner shadow goes, its
     -- art greys on a black tile.
