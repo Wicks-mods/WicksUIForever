@@ -75,7 +75,8 @@ local function presetFor(key)
     return ns:Modern() and PRESETS.modern or PRESETS.wick
 end
 
--- Each style keeps the player's own sizes, and the minimap's shape (round
+-- Each style keeps the player's own sizes, frame positions, health colours
+-- and the minimap's shape (round
 -- suits one style, square the other): leaving a style saves what it had
 -- (general settings are per profile), and coming back to it puts them
 -- back. The preset is only for a style this profile has never been in, or
@@ -90,6 +91,12 @@ local function takeSizes(prof)
         out.units[key] = { width = u.width, height = u.height }
     end
     out.healthColor = prof.unitframes and prof.unitframes.healthColor
+    -- Where the frames sit: a style's shadows and borders can need a frame
+    -- a few pixels off where another style had it.
+    if prof.movers then
+        out.movers = {}
+        for name, point in pairs(prof.movers) do out.movers[name] = point end
+    end
     local mm = prof.minimap
     if mm then
         out.minimap = {}
@@ -108,6 +115,10 @@ local function putSizes(prof, saved)
         if u then u.width, u.height = s.width or u.width, s.height or u.height end
     end
     if saved.healthColor and prof.unitframes then prof.unitframes.healthColor = saved.healthColor end
+    if saved.movers and prof.movers then
+        for name in pairs(prof.movers) do prof.movers[name] = nil end
+        for name, point in pairs(saved.movers) do prof.movers[name] = point end
+    end
     if saved.minimap and prof.minimap then
         for _, k in ipairs(MINIMAP_KEYS) do
             if saved.minimap[k] ~= nil then prof.minimap[k] = saved.minimap[k] end
@@ -346,7 +357,7 @@ ns.Config:AddPage("general", "General", function(L)
                 ReloadUI()
             end, "Reload")
         end,
-        tooltip = "The shape everything is drawn in, across the suite. Each style keeps its own button sizes, frame heights and minimap shape.",
+        tooltip = "The shape everything is drawn in, across the suite. Each style keeps its own frame positions, button sizes, frame heights, health colours and minimap shape.",
     })
     L:Dropdown("Class colours", "classColorSet", {
         { "client", "The game's own" }, { "classic", "Classic era" },
