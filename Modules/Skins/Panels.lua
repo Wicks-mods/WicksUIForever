@@ -2211,7 +2211,8 @@ local function openMenus()
         if host and host.GetChildren and not seen[host] then
             seen[host] = true
             for _, f in ipairs({ host:GetChildren() }) do
-                if f ~= m and f:IsShown() and f:GetFrameStrata() == strata and isMenu(f) then styleMenu(f) end
+                if f ~= m and not (f.IsForbidden and f:IsForbidden()) and f:IsShown()
+                    and f:GetFrameStrata() == strata and isMenu(f) then styleMenu(f) end
             end
         end
     end
