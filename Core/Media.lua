@@ -25,6 +25,19 @@ M.fonts = {
     ["Skurri"]       = "Fonts\\SKURRI.TTF",
 }
 
+-- The faces WickCore bundles for its looks (SIL OFL 1.1, licences in
+-- WickCore/Media/Fonts), offered in every font list.
+do
+    local WF = "Interface\\AddOns\\WickCore\\Media\\Fonts\\"
+    for name, file in pairs({
+        ["Anton"] = "Anton-Regular", ["Archivo Narrow"] = "ArchivoNarrow-Bold",
+        ["Barlow Condensed"] = "BarlowCondensed-SemiBold", ["Cormorant"] = "CormorantGaramond-SemiBold",
+        ["Cormorant SC"] = "CormorantSC-SemiBold", ["Exo 2"] = "Exo2-Medium", ["Italiana"] = "Italiana-Regular",
+        ["Michroma"] = "Michroma-Regular", ["Rajdhani"] = "Rajdhani-SemiBold",
+        ["Saira Semi Condensed"] = "SairaSemiCondensed-Medium", ["Tektur"] = "Tektur-Medium",
+    }) do M.fonts[name] = WF .. file .. ".ttf" end
+end
+
 M.statusbars = {
     ["Wick Flat"]    = "Interface\\Buttons\\WHITE8X8",
     ["Wick Shaded"]  = "Interface\\TargetingFrame\\UI-StatusBar",
