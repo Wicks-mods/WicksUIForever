@@ -304,19 +304,33 @@ end
 -- own back), so the countdown's text is set directly and looked at again
 -- every frame: our font, sized to the icon.
 local countdowns = setmetatable({}, { __mode = "k" })
+local auraButtons = setmetatable({}, { __mode = "k" })
+local function sizeText(fs, path, size)
+    local f, sz = fs:GetFont()
+    if f ~= path or not sz or math.abs(sz - size) > 0.5 then
+        fs:SetFont(path, size, "OUTLINE")
+        fs:SetShadowOffset(0, 0)
+    end
+end
+-- Every piece of text on an aura button, and on the frames just inside it
+-- (the cooldown's countdown, the container's own time), in our font at the
+-- icon's size: whichever of them the client draws the time with.
+local function sizeAll(frame, path, size, depth)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:GetObjectType() == "FontString" then sizeText(r, path, size) end
+    end
+    if depth < 2 then
+        for _, c in ipairs({ frame:GetChildren() }) do sizeAll(c, path, size, depth + 1) end
+    end
+end
 local cdTicker = CreateFrame("Frame")
 cdTicker:SetScript("OnUpdate", function()
     local path = ns.Media:Font()
     for cd, size in pairs(countdowns) do
         local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
-        if fs then
-            local f, sz = fs:GetFont()
-            if f ~= path or not sz or math.abs(sz - size) > 0.5 then
-                fs:SetFont(path, size, "OUTLINE")
-                fs:SetShadowOffset(0, 0)
-            end
-        end
+        if fs then sizeText(fs, path, size) end
     end
+    for b, size in pairs(auraButtons) do sizeAll(b, path, size, 0) end
 end)
 
 function ns:AuraCountdown(button, iconSize, show)
@@ -328,6 +342,7 @@ function ns:AuraCountdown(button, iconSize, show)
     local size = math.max(8, math.floor((iconSize or 24) * 0.42 + 0.5))
     if cd.SetCountdownFont then pcall(cd.SetCountdownFont, cd, countdownFont(size):GetName()) end
     countdowns[cd] = size
+    auraButtons[button] = size
 end
 
 function ns:QuietAuraCooldown(button)
