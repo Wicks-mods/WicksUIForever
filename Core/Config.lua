@@ -67,9 +67,10 @@ local function newRow(L)
 end
 
 -- Place a control. span = 2 takes the whole row.
-function Layout:Place(f, span)
+function Layout:Place(f, span, key)
     local page = self.page
     f.onChange = function() Config:Changed(page) end
+    if self.copy and type(key) == "string" and not self.copy.skip[key] then self.copy.hover[f] = key end
     if span == 2 then
         newRow(self)
         f:SetPoint("TOPLEFT", self.content, "TOPLEFT", PAD, self.y)
@@ -105,38 +106,38 @@ function Layout:Toggle(text, key, opts)
     local get = opts.get or getter(self, key)
     local set = opts.setter or setter(self, key, opts.set)
     return self:Place(W:Check(self.content, text, function() return get() and true or false end, set,
-        { width = COL_W, disabled = opts.disabled, tooltip = opts.tooltip }), opts.span)
+        { width = COL_W, disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:Slider(text, key, min, max, step, opts)
     opts = opts or {}
     return self:Place(W:Slider(self.content, text, min, max, step, opts.get or getter(self, key),
-        opts.setter or setter(self, key, opts.set), COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span)
+        opts.setter or setter(self, key, opts.set), COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:Dropdown(text, key, values, opts)
     opts = opts or {}
     return self:Place(W:Dropdown(self.content, text, values, opts.get or getter(self, key),
-        opts.setter or setter(self, key, opts.set), COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span)
+        opts.setter or setter(self, key, opts.set), COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:Color(text, key, opts)
     opts = opts or {}
     return self:Place(W:Color(self.content, text, opts.get or getter(self, key),
-        opts.setter or setter(self, key, opts.set), { width = COL_W, alpha = opts.alpha, disabled = opts.disabled, tooltip = opts.tooltip }), opts.span)
+        opts.setter or setter(self, key, opts.set), { width = COL_W, alpha = opts.alpha, disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:Input(text, key, opts)
     opts = opts or {}
     return self:Place(W:Input(self.content, text, opts.get or getter(self, key),
-        opts.setter or setter(self, key, opts.set), opts.width or COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span)
+        opts.setter or setter(self, key, opts.set), opts.width or COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:TextArea(text, key, opts)
     opts = opts or {}
     return self:Place(W:TextArea(self.content, text, opts.get or getter(self, key),
         opts.setter or setter(self, key, opts.set), COL_W * 2 + 24, opts.height or 60,
-        { disabled = opts.disabled, tooltip = opts.tooltip, default = opts.default }), 2)
+        { disabled = opts.disabled, tooltip = opts.tooltip, default = opts.default }), 2, key)
 end
 
 function Layout:Button(text, onClick, opts)
@@ -153,6 +154,104 @@ function Layout:Button(text, onClick, opts)
     b:SetPoint("LEFT")
     holder.Refresh = function() b:Refresh() end
     return self:Place(holder, opts.span)
+end
+
+-- Copying settings from a sibling (another bar, another unit):
+--
+--   L:CopyFrom({
+--       sources = function() return { { id, "Bar 2" }, ... } end,
+--       table   = function(id) return the settings table for id end,
+--       skip    = { paging = true },   -- keys never copied
+--   })
+--
+-- Called before the controls. A "Copy all from" picker sits at the top
+-- right of the page, level with its title. Each setting shows a small
+-- "copy from" at the end of its label while the pointer is over it, and
+-- nowhere else, so the page reads as it did.
+local function deep(v)
+    if type(v) ~= "table" then return v end
+    local out = {}
+    for k, x in pairs(v) do out[k] = deep(x) end
+    return out
+end
+
+function Layout:CopyFrom(opts)
+    local L, page = self, self.page
+    self.copy = { skip = opts.skip or {}, hover = {} }
+    local target = L.db
+
+    local function copyKeys(id, only)
+        local from, to = opts.table(id), target and target()
+        if not (from and to) then return end
+        if only then
+            to[only] = deep(from[only])
+        else
+            for k, v in pairs(from) do
+                if not L.copy.skip[k] then to[k] = deep(v) end
+            end
+        end
+        Config:Changed(page)
+    end
+
+    -- The page-wide picker, level with the title.
+    local b = CreateFrame("Button", nil, self.content)
+    b:SetSize(140, 22)
+    b:SetPoint("TOPRIGHT", self.content, "TOPLEFT", PAD + COL_W * 2 + 24, -PAD + 2)
+    ns:SetTemplate(b, "Shadow")
+    b.value = ns:CreateText(b, 12, "LEFT", "NONE")
+    b.value:SetPoint("LEFT", 6, 0)
+    b.value:SetText("Copy all from")
+    local arrow = ns:CreateText(b, 12, "RIGHT", "NONE")
+    arrow:SetPoint("RIGHT", -6, 0)
+    arrow:SetText("v")
+    arrow:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+    b:SetScript("OnEnter", function() ns:SetBorderColor(b, "fel") end)
+    b:SetScript("OnLeave", function() ns:SetBorderColor(b, "border") end)
+    b:SetScript("OnClick", function()
+        W.OpenMenu(b, opts.sources, nil, function(id)
+            local name = tostring(id)
+            for _, s in ipairs(opts.sources()) do if s[1] == id then name = s[2] end end
+            W:Confirm(("Copy every setting from %s onto %s? Where it sits, and what only it should have, stay as they are."):format(name, page.title),
+                function() copyKeys(id) end, "Copy")
+        end)
+    end)
+
+    -- One "copy from" link, moved to whichever setting is under the pointer.
+    local link = CreateFrame("Button", nil, self.content)
+    link:SetSize(64, 14)
+    link:SetFrameLevel(self.content:GetFrameLevel() + 20)
+    link.text = ns:CreateText(link, 11, "RIGHT", "NONE")
+    link.text:SetPoint("RIGHT")
+    link.text:SetText("copy from")
+    link.text:SetTextColor(C.muted[1], C.muted[2], C.muted[3])
+    link:SetScript("OnEnter", function() link.text:SetTextColor(C.fel[1], C.fel[2], C.fel[3]) end)
+    link:SetScript("OnLeave", function() link.text:SetTextColor(C.muted[1], C.muted[2], C.muted[3]) end)
+    link:SetScript("OnClick", function()
+        local key = link.key
+        if key then W.OpenMenu(link, opts.sources, nil, function(id) copyKeys(id, key) end) end
+    end)
+    link:Hide()
+    local watch = CreateFrame("Frame", nil, self.content)
+    watch:SetScript("OnUpdate", function()
+        local menu = rawget(_G, "WicksUIMenu")
+        if menu and menu:IsShown() and menu.owner == link then return end
+        if link:IsShown() and link:IsMouseOver() then return end
+        local over
+        for f, key in pairs(L.copy.hover) do
+            if f:IsVisible() and not f.disabled and f:IsMouseOver(2, 0, 0, 0) then over = f; break end
+        end
+        if over ~= link.owner then
+            link.owner = over
+            if over then
+                link.key = L.copy.hover[over]
+                link:ClearAllPoints()
+                link:SetPoint("TOPRIGHT", over, "TOPRIGHT", 0, 1)
+                link:Show()
+            else
+                link:Hide()
+            end
+        end
+    end)
 end
 
 -- Any frame the page builds by hand; it gets the full row.

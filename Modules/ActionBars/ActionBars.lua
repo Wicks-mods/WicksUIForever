@@ -787,6 +787,19 @@ end, { onChange = onChange, order = 10 })
 local function barPage(id)
     ns.Config:AddPage("actionbars.bar" .. id, AB:Label(id), function(L)
         L:DB(function() return AB:db().bars[id] end)
+        -- Settings copied from another bar. The page it shows and whether
+        -- it is on are this bar's own.
+        L:CopyFrom({
+            sources = function()
+                local out = {}
+                for _, other in ipairs(AB.BAR_IDS) do
+                    if other ~= id then out[#out + 1] = { other, AB:Label(other) } end
+                end
+                return out
+            end,
+            table = function(other) return AB:db().bars[other] end,
+            skip = { enable = true, paging = true },
+        })
         if AB.GAME_NUMBER[id] then
             L:Note(("The game's Action Bar %d: the same spells and the same keybinds. It shows action page %d."):format(AB.GAME_NUMBER[id], id))
         elseif id >= 7 and id <= 10 then

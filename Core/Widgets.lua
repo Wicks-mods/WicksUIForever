@@ -271,6 +271,7 @@ local function openMenu(owner, values, current, onPick)
     menu:Show()
 end
 W.CloseMenu = closeMenu
+W.OpenMenu = openMenu
 
 function W:Dropdown(parent, text, values, get, set, width, opts)
     local f = CreateFrame("Frame", nil, parent)
