@@ -162,6 +162,27 @@ local function box(cf)
 end
 CH.ChatBox = box
 
+-- The panel takes the box's sides and bottom, so no gap shows beside the
+-- chat, but its top stays just over the tabs: the box's own padding above
+-- them was empty space.
+function CH:FitPanel()
+    local p, cf = self.panel, _G.ChatFrame1
+    if not (p and cf) then return end
+    local l, r, bt = 6, 6, 8
+    local sel = box(cf)
+    if sel then
+        l = cf:GetLeft() - sel:GetLeft()
+        r = sel:GetRight() - cf:GetRight()
+        bt = cf:GetBottom() - sel:GetBottom()
+    end
+    local key = ("%.1f,%.1f,%.1f"):format(l, r, bt)
+    if key == self.fitKey then return end
+    self.fitKey = key
+    p:ClearAllPoints()
+    p:SetPoint("TOPLEFT", cf, "TOPLEFT", -l, 30)
+    p:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", r, -bt)
+end
+
 function CH:Align()
     local d = db()
     if not d.alignToInfo or InCombatLockdown() then return end
@@ -195,7 +216,7 @@ holder:SetScript("OnUpdate", function(_, e)
     holdAcc = holdAcc + e
     if holdAcc < 0.25 then return end
     holdAcc = 0
-    if CH.initialized and db().enable then CH:Align() end
+    if CH.initialized and db().enable then CH:Align(); CH:FitPanel() end
 end)
 function CH:Panel()
     local p = self.panel
@@ -214,13 +235,7 @@ function CH:Panel()
     local cf = _G.ChatFrame1
     self:Align()
     p:ClearAllPoints()
-    local sel = self.ChatBox(cf)
-    if sel then
-        p:SetAllPoints(sel)
-    else
-        p:SetPoint("TOPLEFT", cf, "TOPLEFT", -6, 30)
-        p:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", 6, -8)
-    end
+    self:FitPanel()
     local d = db()
     p.wuiBG:SetAlpha(d.panelAlpha / 0.65)
     -- The damage meter's panel follows this one.
