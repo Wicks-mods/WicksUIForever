@@ -694,6 +694,17 @@ function UF:Configure(self)
             fs:Hide()
         end
     end
+    -- In the row above the bar the name stops where the health text starts,
+    -- whatever the font: its right edge is tied to that text's left edge,
+    -- which the client sizes to the text, secret or not, so a wide face
+    -- (Frost's) shortens the name instead of running it into the numbers.
+    local lt, rt = self.wuiTexts.left, self.wuiTexts.right
+    local ld, rd = d.texts and d.texts.left, d.texts and d.texts.right
+    if modern and lt and rt and lt:IsShown() and rt:IsShown() and ld and rd
+        and not ld.point:find("RIGHT") and not (rd.point or ""):find("LEFT") then
+        lt:SetWidth(0)
+        lt:SetPoint("BOTTOMRIGHT", rt, "BOTTOMLEFT", -6, 0)
+    end
 
     -- Indicators
     local icons = self.wuiIcons
