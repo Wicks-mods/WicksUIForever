@@ -647,6 +647,32 @@ end
 
 -- The full world map. Its border, title and close button live on a
 -- BorderFrame of their own; the quest log beside it has its own art.
+-- The maximise and minimise buttons some windows carry: Blizzard's red
+-- art gives way to a plain + and -, like our x.
+local function styleMaxMin(mm)
+    if not mm or done[mm] then return end
+    done[mm] = true
+        for key, mark in pairs({ MaximizeButton = "+", MinimizeButton = "-" }) do
+            local b = mm[key]
+            if b then
+                for _, r in ipairs({ b:GetRegions() }) do
+                    if r:GetObjectType() == "Texture" then r:SetAlpha(0) end
+                end
+                for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
+                    local t = b[get] and b[get](b)
+                    if t then t:SetAlpha(0) end
+                end
+                local fs = ns:CreateText(b, 14, "CENTER", "NONE")
+                fs:SetPoint("CENTER", 0, 1)
+                fs:SetText(mark)
+                local h = b:CreateTexture(nil, "HIGHLIGHT")
+                h:SetPoint("TOPLEFT", 2, -2)
+                h:SetPoint("BOTTOMRIGHT", -2, 2)
+                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
+            end
+        end
+end
+
 PS.SPECIAL.WorldMapFrame = function(frame)
     local bf = frame.BorderFrame
     fadeRegions(frame)
@@ -728,28 +754,7 @@ PS.SPECIAL.WorldMapFrame = function(frame)
             end
         end
     end
-    if mm and not done[mm] then
-        done[mm] = true
-        for key, mark in pairs({ MaximizeButton = "+", MinimizeButton = "-" }) do
-            local b = mm[key]
-            if b then
-                for _, r in ipairs({ b:GetRegions() }) do
-                    if r:GetObjectType() == "Texture" then r:SetAlpha(0) end
-                end
-                for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
-                    local t = b[get] and b[get](b)
-                    if t then t:SetAlpha(0) end
-                end
-                local fs = ns:CreateText(b, 14, "CENTER", "NONE")
-                fs:SetPoint("CENTER", 0, 1)
-                fs:SetText(mark)
-                local h = b:CreateTexture(nil, "HIGHLIGHT")
-                h:SetPoint("TOPLEFT", 2, -2)
-                h:SetPoint("BOTTOMRIGHT", -2, 2)
-                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
-            end
-        end
-    end
+    styleMaxMin(mm)
     -- The quest log toggle at the map's corner: its corner shadow goes, its
     -- art greys on a black tile.
     local spt = frame.SidePanelToggle
@@ -1331,8 +1336,13 @@ local function flatBar(sb)
 end
 
 local function flatIcon(b, icon)
+    local checked = b.GetCheckedTexture and b:GetCheckedTexture()
+    local e = extras[b]
     for _, r in ipairs({ b:GetRegions() }) do
-        if r:GetObjectType() == "Texture" and r ~= icon and r:GetDrawLayer() ~= "HIGHLIGHT" then r:SetAlpha(0) end
+        if r:GetObjectType() == "Texture" and r ~= icon and r ~= checked and r:GetDrawLayer() ~= "HIGHLIGHT"
+            and not (e and (e.hover == r or e.ring == r)) and r:GetAlpha() > 0 then
+            r:SetAlpha(0)
+        end
     end
     if not done[b] then
         done[b] = true
@@ -1656,6 +1666,28 @@ PS.SPECIAL.OpenMailFrame = function(frame)
             for _, tag in ipairs({ "P", "H1", "H2", "H3" }) do body:SetTextColor(tag, c[1], c[2], c[3]) end
         else
             body:SetTextColor(c[1], c[2], c[3])
+        end
+    end)
+    return "generic"
+end
+
+-- Guild & Communities: the full skin. The community list's blue backing
+-- becomes a card (the walk does that from its Bg) and its gold filigree
+-- goes; the chat and the member list get cards of their own, the guild
+-- emblem watermark and the tabard portrait go.
+PS.SPECIAL.CommunitiesFrame = function(frame)
+    fullSkin(frame, function(f)
+        styleMaxMin(f.MaximizeMinimizeFrame)
+        local list = f.CommunitiesList
+        if list and list.FilligreeOverlay then fadeRegions(list.FilligreeOverlay) end
+        local members = f.MemberList
+        if members and members:IsVisible() then
+            if members.WatermarkFrame then fadeRegions(members.WatermarkFrame) end
+            card(members, "wuiCard", "TOPLEFT", members, "BOTTOMRIGHT", members, -3, 3, 3, -3)
+        end
+        local chat = f.Chat
+        if chat and chat:IsVisible() then
+            card(chat, "wuiCard", "TOPLEFT", chat, "BOTTOMRIGHT", chat, -6, 4, 6, -4)
         end
     end)
     return "generic"
