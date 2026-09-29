@@ -1599,6 +1599,13 @@ local function flatRankBar(bar)
     end
     local width
     local l, r = fill:GetLeft(), bar:GetRight()
+    -- The crafting page puts its link-profession button at the bar's right
+    -- end; the bar stops short of it.
+    local host = bar:GetParent()
+    local link = host and host.LinkButton
+    if r and link and link:IsShown() and link:GetLeft() and link:GetLeft() < r then
+        r = link:GetLeft() - 4 - PAD * 2
+    end
     if l and r and r > l then
         width = r - l + PAD * 2
         -- A slim fill under the text row, as on the unit frames; the row
