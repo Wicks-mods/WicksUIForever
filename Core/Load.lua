@@ -186,7 +186,7 @@ A:RegisterSlash(function(_, msg)
         if ns.Keybind then ns.Keybind:Toggle() end
     elseif cmd == "reset" then
         W:Confirm("Put every frame back where it started?", function() ns.Movers:ResetAll() end, "Reset")
-    elseif cmd == "inspect" then
+    elseif cmd:match("^inspect") then
         if ns.Inspect then ns.Inspect:Run((msg or ""):match("^%S+%s+(%S+)")) end
     elseif cmd == "skin" then
         if ns.PanelSkins then ns.PanelSkins:SkinUnderMouse() end

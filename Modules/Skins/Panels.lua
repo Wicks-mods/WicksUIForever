@@ -1691,19 +1691,26 @@ local function styleSideTab(tab)
         bd:ClearAllPoints()
         bd:SetPoint("LEFT", tab, "LEFT", 1, 0)
         bd:SetSize(38, 38)
-        if icon then
-            if tab.Mask and icon.RemoveMaskTexture then icon:RemoveMaskTexture(tab.Mask) end
-            icon:ClearAllPoints()
-            icon:SetPoint("CENTER", bd, "CENTER", 0, 0)
-            icon:SetSize(28, 28)
-            ns:CropIcon(icon)
-        end
+        e.tile = bd
+        if icon then ns:CropIcon(icon) end
         local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
         ring:SetTexture(ns.Media.ring)
         if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         ring:SetAllPoints(bd)
         e.ring = ring
+    end
+    -- Blizzard sets the icon back to its own size, place and tab-shaped
+    -- mask when a tab is chosen, so they are put right on every pass.
+    if icon and e.tile then
+        if tab.Mask and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, tab.Mask) end
+        local w = icon:GetWidth()
+        if not w or math.abs(w - 28) > 0.5 then icon:SetSize(28, 28) end
+        local p, rel = icon:GetPoint(1)
+        if p ~= "CENTER" or rel ~= e.tile or icon:GetNumPoints() ~= 1 then
+            icon:ClearAllPoints()
+            icon:SetPoint("CENTER", e.tile, "CENTER", 0, 0)
+        end
     end
     local sel = tab.SelectedTexture
     if sel then sel:SetAlpha(0) end
