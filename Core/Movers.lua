@@ -262,7 +262,9 @@ function ns:CreateMover(frame, name, label, default, opts)
     m.label = label or name
     m.text:SetText(m.label)
     m.target = frame
-    m.default = default or "CENTER,UIParent,CENTER,0,0"
+    -- The shipped layout's place (Core/Layout.lua) first, then the module's.
+    local shipped = ns.defaults.profile.movers
+    m.default = (shipped and shipped[name]) or default or "CENTER,UIParent,CENTER,0,0"
     m.config = opts.config
     m.groups = {}
     for _, g in ipairs(ns:List(opts.groups or "")) do

@@ -47,5 +47,6 @@ Modules\Skins\Panels.lua
 
 Core\Install.lua
 Core\Inspect.lua
+Core\Layout.lua
 
 Core\Load.lua
