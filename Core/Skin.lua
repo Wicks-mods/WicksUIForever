@@ -103,6 +103,8 @@ local function modernTemplate(f, template, opts)
         r:Hide()
         f.wuiRing = r
     end
+    -- A look's sheen over panels (Frost): windows lit from above.
+    if t.bg and template ~= "Shadow" and Chrome.Sheen then Chrome:Sheen(f) end
     f.wuiBorder = f.wuiBorder or {}
     f.wuiTemplate = template or "Default"
     f.wuiModern = true
