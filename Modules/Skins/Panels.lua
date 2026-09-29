@@ -700,8 +700,19 @@ local function hasText(b)
     return t ~= nil and t ~= ""
 end
 
+-- Frames that are not Blizzard's and must be left as their addon drew them:
+-- an add-on's page in the Settings window (the canvas it is shown on), and
+-- any Wick panel (WickCore marks those).
+local function notOurs(frame)
+    if frame.wickPanel then return true end
+    local sp = rawget(_G, "SettingsPanel")
+    local canvas = sp and sp.Container and sp.Container.SettingsCanvas
+    return canvas ~= nil and frame == canvas
+end
+PS.notOurs = notOurs
+
 local function scanButtons(frame, depth)
-    if depth > 7 or not frame.GetChildren then return end
+    if depth > 7 or not frame.GetChildren or notOurs(frame) then return end
     recolorText(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
         local kind = child:GetObjectType()
@@ -795,7 +806,7 @@ local function deepStrip(frame, depth, limit)
     if depth > (limit or 2) or not frame.GetChildren then return end
     for _, child in ipairs({ frame:GetChildren() }) do
         local kind = child:GetObjectType()
-        if not CONTENT[kind] and not child.ScrollTarget and not child.ScrollBar then
+        if not CONTENT[kind] and not child.ScrollTarget and not child.ScrollBar and not notOurs(child) then
             fadeRegions(child)
             fade(child.NineSlice)
             deepStrip(child, depth + 1, limit)
@@ -1877,7 +1888,7 @@ local function styleItemButton(b)
 end
 
 local function walkProfessions(frame, depth, root)
-    if depth > 8 or not frame.GetChildren then return end
+    if depth > 8 or not frame.GetChildren or notOurs(frame) then return end
     root = root or frame
     local fk = frame:GetObjectType()
     if fk == "Frame" or fk == "ScrollFrame" then stripArt(frame, root) end
