@@ -1028,7 +1028,46 @@ PS.SPECIAL.ProfessionsFrame = function(frame)
     return "generic"
 end
 
+-- The talents tab. The painting behind the trees (ClassBackground) stays,
+-- as Wick wants; the brown frame around it (BackgroundBorder, with the gold
+-- bar across the top and the edge along the bottom) goes, the tree headers
+-- lose their scrollwork and ring, and the Primary and Secondary tabs go
+-- flat. Headers are pooled, so this runs while the tab is open.
+local function styleTalents(tf)
+    fade(tf.BackgroundBorder)
+    local ts = tf.TabSystem
+    if ts and type(ts.tabs) == "table" then
+        for _, t in ipairs(ts.tabs) do styleTab(t) end
+    end
+    for _, child in ipairs({ tf:GetChildren() }) do
+        if child.Name and child.Icon and child.Text and child:IsShown() then
+            for _, r in ipairs({ child:GetRegions() }) do
+                if r:GetObjectType() == "Texture" and r ~= child.Icon then r:SetAlpha(0) end
+            end
+            if not done[child] then
+                done[child] = true
+                ns:CropIcon(child.Icon)
+                local bd = backdrop(child, "Default", false, 0)
+                bd:ClearAllPoints()
+                bd:SetPoint("TOPLEFT", child.Icon, "TOPLEFT", -2, 2)
+                bd:SetPoint("BOTTOMRIGHT", child.Icon, "BOTTOMRIGHT", 2, -2)
+            end
+        end
+    end
+end
+
 PS.SPECIAL.PlayerSpellsFrame = function(frame)
+    local tf = frame.TalentsFrame
+    if tf then
+        local poll = CreateFrame("Frame", nil, tf)
+        local acc = 0.5
+        poll:SetScript("OnUpdate", function(_, e)
+            acc = acc + e
+            if acc < 0.5 then return end
+            acc = 0
+            styleTalents(tf)
+        end)
+    end
     skinSpellBook(frame.SpellBookFrame, frame)
     return "generic"
 end
