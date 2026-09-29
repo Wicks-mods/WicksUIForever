@@ -366,7 +366,41 @@ end
 
 -- Status bars in windows (skill bars and the like): our texture, their
 -- colour, their frame art gone.
+-- Some status bars (the character sheet's skills) show progress through a
+-- Fill piece of their own, sized by Blizzard, seen through a mask; the bar's
+-- own texture spans it all. Theirs is repainted flat, the mask taken off,
+-- the full-width texture put away, on every pass as the rows are reused.
+local fillBars = setmetatable({}, { __mode = "k" })
+local function paintFill(sb)
+    local fill = sb.Fill
+    if sb.Mask and fill.RemoveMaskTexture and not fillBars[sb] then fill:RemoveMaskTexture(sb.Mask) end
+    fillBars[sb] = true
+    local st = sb:GetStatusBarTexture()
+    if st and st ~= fill and st:GetAlpha() > 0 then st:SetAlpha(0) end
+    if fill:GetAtlas() or fill:GetAlpha() < 1 then
+        fill:SetTexture(ns.Media:Statusbar())
+        fill:SetAlpha(1)
+    end
+    fill:SetVertexColor(C.fel[1] * 0.5, C.fel[2] * 0.5, C.fel[3] * 0.5, 1)
+    for _, r in ipairs({ sb:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r ~= fill and r:GetAlpha() > 0 then r:SetAlpha(0) end
+    end
+end
+PS.paintFill = paintFill
+
 local function styleBar(sb)
+    if sb.Fill and sb.Fill.GetObjectType and sb.Fill:GetObjectType() == "Texture" then
+        paintFill(sb)
+        if not done[sb] then
+            done[sb] = true
+            local bd = backdrop(sb, "Shadow", false, 0)
+            bd:ClearAllPoints()
+            bd:SetPoint("LEFT", sb, "LEFT", -1, 0)
+            bd:SetPoint("RIGHT", sb, "RIGHT", 1, 0)
+            bd:SetHeight((sb.Fill:GetHeight() or 15) + 2)
+        end
+        return
+    end
     if done[sb] then return end
     done[sb] = true
     local fill = sb:GetStatusBarTexture()
@@ -604,6 +638,22 @@ local function scanButtons(frame, depth)
         local isButton = kind == "Button" or kind == "CheckButton"
         if kind == "Button" and isFilter(child) then
             styleFilter(child)
+        elseif kind == "Button" and child.StateIcon and child.Name then
+            -- A collapsible heading (skills, currencies): its brown bar,
+            -- drawn again as its hover, goes for a grey pill.
+            for _, r in ipairs({ child:GetRegions() }) do
+                local a = r:GetObjectType() == "Texture" and r:GetAtlas()
+                if a and a:find("collapseExpand") and r:GetAlpha() > 0 then r:SetAlpha(0) end
+            end
+            child.Name:SetTextColor(C.text[1], C.text[2], C.text[3])
+            if not done[child] then
+                done[child] = true
+                backdrop(child, "Shadow", false, 1)
+                local h = child:CreateTexture(nil, "HIGHLIGHT")
+                h:SetPoint("TOPLEFT", 2, -2)
+                h:SetPoint("BOTTOMRIGHT", -2, 2)
+                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.12)
+            end
         elseif isButton and child.icon and child.name and child.selectedTexture and w > 64 then
             styleListRow(child)
         elseif isButton and w <= 64 and (child.Icon or child.icon) and not hasText(child) and not child.Name
@@ -1246,6 +1296,11 @@ PS.SPECIAL.CharacterFrame = function(frame)
         styleStats()
         styleSidebarTabs()
         stylePopouts()
+        local detail = rawget(_G, "TokenDetailFrame")
+        if detail then fade(detail.Divider) end
+        for sb in pairs(fillBars) do
+            if sb:IsVisible() then paintFill(sb) end
+        end
         -- The side tabs (Character, Reputation, Currency...) down the right
         -- edge: the same kind as the professions' side tabs. The deep fade
         -- above took their icons; this gives them back in our style.
