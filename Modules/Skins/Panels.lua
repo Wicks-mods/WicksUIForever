@@ -1242,6 +1242,15 @@ PS.SPECIAL.CharacterFrame = function(frame)
         styleStats()
         styleSidebarTabs()
         stylePopouts()
+        -- The side tabs (Character, Reputation, Currency...) down the right
+        -- edge: the same kind as the professions' side tabs. The deep fade
+        -- above took their icons; this gives them back in our style.
+        local modes = rawget(_G, "CharacterFrameModeTabs")
+        if modes and PS.styleSideTab then
+            for _, tab in ipairs({ modes:GetChildren() }) do
+                if tab.Icon and tab:IsShown() then PS.styleSideTab(tab) end
+            end
+        end
         -- The right pane as one black card; the arrow that folds it away
         -- greyed on a tile.
         local scene = rawget(_G, "CharacterModelScene")
@@ -1647,6 +1656,8 @@ local function styleSideTab(tab)
         icon:SetAlpha(awake and 1 or 0.55)
     end
 end
+
+PS.styleSideTab = styleSideTab
 
 local function styleProfTabs(frame)
     local tab = frame.ProfessionsOverviewTab
