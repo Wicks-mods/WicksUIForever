@@ -381,39 +381,58 @@ end
 
 -- Status bars in windows (skill bars and the like): our texture, their
 -- colour, their frame art gone.
--- Some status bars (the character sheet's skills) show progress through a
--- Fill piece of their own, sized by Blizzard, seen through a mask; the bar's
--- own texture spans it all. Theirs is repainted flat, the mask taken off,
--- the full-width texture put away, on every pass as the rows are reused.
+-- Some bars (the character sheet's skills and reputations) show progress
+-- through a Fill piece of their own, sized by Blizzard and seen through a
+-- mask; the bar's own texture spans it all. Blizzard's Fill is repainted
+-- flat on a slim dark track, with the numbers left on it. Its colour is
+-- deepened so white text reads: a skill's is the accent, a reputation's the
+-- standing colour Blizzard gives it (read back whenever Blizzard sets it
+-- again). Rows are reused as the list scrolls, so this runs on every pass.
 local fillBars = setmetatable({}, { __mode = "k" })
+local DEEP = 0.5
 local function paintFill(sb)
     local fill = sb.Fill
+    local e = extras[sb] or {}
+    extras[sb] = e
     if sb.Mask and fill.RemoveMaskTexture and not fillBars[sb] then fill:RemoveMaskTexture(sb.Mask) end
     fillBars[sb] = true
-    local st = sb:GetStatusBarTexture()
+    local st = sb.GetStatusBarTexture and sb:GetStatusBarTexture()
     if st and st ~= fill and st:GetAlpha() > 0 then st:SetAlpha(0) end
-    if fill:GetAtlas() or fill:GetAlpha() < 1 then
+    local atlas = fill:GetAtlas()
+    if atlas then
+        -- White art is tinted by Blizzard (reputation standing); keep that.
+        e.tinted = atlas:lower():find("white") ~= nil
         fill:SetTexture(ns.Media:Statusbar())
-        fill:SetAlpha(1)
     end
-    fill:SetVertexColor(C.fel[1] * 0.5, C.fel[2] * 0.5, C.fel[3] * 0.5, 1)
+    if fill:GetAlpha() < 1 then fill:SetAlpha(1) end
+    if e.tinted then
+        local r, g, b = fill:GetVertexColor()
+        if not e.set or math.abs(r - e.set[1]) > 0.01 or math.abs(g - e.set[2]) > 0.01 or math.abs(b - e.set[3]) > 0.01 then
+            -- Blizzard set its colour again: deepen that one.
+            e.set = { r * DEEP, g * DEEP, b * DEEP }
+            fill:SetVertexColor(e.set[1], e.set[2], e.set[3], 1)
+        end
+    else
+        fill:SetVertexColor(C.fel[1] * DEEP, C.fel[2] * DEEP, C.fel[3] * DEEP, 1)
+    end
     for _, r in ipairs({ sb:GetRegions() }) do
         if r:GetObjectType() == "Texture" and r ~= fill and r:GetAlpha() > 0 then r:SetAlpha(0) end
     end
+    if not e.track then
+        local bd = backdrop(sb, "Shadow", false, 0)
+        bd:ClearAllPoints()
+        bd:SetPoint("LEFT", sb, "LEFT", -1, 0)
+        bd:SetPoint("RIGHT", sb, "RIGHT", 1, 0)
+        bd:SetHeight((fill:GetHeight() or 15) + 2)
+        e.track = bd
+    end
 end
 PS.paintFill = paintFill
+PS.fillBars = fillBars
 
 local function styleBar(sb)
     if sb.Fill and sb.Fill.GetObjectType and sb.Fill:GetObjectType() == "Texture" then
         paintFill(sb)
-        if not done[sb] then
-            done[sb] = true
-            local bd = backdrop(sb, "Shadow", false, 0)
-            bd:ClearAllPoints()
-            bd:SetPoint("LEFT", sb, "LEFT", -1, 0)
-            bd:SetPoint("RIGHT", sb, "RIGHT", 1, 0)
-            bd:SetHeight((sb.Fill:GetHeight() or 15) + 2)
-        end
         return
     end
     if done[sb] then return end
@@ -688,6 +707,9 @@ local function scanButtons(frame, depth)
             styleSlider(child)
         elseif kind == "StatusBar" then
             styleBar(child)
+        elseif kind == "Frame" and child.Fill and child.Mask and child.Text
+            and child.Fill.GetObjectType and child.Fill:GetObjectType() == "Texture" then
+            paintFill(child)
         elseif kind == "CheckButton" and w <= 36 and h <= 36 and not (child.Icon or child.icon) then
             styleCheck(child)
         elseif isButton and (child.Icon or child.icon) and not child.Left and not child.Name
@@ -1313,9 +1335,6 @@ PS.SPECIAL.CharacterFrame = function(frame)
         stylePopouts()
         local detail = rawget(_G, "TokenDetailFrame")
         if detail then fade(detail.Divider) end
-        for sb in pairs(fillBars) do
-            if sb:IsVisible() then paintFill(sb) end
-        end
 
         -- The right pane as one black card; the arrow that folds it away
         -- greyed on a tile.
@@ -1347,6 +1366,9 @@ PS.SPECIAL.CharacterFrame = function(frame)
         -- edge, the same kind as the professions' side tabs, every frame:
         -- Blizzard redraws a tab as it is clicked, and a slower look lets
         -- its own art show for a moment.
+        for sb in pairs(fillBars) do
+            if sb:IsVisible() then paintFill(sb) end
+        end
         local modes = rawget(_G, "CharacterFrameModeTabs")
         if modes and PS.styleSideTab then
             for _, tab in ipairs({ modes:GetChildren() }) do
