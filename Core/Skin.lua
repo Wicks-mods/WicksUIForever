@@ -22,7 +22,14 @@ local TEMPLATES = {
 -- The modern style: rounded glass panels lifted by a soft shadow, no
 -- border lines, and a rounded fel ring where the crisp style would colour
 -- its border. The style is read once at load; switching it reloads.
-function ns:Modern() return ns:G().style == "modern" end
+-- The suite's style is WickCore's (Wick Modern or Wick OG, account-wide),
+-- so Wick's UI and every other Wick addon always agree; Wick's UI's own
+-- setting is only the fallback for a WickCore without it.
+function ns:Modern()
+    local Chrome = ns.Core and ns.Core.Chrome
+    if Chrome and Chrome.Modern then return Chrome:Modern() end
+    return ns:G().style == "modern"
+end
 
 local MODERN = {
     Default     = { bg = "void",   alpha = 0.74 },

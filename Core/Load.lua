@@ -64,7 +64,7 @@ local PRESETS = {
 
 function ns:ApplyStylePreset(force)
     local g = ns:G()
-    local style = g.style or "modern"
+    local style = ns:Modern() and "modern" or "wick"
     if not force and g.presetFor == style then return end
     local p = PRESETS[style]
     if not p then return end
@@ -236,10 +236,14 @@ ns.Config:AddPage("general", "General", function(L)
         { "modern", "Wick Modern: rounded glass, soft shadows" },
         { "wick", "Wick OG: crisp borders, fel corners" },
     }, {
+        get = function() return ns:Modern() and "modern" or "wick" end,
         setter = function(v)
-            if v == ns:G().style then return end
-            ns.Widgets:Confirm("Changing the style rebuilds every frame, so the interface reloads. Reload now?", function()
+            if v == (ns:Modern() and "modern" or "wick") then return end
+            ns.Widgets:Confirm("Changing the style rebuilds every frame, and every Wick addon follows it, so the interface reloads. Reload now?", function()
                 ns:G().style = v
+                -- The suite's style lives in WickCore; the whole suite follows.
+                local Chrome = ns.Core and ns.Core.Chrome
+                if Chrome and Chrome.SetStyle then Chrome:SetStyle(v == "wick" and "og" or "modern") end
                 ReloadUI()
             end, "Reload")
         end,
