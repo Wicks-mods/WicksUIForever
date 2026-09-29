@@ -2198,6 +2198,25 @@ local function openMenus()
     local m = mgr:GetOpenMenu()
     if not (m and m.IsShown and m:IsShown()) then return end
     styleMenu(m)
+    -- Submenus can have no parent at all, so walking frames never meets
+    -- them; the menu (or the row that opened one) holds them in a field.
+    local function fields(t, depth)
+        if depth > 3 then return end
+        for _, v in pairs(t) do
+            if type(v) == "table" and v ~= m and v.GetObjectType and not (v.IsForbidden and v:IsForbidden()) then
+                local ok, isFrame = pcall(function() return v:GetObjectType() == "Frame" and v:IsShown() end)
+                if ok and isFrame and not seenMenus[v] and isMenu(v) then
+                    styleMenu(v)
+                    fields(v, depth + 1)
+                end
+            end
+        end
+    end
+    pcall(fields, m, 0)
+    for _, row in ipairs({ m:GetChildren() }) do pcall(fields, row, 1) end
+    for sub in pairs(seenMenus) do
+        if sub ~= m and sub.IsShown and sub:IsShown() then styleMenu(sub) end
+    end
     -- The search beside it can run over every frame on the screen, so a
     -- few times a second is enough; a submenu shows for longer than that.
     local now = GetTime()
@@ -2206,6 +2225,21 @@ local function openMenus()
     -- Submenus sit on UIParent even when the root menu belongs to a window;
     -- only frames on the menu's own layer are looked at.
     local strata = m:GetFrameStrata()
+    -- Last resort, a few times a second while a menu is open: every frame
+    -- the game has, parentless ones included, on the menu's layer.
+    if EnumerateFrames and (menuScan.all or 0) < now - 0.25 then
+        menuScan.all = now
+        local f = EnumerateFrames()
+        local n = 0
+        while f and n < 20000 do
+            n = n + 1
+            if f ~= m and not seenMenus[f] and not (f.IsForbidden and f:IsForbidden())
+                and f:IsShown() and f:GetFrameStrata() == strata and isMenu(f) then
+                styleMenu(f)
+            end
+            f = EnumerateFrames(f)
+        end
+    end
     local seen = {}
     for _, host in ipairs({ m:GetParent(), UIParent }) do
         if host and host.GetChildren and not seen[host] then
