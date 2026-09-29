@@ -206,22 +206,6 @@ function ns:SetTemplate(f, template, opts)
     if not f.wuiBorder then makeBorder(f) end
     layoutBorder(f)
     ns:SetBorderColor(f, opts.border or "border")
-    -- A second, fainter line inside the border on panels, where the style
-    -- draws one (Runic).
-    local st = Chrome.StyleDef and Chrome:StyleDef()
-    if st and st.double and (template == nil or template == "Default" or template == "Transparent") and not f.wuiInner then
-        local inner = {}
-        for _, side in ipairs({ "top", "bottom", "left", "right" }) do
-            local t = f:CreateTexture(nil, "BORDER", nil, 1)
-            paint(t, "border", 0.55)
-            inner[side] = t
-        end
-        inner.top:SetPoint("TOPLEFT", 3, -3); inner.top:SetPoint("TOPRIGHT", -3, -3); inner.top:SetHeight(1)
-        inner.bottom:SetPoint("BOTTOMLEFT", 3, 3); inner.bottom:SetPoint("BOTTOMRIGHT", -3, 3); inner.bottom:SetHeight(1)
-        inner.left:SetPoint("TOPLEFT", 3, -3); inner.left:SetPoint("BOTTOMLEFT", 3, 3); inner.left:SetWidth(1)
-        inner.right:SetPoint("TOPRIGHT", -3, -3); inner.right:SetPoint("BOTTOMRIGHT", -3, 3); inner.right:SetWidth(1)
-        f.wuiInner = inner
-    end
     if opts.brackets and ns:G().brackets and not f.brackets then
         Chrome:AddBrackets(f)
     end
