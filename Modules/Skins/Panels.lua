@@ -968,15 +968,34 @@ end
 -- change.
 
 -- The rank bars are frames, not status bars: a textured Fill seen through
--- a Mask whose right edge Blizzard slides to the current skill. The Fill is
--- drawn wider than the bar and clipped, so the bar frame, not the Fill,
--- says where the bar ends. Ours is a flat bar pinned to the mask's edge, so
--- it follows the skill without being told.
+-- a sliding Mask, the Fill drawn wider than the bar and clipped. Pinning to
+-- that art proved unreliable, so ours reads the skill from the bar's own
+-- text ("Mining 88/150") and draws a plain fel bar on a glass track that
+-- ends where the bar frame does.
+local function barText(bar)
+    for _, r in ipairs({ bar:GetRegions() }) do
+        if r:GetObjectType() == "FontString" then
+            local t = r:GetText()
+            if t and not (issecretvalue and issecretvalue(t)) then
+                local cur, max = t:match("(%d+)%s*/%s*(%d+)")
+                if cur then return tonumber(cur), tonumber(max) end
+            end
+        end
+    end
+end
+
 local function flatRankBar(bar)
-    local fill, mask = bar.Fill, bar.Mask
+    local fill = bar.Fill
     local e = extras[bar] or {}
     extras[bar] = e
-    fade(bar.Background); fade(bar.Border); fade(bar.Flare)
+    -- Every piece of Blizzard's bar art, named or not (the flare and its
+    -- glow ride along on unnamed textures and child frames), but ours.
+    for _, r in ipairs({ bar:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r ~= e.bar and r:GetAlpha() > 0 then r:SetAlpha(0) end
+    end
+    for _, child in ipairs({ bar:GetChildren() }) do
+        if child ~= e.track and child:GetObjectType() == "Frame" then fadeRegions(child) end
+    end
     if not done[bar] then
         done[bar] = true
         local bd = backdrop(bar, "Shadow", false, 0)
@@ -984,24 +1003,27 @@ local function flatRankBar(bar)
         bd:SetPoint("TOPLEFT", fill, "TOPLEFT", -1, 1)
         bd:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", -1, -1)
         e.track = bd
-        if mask then
-            local t = bar:CreateTexture(nil, "ARTWORK", nil, 3)
-            t:SetTexture(ns.Media:Statusbar())
-            t:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
-            -- Top from the fill, right edge (and so the middle) from the mask,
-            -- which sits level with the fill: a bar 2 px shorter than it.
-            t:SetPoint("TOPLEFT", fill, "TOPLEFT", 1, -1)
-            t:SetPoint("RIGHT", mask, "RIGHT", 0, 0)
-            e.bar = t
-        end
+        local t = bar:CreateTexture(nil, "ARTWORK", nil, 3)
+        t:SetTexture(ns.Media:Statusbar())
+        t:SetPoint("TOPLEFT", bd, "TOPLEFT", 1, -1)
+        t:SetPoint("BOTTOMLEFT", bd, "BOTTOMLEFT", 1, 1)
+        e.bar = t
     end
+    local width
     local l, r = fill:GetLeft(), bar:GetRight()
-    if l and r and r > l then e.track:SetWidth(r - l + 2) end
-    if mask then
-        if fill:GetAlpha() > 0 then fill:SetAlpha(0) end
+    if l and r and r > l then
+        width = r - l + 2
+        e.track:SetWidth(width)
+    end
+    width = width or e.track:GetWidth() or 0
+    local cur, max = barText(bar)
+    local frac = (cur and max and max > 0) and math.min(1, cur / max) or 0
+    e.bar:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+    if frac > 0 and width > 2 then
+        e.bar:SetWidth((width - 2) * frac)
+        e.bar:Show()
     else
-        fill:SetTexture(ns.Media:Statusbar())
-        fill:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        e.bar:Hide()
     end
 end
 
