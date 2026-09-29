@@ -541,6 +541,48 @@ local function styleFilter(b)
     if fs and fs.SetTextColor then fs:SetTextColor(C.text[1], C.text[2], C.text[3]) end
 end
 
+-- Rows of the pet and mount lists (an icon, a name, Blizzard's bar behind
+-- and its gold selection frame): a grey pill, the icon on a black tile at
+-- the left where Blizzard puts it, and the selection drawn as our accent
+-- ring. The ring is Blizzard's own selection texture repainted, so it
+-- shows and hides with the selection at once.
+local function styleListRow(b)
+    if done[b] then return end
+    done[b] = true
+    fade(b.background); fade(b.iconBorder)
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "HIGHLIGHT" then
+            local a = r:GetAtlas()
+            if a and a:find("Highlight") then r:SetAlpha(0) end
+        end
+    end
+    local lvl = b:GetFrameLevel()
+    local bd = backdrop(b, "Shadow", false, 2)
+    bd:SetFrameLevel(math.max(0, lvl - 2))
+    local sel = b.selectedTexture
+    sel:SetTexture(ns.Media.ring)
+    if sel.SetTextureSliceMargins then sel:SetTextureSliceMargins(8, 8, 8, 8) end
+    sel:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+    sel:ClearAllPoints()
+    sel:SetAllPoints(bd)
+    local h = b:CreateTexture(nil, "HIGHLIGHT")
+    h:SetAllPoints(bd)
+    ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.1)
+    local icon = b.icon
+    ns:CropIcon(icon)
+    local tile = CreateFrame("Frame", nil, b)
+    tile:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
+    tile:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
+    -- Under the row's own art (the icon), over the pill.
+    tile:SetFrameLevel(math.max(0, lvl - 1))
+    ns:SetTemplate(tile, "Default", { alpha = 0.9, shadow = false })
+    if b.dragButton then
+        for _, r in ipairs({ b.dragButton:GetRegions() }) do
+            if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "HIGHLIGHT" then r:SetAlpha(0) end
+        end
+    end
+end
+
 local function hasText(b)
     local fs = b.Text or b.Label or b.text or (b.GetFontString and b:GetFontString())
     if not (fs and fs.GetText) then return false end
@@ -558,7 +600,9 @@ local function scanButtons(frame, depth)
         local isButton = kind == "Button" or kind == "CheckButton"
         if kind == "Button" and isFilter(child) then
             styleFilter(child)
-        elseif isButton and (child.Icon or child.icon) and not hasText(child) and not child.Name
+        elseif isButton and child.icon and child.name and child.selectedTexture and w > 64 then
+            styleListRow(child)
+        elseif isButton and w <= 64 and (child.Icon or child.icon) and not hasText(child) and not child.Name
             and not (child:GetParent() and child:GetParent().Button == child) then
             -- Icon tabs first: many are built on the tab template and carry
             -- Left, Middle and Right, which would otherwise make them buttons.
