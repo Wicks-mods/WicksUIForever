@@ -692,7 +692,19 @@ PS.SPECIAL.WorldMapFrame = function(frame)
             acc = 0
             styleQuestHeaders(ql, 1)
         end)
+        -- The quest log as a black card beside the map.
+        card(ql, "wuiLog", "TOPLEFT", ql, "BOTTOMRIGHT", ql, 2, -2, -2, 4)
     end
+    -- The full-skin look: the window is the grey panel, the breadcrumb bar
+    -- a black card with its crumbs as grey pills, and the gamepad-era
+    -- backing that shows past the map's edges gone.
+    local flip = CreateFrame("Frame", nil, frame)
+    flip:SetScript("OnUpdate", function()
+        local win = extras[frame] and extras[frame].backdrop
+        if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
+    end)
+    if nav then card(nav, "wuiNav", "TOPLEFT", nav, "BOTTOMRIGHT", nav, -2, 2, 2, -2) end
+    if frame.OverscrollBG then fadeRegions(frame.OverscrollBG) end
     local mm = bf and bf.MaximizeMinimizeFrame
     if mm then
         for _, b in ipairs({ mm:GetChildren() }) do
@@ -702,7 +714,34 @@ PS.SPECIAL.WorldMapFrame = function(frame)
             end
         end
     end
-    if frame.SidePanelToggle then scanButtons(frame.SidePanelToggle, 1) end
+    if mm and not done[mm] then
+        done[mm] = true
+        local bd = backdrop(mm, "Default", false, -2)
+        ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+    end
+    -- The quest log toggle at the map's corner: its corner shadow goes, its
+    -- art greys on a black tile.
+    local spt = frame.SidePanelToggle
+    if spt then
+        for _, b in ipairs({ spt.OpenButton, spt.CloseButton }) do
+            if b and not done[b] then
+                done[b] = true
+                for _, r in ipairs({ b:GetRegions() }) do
+                    if r:GetObjectType() == "Texture" then
+                        local a = r:GetAtlas()
+                        if a and a:find("MapCornerShadow") then r:SetAlpha(0)
+                        elseif r:GetDrawLayer() == "HIGHLIGHT" then r:SetAlpha(0)
+                        elseif r.SetDesaturated then r:SetDesaturated(true) end
+                    end
+                end
+                local bd = backdrop(b, "Default", false, 2)
+                ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+                local h = b:CreateTexture(nil, "HIGHLIGHT")
+                h:SetAllPoints(bd)
+                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
+            end
+        end
+    end
 end
 
 -- The small zone map (Shift-M). Blizzard sets its BorderFrame's alpha
