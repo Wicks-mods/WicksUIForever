@@ -221,47 +221,11 @@ local function styleEditBox(eb)
 end
 
 -- Modern scroll bars: a track and a thumb, each Begin/Middle/End.
+-- Every scroll bar in a window takes the options panel's look.
 local function styleScrollBar(sb)
     if done[sb] then return end
     done[sb] = true
-    local track = sb.Track
-    for _, k in ipairs({ "Begin", "Middle", "End" }) do fade(track[k]) end
-    fadeRegions(track)
-    local e = extras[sb] or {}
-    extras[sb] = e
-    if not e.line then
-        local line = track:CreateTexture(nil, "BACKGROUND")
-        line:SetPoint("TOP"); line:SetPoint("BOTTOM")
-        line:SetWidth(2)
-        line:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
-        Chrome:Register(line, "border", "texture")
-        e.line = line
-    end
-    local thumb = track.Thumb
-    if thumb then
-        for _, k in ipairs({ "Begin", "Middle", "End" }) do fade(thumb[k]) end
-        fadeRegions(thumb)
-        local te = extras[thumb] or {}
-        extras[thumb] = te
-        if not te.fill then
-            local fill = thumb:CreateTexture(nil, "ARTWORK")
-            fill:SetPoint("TOPLEFT", 2, 0)
-            fill:SetPoint("BOTTOMRIGHT", -2, 0)
-            fill:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.8)
-            Chrome:Register(fill, "fel", "texture", 0.8)
-            te.fill = fill
-        end
-    end
-    -- The arrow steppers keep their arrows, greyed to sit with the rest.
-    for _, k in ipairs({ "Back", "Forward" }) do
-        local b = sb[k]
-        if b then
-            for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }) do
-                local t = b[get] and b[get](b)
-                if t and t.SetDesaturated then t:SetDesaturated(true) end
-            end
-        end
-    end
+    ns:StyleScrollBar(sb)
 end
 
 -- Dropdown boxes: a background piece and an arrow.

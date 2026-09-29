@@ -138,6 +138,8 @@ function CH:StyleFrame(frame)
     styleTab(_G[name .. "Tab"])
     styleEditBox(frame)
     scrollButton(frame)
+    -- The chat's scroll bar in the look every other one has.
+    ns:StyleScrollBar(frame.ScrollBar)
     styled[frame] = true
 end
 
@@ -153,6 +155,7 @@ local GAP = 4
 -- The chat text sits this much further left inside the panel than the
 -- Edit Mode box would put it, closer to the panel's edge.
 local NUDGE = 8
+local SCROLL_ROOM = 12
 
 -- Blizzard's Edit Mode box for the chat (its Selection frame) is larger
 -- than the chat's text area, padded on every side. The panel fills that
@@ -217,7 +220,9 @@ function CH:Align()
     -- The full nudge, even past the text area's own margin: the text itself
     -- carries a couple of pixels of inset inside the chat frame.
     local left = l - NUDGE
-    local want = w - left - r
+    -- Room kept on the right for the chat's scroll bar, so the text stops
+    -- short of it.
+    local want = w - left - r - SCROLL_ROOM
     if want > 50 and math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
     local p, rel, rp, x, y = cf:GetPoint(1)
     if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - left) > 0.5

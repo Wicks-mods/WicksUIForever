@@ -441,3 +441,47 @@ function ns:ArrowDirection(b)
         end
     end
 end
+
+-- ============================================================
+-- Scroll bars
+-- ============================================================
+-- One look for every scroll bar, the one the options panel draws: a slim
+-- track in the border colour and a thumb in the accent, both 4 px, and no
+-- arrow buttons (they stay clickable, drawn by nothing). Blizzard's modern
+-- scroll bars carry Track, Track.Thumb, Back and Forward.
+local scrolled = setmetatable({}, { __mode = "k" })
+function ns:StyleScrollBar(sb)
+    if not sb or scrolled[sb] then return end
+    local track = sb.Track
+    if not track then return end
+    scrolled[sb] = true
+    for _, r in ipairs({ track:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then r:SetAlpha(0) end
+    end
+    for _, k in ipairs({ "Begin", "Middle", "End" }) do
+        if track[k] and track[k].SetAlpha then track[k]:SetAlpha(0) end
+    end
+    local line = track:CreateTexture(nil, "BACKGROUND")
+    line:SetPoint("TOP", 0, 0)
+    line:SetPoint("BOTTOM", 0, 0)
+    line:SetWidth(4)
+    ns:Fill(line, C.border[1], C.border[2], C.border[3], 0.6)
+    local thumb = track.Thumb
+    if thumb then
+        for _, r in ipairs({ thumb:GetRegions() }) do
+            if r:GetObjectType() == "Texture" then r:SetAlpha(0) end
+        end
+        for _, k in ipairs({ "Begin", "Middle", "End" }) do
+            if thumb[k] and thumb[k].SetAlpha then thumb[k]:SetAlpha(0) end
+        end
+        local fill = thumb:CreateTexture(nil, "ARTWORK")
+        fill:SetPoint("TOP", 0, 0)
+        fill:SetPoint("BOTTOM", 0, 0)
+        fill:SetWidth(4)
+        ns:Fill(fill, C.fel[1], C.fel[2], C.fel[3], 0.8)
+    end
+    for _, k in ipairs({ "Back", "Forward" }) do
+        local b = sb[k]
+        if b and b.SetAlpha then b:SetAlpha(0) end
+    end
+end
