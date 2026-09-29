@@ -1104,9 +1104,9 @@ local function flatRankBar(bar)
     local l, r = fill:GetLeft(), bar:GetRight()
     if l and r and r > l then
         width = r - l + PAD * 2
-        -- The fill keeps Blizzard's height less a little, the text row
+        -- A slim fill under the text row, as on the unit frames; the row
         -- rises above it.
-        e.track:SetSize(width, math.min(fill:GetHeight() or 18, 12) + PAD * 2 + ROW)
+        e.track:SetSize(width, 6 + PAD * 2 + ROW)
     end
     width = width or e.track:GetWidth() or 0
     local cur, max, label, fs = barText(bar)
