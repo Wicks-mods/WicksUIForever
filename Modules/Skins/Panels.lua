@@ -481,6 +481,40 @@ local function styleRow(b)
     end
 end
 
+-- Filter buttons (the dropdown with a reset cross beside it): all of their
+-- art but the arrow goes, on every pass as their state art swaps; our card
+-- and hover take its place.
+local function isFilter(b)
+    if b.ResetButton then return true end
+    local p = b:GetParent()
+    return p and (p.FilterDropdown == b or p.FilterButton == b) or false
+end
+local function styleFilter(b)
+    local e = extras[b] or {}
+    extras[b] = e
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r ~= e.hover and r:GetAlpha() > 0 then
+            local a = r:GetAtlas()
+            if (a and a:lower():find("arrow")) or r == b.Arrow or r == b.Icon then
+                if r.SetDesaturated then r:SetDesaturated(true) end
+            else
+                r:SetAlpha(0)
+            end
+        end
+    end
+    if not done[b] then
+        done[b] = true
+        backdrop(b, "Shadow", false, 0)
+        local h = b:CreateTexture(nil, "HIGHLIGHT")
+        h:SetPoint("TOPLEFT", 2, -2)
+        h:SetPoint("BOTTOMRIGHT", -2, 2)
+        ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.15)
+        e.hover = h
+    end
+    local fs = b.Text or (b.GetFontString and b:GetFontString())
+    if fs and fs.SetTextColor then fs:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+end
+
 local function hasText(b)
     local fs = b.Text or b.Label or b.text or (b.GetFontString and b:GetFontString())
     if not (fs and fs.GetText) then return false end
@@ -496,7 +530,9 @@ local function scanButtons(frame, depth)
         local w, h = child:GetSize()
         w, h = w or 0, h or 0
         local isButton = kind == "Button" or kind == "CheckButton"
-        if isButton and (child.Icon or child.icon) and not hasText(child) and not child.Name
+        if kind == "Button" and isFilter(child) then
+            styleFilter(child)
+        elseif isButton and (child.Icon or child.icon) and not hasText(child) and not child.Name
             and not (child:GetParent() and child:GetParent().Button == child) then
             -- Icon tabs first: many are built on the tab template and carry
             -- Left, Middle and Right, which would otherwise make them buttons.
@@ -1180,17 +1216,38 @@ local function walkProfessions(frame, depth, root)
             elseif fill and fill.GetObjectType and fill:GetObjectType() == "Texture"
                 and (child.Border or child.Background or child.Mask) then
                 flatRankBar(child)
-            elseif kind == "Button" and (child.LeftPiece or child.CenterPiece) then
-                -- A recipe list category heading: its brown bar goes, a card
-                -- takes it; the collapse mark stays.
-                fade(child.LeftPiece); fade(child.RightPiece); fade(child.CenterPiece)
+            elseif kind == "Button" and child.ButtonText and child.CollapseButton then
+                -- A recipe list category heading: its brown bar (one unnamed
+                -- atlas, drawn again on the highlight layer) goes, a card
+                -- takes it, with our hover; the collapse mark stays.
+                for _, r in ipairs({ child:GetRegions() }) do
+                    if r:GetObjectType() == "Texture" and r:GetAtlas() and r:GetAlpha() > 0 then r:SetAlpha(0) end
+                end
+                child.ButtonText:SetTextColor(C.text[1], C.text[2], C.text[3])
                 if not done[child] then
                     done[child] = true
                     local bd = backdrop(child, "Shadow", false, 0)
                     bd:ClearAllPoints()
                     bd:SetPoint("TOPLEFT", 0, -1)
                     bd:SetPoint("BOTTOMRIGHT", 0, 1)
+                    local h = child:CreateTexture(nil, "HIGHLIGHT")
+                    h:SetPoint("TOPLEFT", 2, -2)
+                    h:SetPoint("BOTTOMRIGHT", -2, 2)
+                    ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.12)
                 end
+            elseif kind == "Button" and child.Label and child.SelectedOverlay then
+                -- A recipe row: the chosen one gets a fel wash in place of
+                -- Blizzard's gold, which the row scanner faded.
+                local sel = child.SelectedOverlay
+                if not done[sel] then
+                    done[sel] = true
+                    sel:ClearAllPoints()
+                    sel:SetPoint("TOPLEFT", 2, -1)
+                    sel:SetPoint("BOTTOMRIGHT", -2, 1)
+                    ns:Fill(sel, C.fel[1], C.fel[2], C.fel[3], 0.22)
+                end
+                if sel:GetAlpha() < 1 then sel:SetAlpha(1) end
+                if child.HighlightOverlay then child.HighlightOverlay:SetAlpha(0) end
             elseif (kind == "Button" or kind == "CheckButton") and child:GetWidth() <= 64 and child:GetHeight() <= 64 then
                 local name = child.GetName and child:GetName()
                 local icon = child.Icon or child.icon or child.IconTexture or (name and _G[name .. "IconTexture"])
