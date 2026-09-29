@@ -74,6 +74,17 @@ function MM:Fill()
         Minimap:ClearAllPoints()
         Minimap:SetPoint("TOPRIGHT", cl, "TOPRIGHT", 0, 0)
     end
+    -- The day and night dial is pinned to the middle of the box by a fixed
+    -- offset, so it stays inside a map that has grown; it goes to the
+    -- map's right edge, under the calendar.
+    local diel = cl.DielFrame
+    if diel then
+        local dp, drel = diel:GetPoint(1)
+        if dp ~= "TOPRIGHT" or drel ~= Minimap then
+            diel:ClearAllPoints()
+            diel:SetPoint("TOPRIGHT", Minimap, "TOPRIGHT", -2, -40)
+        end
+    end
 end
 
 function MM:Shape()

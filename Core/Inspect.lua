@@ -82,9 +82,32 @@ local function walk(frame, depth, lines, limit)
     end
 end
 
-function I:Run()
+-- A frame by the name the frame stack shows ("MinimapCluster.DielFrame"):
+-- a global, then keys down from it.
+local function byPath(path)
+    local obj
+    for part in path:gmatch("[^%.]+") do
+        if obj == nil then obj = rawget(_G, part) else obj = type(obj) == "table" and obj[part] or nil end
+        if obj == nil then return nil end
+    end
+    return type(obj) == "table" and obj.GetObjectType and obj or nil
+end
+
+function I:Run(path)
+    local f
+    if path and path ~= "" then
+        f = byPath(path)
+        if not f then
+            ns.A:Print(("no frame called %s. Use the name the frame stack shows."):format(path))
+            return
+        end
+        if f.IsForbidden and f:IsForbidden() then
+            ns.A:Print(("%s is one of Blizzard's protected frames; nothing can read it."):format(path))
+            return
+        end
+    end
     local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
-    local f = foci and foci[1]
+    f = f or (foci and foci[1])
     -- Things that let the mouse through (aura icons, most text) never
     -- become the focus. Then take the smallest of our skinned frames and
     -- aura containers that the pointer is over.

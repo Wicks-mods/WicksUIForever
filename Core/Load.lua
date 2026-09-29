@@ -172,6 +172,7 @@ local HELP = {
     "/wui install  run the first-time setup again",
     "/wui skin  skin the window under the pointer, and keep skinning it",
     "/wui inspect  list what is under the pointer, for fixing a skin",
+    "/wui inspect Name.Key  the same for a frame by the name /fstack shows",
     "/wui unskin [name]  undo the last /wui skin, or the named one",
 }
 
@@ -186,7 +187,7 @@ A:RegisterSlash(function(_, msg)
     elseif cmd == "reset" then
         W:Confirm("Put every frame back where it started?", function() ns.Movers:ResetAll() end, "Reset")
     elseif cmd == "inspect" then
-        if ns.Inspect then ns.Inspect:Run() end
+        if ns.Inspect then ns.Inspect:Run((msg or ""):match("^%S+%s+(%S+)")) end
     elseif cmd == "skin" then
         if ns.PanelSkins then ns.PanelSkins:SkinUnderMouse() end
     elseif cmd:match("^unskin") then
