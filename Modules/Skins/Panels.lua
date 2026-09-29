@@ -2130,6 +2130,21 @@ local function styleSideTab(tab)
     -- tile, and as Blizzard stacks them one under the next, the column
     -- closes up.
     if not InCombatLockdown() and math.abs((tab:GetHeight() or 0) - 48) > 0.5 then tab:SetHeight(48) end
+    -- In a look whose panels fade out at their sides (Gilded), the column
+    -- moves in to the edge that shows. Only the top tab is moved, the rest
+    -- hang under it; Blizzard's own place is kept, and the move made
+    -- again whenever Blizzard puts the tab back there.
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    local inset = st and st.edgeInset
+    if inset and not InCombatLockdown() and tab:GetNumPoints() >= 1 then
+        local p, rel, rp, x, y = tab:GetPoint(1)
+        if rel and not (rel.Icon and extras[rel]) and x then
+            if not e.shiftedX or math.abs(x - e.shiftedX) > 0.5 then
+                e.shiftedX = x - inset
+                tab:SetPoint(p, rel, rp, e.shiftedX, y or 0)
+            end
+        end
+    end
     -- Blizzard sets the icon back to its own size, place and tab-shaped
     -- mask when a tab is chosen, so they are put right on every pass.
     if icon and e.tile then
