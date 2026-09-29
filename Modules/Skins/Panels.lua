@@ -1323,12 +1323,10 @@ PS.SPECIAL.CharacterFrame = function(frame)
         local b = _G["Character" .. s .. "Slot"]
         if b then styleSlot(b) end
     end
+    -- Every frame: slots, stats and bars are redrawn by Blizzard as pages
+    -- change and items move, and a slower pass shows its art for a moment.
     local poll = CreateFrame("Frame", nil, frame)
-    local acc = 0.5
-    poll:SetScript("OnUpdate", function(_, e)
-        acc = acc + e
-        if acc < 0.5 then return end
-        acc = 0
+    poll:SetScript("OnUpdate", function()
         paintSlots()
         styleStats()
         styleSidebarTabs()
@@ -2491,6 +2489,30 @@ function PS:Initialize()
     -- (OnUpdate runs after the event that opened it, before the frame is
     -- drawn), again on the next two frames as Blizzard fills it in, and
     -- then once a second like the rest.
+    -- A window whose page changes (a tab chosen) or whose list gains rows
+    -- (scrolled, opened a section) is scanned that same frame too: a cheap
+    -- signature of what shows is taken every frame and compared.
+    local boxes = setmetatable({}, { __mode = "k" })
+    local function findBoxes(f, depth, out)
+        if depth > 6 or not f.GetChildren then return out end
+        for _, c in ipairs({ f:GetChildren() }) do
+            if c.ScrollTarget then out[#out + 1] = c.ScrollTarget end
+            if c:GetObjectType() ~= "ScrollFrame" then findBoxes(c, depth + 1, out) end
+        end
+        return out
+    end
+    local sigs = {}
+    local function signature(n, f)
+        local parts = {}
+        for _, c in ipairs({ f:GetChildren() }) do parts[#parts + 1] = c:IsShown() and "1" or "0" end
+        for _, t in ipairs(boxes[f] or {}) do
+            parts[#parts + 1] = t:GetNumChildren()
+            local shownRows = 0
+            for _, row in ipairs({ t:GetChildren() }) do if row:IsShown() then shownRows = shownRows + 1 end end
+            parts[#parts + 1] = shownRows
+        end
+        return table.concat(parts, ",")
+    end
     local tick = CreateFrame("Frame")
     local acc, names = 1, allNames()
     local shown, fresh = {}, {}
@@ -2508,7 +2530,13 @@ function PS:Initialize()
                 if not done[f] then pcall(PS.Skin, PS, f) end
             end
             shown[n] = on
-            if on and done[f] and (full or fresh[n]) then scanButtons(f, 1) end
+            if on and done[f] then
+                if full or fresh[n] or not boxes[f] then boxes[f] = findBoxes(f, 1, {}) end
+                local sig = signature(n, f)
+                local changed = sig ~= sigs[n]
+                sigs[n] = sig
+                if full or fresh[n] or changed then scanButtons(f, 1) end
+            end
             if fresh[n] then fresh[n] = fresh[n] > 1 and fresh[n] - 1 or nil end
         end
     end)
