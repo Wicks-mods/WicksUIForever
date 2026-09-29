@@ -1499,7 +1499,51 @@ end
 -- bar across the top and the edge along the bottom) goes, the tree headers
 -- lose their scrollwork and ring, and the Primary and Secondary tabs go
 -- flat. Headers are pooled, so this runs while the tab is open.
+-- The painting goes (Wick chose cards over it, 2026-09-28), with the
+-- clouds and particles Blizzard animates over it; each tree becomes a
+-- black card on the grey window.
+local PAINT = { "ClassBackground", "OverlayBackgroundRight", "OverlayBackgroundMid", "BackgroundFlash",
+    "Clouds1", "Clouds2", "AirParticlesClose", "AirParticlesFar" }
+local function treeCards(tf)
+    for _, k in ipairs(PAINT) do
+        local t = tf[k]
+        if t then t:SetAlpha(0); if k ~= "ClassBackground" then t:Hide() end end
+    end
+    fade(tf.DividerVerticalLeft)
+    fade(tf.DividerVerticalRight)
+    local cb = tf.ClassBackground
+    local w = cb and cb:GetWidth()
+    if not (w and w > 0) then return end
+    local e = extras[tf] or {}
+    extras[tf] = e
+    e.trees = e.trees or {}
+    local third = w / 3
+    for i = 1, 3 do
+        local c = e.trees[i]
+        if not c then
+            c = CreateFrame("Frame", nil, tf)
+            c:SetFrameLevel(math.max(0, tf:GetFrameLevel() - 1))
+            ns:SetTemplate(c, "Default", { alpha = 0.9, shadow = false })
+            e.trees[i] = c
+        end
+        c:ClearAllPoints()
+        c:SetPoint("TOPLEFT", cb, "TOPLEFT", third * (i - 1) + 6, -6)
+        c:SetPoint("BOTTOMRIGHT", cb, "BOTTOMLEFT", third * i - 6, 6)
+    end
+end
+
 local function styleTalents(tf)
+    treeCards(tf)
+    -- The search options button: its yellow arrow greyed on a black tile.
+    local so = tf.SearchOptionsDropdown
+    if so then
+        if so.Arrow and so.Arrow.SetDesaturated then so.Arrow:SetDesaturated(true) end
+        if not done[so] then
+            done[so] = true
+            local bd = backdrop(so, "Default", false, 1)
+            ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+        end
+    end
     fade(tf.BackgroundBorder)
     -- The window-wide backing the painting sits on; its top 70 px are the
     -- gold bar across the top. The painting itself is ClassBackground.
@@ -1551,10 +1595,18 @@ PS.SPECIAL.PlayerSpellsFrame = function(frame)
         local poll = CreateFrame("Frame", nil, tf)
         local acc = 0.5
         poll:SetScript("OnUpdate", function(_, e)
+            -- The window is the grey panel while the talents show, as in
+            -- the other full-skin windows; the spellbook keeps its own look.
+            local win = extras[frame] and extras[frame].backdrop
+            if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
             acc = acc + e
             if acc < 0.5 then return end
             acc = 0
             styleTalents(tf)
+        end)
+        poll:SetScript("OnHide", function()
+            local win = extras[frame] and extras[frame].backdrop
+            if win and win.wuiTemplate ~= "Default" then ns:SetTemplate(win, "Default", { alpha = db().alpha }) end
         end)
     end
     skinSpellBook(frame.SpellBookFrame, frame)
