@@ -2333,6 +2333,20 @@ for _, name in ipairs({ "GossipFrame", "QuestFrame", "QuestLogPopupDetailFrame",
     end
 end
 
+-- Inspect: the full skin, and its side tabs (the Character window's kind)
+-- held in our style every frame.
+PS.SPECIAL.InspectFrame = function(frame)
+    fullSkin(frame, function()
+        local tabs = rawget(_G, "InspectUITabs")
+        if tabs and PS.styleSideTab then
+            for _, tab in ipairs({ tabs:GetChildren() }) do
+                if tab.Icon and tab:IsShown() then PS.styleSideTab(tab) end
+            end
+        end
+    end)
+    return "generic"
+end
+
 -- (The flight map is not here: its map is Blizzard art, and the full skin
 -- would strip it. It keeps the lighter skin every window gets.)
 for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame", "ClassTrainerFrame",
@@ -2872,6 +2886,20 @@ function PS:Initialize()
     local tick = CreateFrame("Frame")
     local acc, names = 1, allNames()
     local shown, fresh = {}, {}
+    -- Blizzard sets a window's title to the right of the round portrait
+    -- in its corner; the portrait is gone, so the title is centred on the
+    -- window instead, and held there (Blizzard lays it out again).
+    local function centreTitle(f)
+        local tc = f.TitleContainer or (f.BorderFrame and f.BorderFrame.TitleContainer)
+        if not tc or InCombatLockdown() then return end
+        local p, rel, rp, x = tc:GetPoint(1)
+        if not (p == "TOPLEFT" and rel == f and math.abs((x or 0) - 24) < 0.5 and tc:GetNumPoints() == 2) then
+            local _, _, _, _, y = tc:GetPoint(1)
+            tc:ClearAllPoints()
+            tc:SetPoint("TOPLEFT", f, "TOPLEFT", 24, y or -1)
+            tc:SetPoint("TOPRIGHT", f, "TOPRIGHT", -24, y or -1)
+        end
+    end
     tick:SetScript("OnUpdate", function(_, e)
         if not db().enable then return end
         for tab in pairs(skinnedTabs) do
@@ -2890,6 +2918,7 @@ function PS:Initialize()
             end
             shown[n] = on
             if on and done[f] then
+                centreTitle(f)
                 if full or fresh[n] or not boxes[f] then boxes[f] = findBoxes(f, 1, {}) end
                 local sig = signature(n, f)
                 local changed = sig ~= sigs[n]
