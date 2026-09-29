@@ -2413,6 +2413,21 @@ PS.SPECIAL.WardrobeFrame = PS.SPECIAL.CollectionsJournal
 -- are black cards on the grey window.
 PS.SPECIAL.SettingsPanel = function(frame)
     styleClose(frame.ClosePanelButton)
+    -- The Game and AddOns tabs along the top: Blizzard sets their label
+    -- low, for its tall tab art, and small. As our tabs they are held
+    -- centred, and their label is given a size the font pass keeps.
+    local tabs = tabsOf(frame)
+    for _, t in ipairs({ frame.GameTab, frame.AddOnsTab }) do tabs[#tabs + 1] = t end
+    for _, tab in ipairs(tabs) do
+        styleTab(tab)
+        local text = tab.Text or (tab.GetFontString and tab:GetFontString())
+        if text then
+            fontSet[text] = 14
+            text:SetFont(ns.Media:Font(), 14, "")
+            text:ClearAllPoints()
+            text:SetPoint("CENTER", tab, "CENTER", 0, 0)
+        end
+    end
     fullSkin(frame, function(f)
         if f.CategoryList then card(f.CategoryList, "wuiCard", "TOPLEFT", f.CategoryList, "BOTTOMRIGHT", f.CategoryList, -6, 6, 6, -6) end
         if f.Container then card(f.Container, "wuiCard", "TOPLEFT", f.Container, "BOTTOMRIGHT", f.Container, -6, 6, 6, -6) end
