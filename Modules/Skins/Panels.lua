@@ -1981,14 +1981,26 @@ end
 -- Bag and vendor item buttons: the slot art goes for a black tile, the
 -- icon is cropped; the quality ring, the junk coin and the new-item glow
 -- are Blizzard's and stay, as they carry meaning.
+-- Item buttons (the game's bags, vendors, loot): Blizzard's square slot
+-- art goes so our tile shows. An empty slot's art is drawn on the same
+-- texture as the item's icon, so the icon is faded only while it shows
+-- that art and brought back the moment an item is drawn there; fading it
+-- for good left items in the bags with no picture.
 local function styleItemButton(b)
     local icon = b.icon or b.Icon
     local nt = b.GetNormalTexture and b:GetNormalTexture()
     if nt and nt:GetAlpha() > 0 then nt:SetAlpha(0) end
+    if b.ItemSlotBackground and b.ItemSlotBackground:GetAlpha() > 0 then b.ItemSlotBackground:SetAlpha(0) end
     for _, r in ipairs({ b:GetRegions() }) do
         if r:GetObjectType() == "Texture" then
             local a = r:GetAtlas()
-            if a and a:find("item%-slot") and r:GetAlpha() > 0 then r:SetAlpha(0) end
+            local slotArt = a and a:find("item%-slot")
+            if r == icon then
+                local want = slotArt and 0 or 1
+                if math.abs(r:GetAlpha() - want) > 0.01 then r:SetAlpha(want) end
+            elseif slotArt and r:GetAlpha() > 0 then
+                r:SetAlpha(0)
+            end
         end
     end
     if done[b] then return end
@@ -1996,6 +2008,13 @@ local function styleItemButton(b)
     if icon then ns:CropIcon(icon) end
     local bd = backdrop(b, "Default", false, 0)
     ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+end
+
+-- Straight away when Blizzard draws a picture into a slot we skinned.
+if SetItemButtonTexture then
+    hooksecurefunc("SetItemButtonTexture", function(b)
+        if b and done[b] then pcall(styleItemButton, b) end
+    end)
 end
 
 local function walkProfessions(frame, depth, root)
