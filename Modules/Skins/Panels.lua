@@ -1454,6 +1454,13 @@ PS.SPECIAL.MailFrame = function(frame)
     return "generic"
 end
 
+-- An opened letter: the same full skin. Its stationery (a large texture on
+-- the scroll frame) is stripped by the walk and becomes a black card.
+PS.SPECIAL.OpenMailFrame = function(frame)
+    fullSkin(frame)
+    return "generic"
+end
+
 -- The talents tab. The painting behind the trees (ClassBackground) stays,
 -- as Wick wants; the brown frame around it (BackgroundBorder, with the gold
 -- bar across the top and the edge along the bottom) goes, the tree headers
