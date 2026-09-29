@@ -2275,6 +2275,7 @@ PS.SPECIAL.MerchantFrame = function(frame)
 end
 
 for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame", "ClassTrainerFrame",
+    "GossipFrame", "QuestFrame", "QuestLogPopupDetailFrame", "ItemTextFrame", "TaxiFrame",
     "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3",
     "ContainerFrame4", "ContainerFrame5", "ContainerFrame6" }) do
     if not PS.SPECIAL[name] then
