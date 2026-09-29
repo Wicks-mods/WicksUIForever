@@ -2561,14 +2561,31 @@ end
 PS.SPECIAL.DressUpFrame = function(frame)
     fullSkin(frame, function(f)
         fade(f.ModelBackground)
-        if f.ModelScene then
-            card(f.ModelScene, "wuiCard", "TOPLEFT", f.ModelScene, "BOTTOMRIGHT", f.ModelScene, 0, 0, 0, 0)
+        local ms = f.ModelScene
+        if ms then
+            -- The backdrop is four painted tiles on the model scene itself.
+            for _, k in ipairs({ "BGTopLeft", "BGTopRight", "BGBottomLeft", "BGBottomRight" }) do
+                local t = ms[k]
+                if t and t:GetAlpha() > 0 then t:SetAlpha(0) end
+            end
+            card(ms, "wuiCard", "TOPLEFT", ms, "BOTTOMRIGHT", ms, 0, 0, 0, 0)
         end
-        local od = f.OutfitDetailsPanel
+        -- The item list beside the model: its black backing, faded class
+        -- art and gold side frame are the panel's own textures; the rows
+        -- (icons, names) are children and stay. The card sits where the
+        -- black backing was.
+        local od = f.CustomSetDetailsPanel or f.OutfitDetailsPanel
         if od then
-            fade(od.NineSlice); fade(od.BorderFrame); fade(od.ClassBackground); fade(od.Background)
-            fadeRegions(od)
-            card(od, "wuiCard", "TOPLEFT", od, "BOTTOMRIGHT", od, 0, 0, 0, 0)
+            for _, r in ipairs({ od:GetRegions() }) do
+                if r:GetObjectType() == "Texture" and r:GetAlpha() > 0 then r:SetAlpha(0) end
+            end
+            fade(od.NineSlice)
+            local bb = od.BlackBackground
+            if bb then
+                card(od, "wuiCard", "TOPLEFT", bb, "BOTTOMRIGHT", bb, 0, 0, 0, 0)
+            else
+                card(od, "wuiCard", "TOPLEFT", od, "BOTTOMRIGHT", od, 6, -19, -6, 9)
+            end
         end
     end)
     return "generic"
