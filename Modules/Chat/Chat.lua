@@ -214,7 +214,9 @@ function CH:Align()
         r = sel:GetRight() - cf:GetRight()
         bt = cf:GetBottom() - sel:GetBottom()
     end
-    local left = math.max(2, l - NUDGE)
+    -- The full nudge, even past the text area's own margin: the text itself
+    -- carries a couple of pixels of inset inside the chat frame.
+    local left = l - NUDGE
     local want = w - left - r
     if want > 50 and math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
     local p, rel, rp, x, y = cf:GetPoint(1)
