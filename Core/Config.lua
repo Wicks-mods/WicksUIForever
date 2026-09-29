@@ -70,7 +70,9 @@ end
 function Layout:Place(f, span, key)
     local page = self.page
     f.onChange = function() Config:Changed(page) end
-    if self.copy and type(key) == "string" and not self.copy.skip[key] then self.copy.hover[f] = key end
+    if self.copy and type(key) == "string" and not self.copy.skip[key] then
+        self.copy.hover[f] = { key = key, db = self.db }
+    end
     if span == 2 then
         newRow(self)
         f:SetPoint("TOPLEFT", self.content, "TOPLEFT", PAD, self.y)
@@ -164,6 +166,9 @@ end
 --       skip    = { paging = true },   -- keys never copied
 --   })
 --
+-- Sections that switch L:DB to a table inside the page's (a unit's texts,
+-- its cast bar) copy from the same place in the source.
+--
 -- Called before the controls. A "Copy all from" picker sits at the top
 -- right of the page, level with its title. Each setting shows a small
 -- "copy from" at the end of its label while the pointer is over it, and
@@ -178,19 +183,63 @@ end
 function Layout:CopyFrom(opts)
     local L, page = self, self.page
     self.copy = { skip = opts.skip or {}, hover = {} }
-    local target = L.db
+    local root = L.db
 
-    local function copyKeys(id, only)
-        local from, to = opts.table(id), target and target()
-        if not (from and to) then return end
-        if only then
-            to[only] = deep(from[only])
-        else
-            for k, v in pairs(from) do
-                if not L.copy.skip[k] then to[k] = deep(v) end
+    -- A section of the page (a unit's left text, its cast bar) has its own
+    -- table inside the root: found by identity, and the same path is then
+    -- read in the source.
+    local function pathTo(t, want, depth, out)
+        if t == want then return out end
+        if depth > 4 or type(t) ~= "table" then return end
+        for k, v in pairs(t) do
+            if type(v) == "table" then
+                out[#out + 1] = k
+                if pathTo(v, want, depth + 1, out) then return out end
+                out[#out] = nil
             end
         end
+    end
+    local function walk(t, path)
+        for _, k in ipairs(path) do
+            if type(t) ~= "table" then return end
+            t = t[k]
+        end
+        return t
+    end
+
+    -- Everything, where the target has that setting too, so a frame
+    -- never takes settings it has no use for.
+    local function copyAll(id)
+        local from, to = opts.table(id), root and root()
+        if not (from and to) then return end
+        for k, v in pairs(from) do
+            if not L.copy.skip[k] and to[k] ~= nil then to[k] = deep(v) end
+        end
         Config:Changed(page)
+    end
+
+    local function sectionFor(entry, id)
+        local to = entry.db and entry.db()
+        local path = to and pathTo(root and root(), to, 0, {})
+        if not path then return end
+        return walk(opts.table(id), path), to
+    end
+
+    local function copyOne(entry, id)
+        local from, to = sectionFor(entry, id)
+        if type(from) ~= "table" or not to or from[entry.key] == nil then return end
+        to[entry.key] = deep(from[entry.key])
+        Config:Changed(page)
+    end
+
+    -- Only the sources that have this setting.
+    local function sourcesFor(entry)
+        local out = {}
+        for _, s in ipairs(opts.sources()) do
+            local from = sectionFor(entry, s[1])
+            if type(from) == "table" and from[entry.key] ~= nil then out[#out + 1] = s end
+        end
+        return out
     end
 
     -- The page-wide picker, level with the title.
@@ -212,7 +261,7 @@ function Layout:CopyFrom(opts)
             local name = tostring(id)
             for _, s in ipairs(opts.sources()) do if s[1] == id then name = s[2] end end
             W:Confirm(("Copy every setting from %s onto %s? Where it sits, and what only it should have, stay as they are."):format(name, page.title),
-                function() copyKeys(id) end, "Copy")
+                function() copyAll(id) end, "Copy")
         end)
     end)
 
@@ -227,8 +276,11 @@ function Layout:CopyFrom(opts)
     link:SetScript("OnEnter", function() link.text:SetTextColor(C.fel[1], C.fel[2], C.fel[3]) end)
     link:SetScript("OnLeave", function() link.text:SetTextColor(C.muted[1], C.muted[2], C.muted[3]) end)
     link:SetScript("OnClick", function()
-        local key = link.key
-        if key then W.OpenMenu(link, opts.sources, nil, function(id) copyKeys(id, key) end) end
+        local entry = link.entry
+        if not entry then return end
+        local list = sourcesFor(entry)
+        if #list == 0 then return end
+        W.OpenMenu(link, list, nil, function(id) copyOne(entry, id) end)
     end)
     link:Hide()
     local watch = CreateFrame("Frame", nil, self.content)
@@ -237,13 +289,13 @@ function Layout:CopyFrom(opts)
         if menu and menu:IsShown() and menu.owner == link then return end
         if link:IsShown() and link:IsMouseOver() then return end
         local over
-        for f, key in pairs(L.copy.hover) do
+        for f in pairs(L.copy.hover) do
             if f:IsVisible() and not f.disabled and f:IsMouseOver(2, 0, 0, 0) then over = f; break end
         end
         if over ~= link.owner then
             link.owner = over
             if over then
-                link.key = L.copy.hover[over]
+                link.entry = L.copy.hover[over]
                 link:ClearAllPoints()
                 link:SetPoint("TOPRIGHT", over, "TOPRIGHT", 0, 1)
                 link:Show()

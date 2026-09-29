@@ -102,6 +102,19 @@ local function unitPage(key, order)
     ns.Config:AddPage("unitframes." .. key, UF.LABELS[key], function(L)
         local function d() return UF:UnitDB(key) end
         L:DB(d)
+        -- Settings copied from another frame. Only what both frames have
+        -- is copied; whether it is on, and a group's visibility, stay.
+        L:CopyFrom({
+            sources = function()
+                local out = {}
+                for _, other in ipairs(UF.PAGE_ORDER) do
+                    if other ~= key then out[#out + 1] = { other, UF.LABELS[other] } end
+                end
+                return out
+            end,
+            table = function(other) return UF:UnitDB(other) end,
+            skip = { enable = true, visibility = true },
+        })
         L:Heading("Frame")
         L:Toggle("Enable", "enable")
         L:Toggle("Fade out of range", "rangeFade")
@@ -194,6 +207,7 @@ local function unitPage(key, order)
     end, { parent = "unitframes", onChange = update, order = order })
 end
 
-for i, key in ipairs({ "player", "target", "targettarget", "focus", "focustarget", "pet", "boss", "party", "raid" }) do
+UF.PAGE_ORDER = { "player", "target", "targettarget", "focus", "focustarget", "pet", "boss", "party", "raid" }
+for i, key in ipairs(UF.PAGE_ORDER) do
     unitPage(key, i)
 end
