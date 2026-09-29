@@ -190,7 +190,7 @@ end
 
 local issecretUF = rawget(_G, "issecretvalue")
 
--- The look's own health colours (Rebel, Arena, Frost): one for you and your
+-- The look's own health colours (every look but Wick Modern and Wick OG): one for you and your
 -- friends, one for anything you can attack.
 local function lookHealth(health, unit)
     local st = Chrome.StyleDef and Chrome:StyleDef()
