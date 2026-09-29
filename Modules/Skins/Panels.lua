@@ -972,8 +972,8 @@ end
 -- that art proved unreliable, so ours reads the skill from the bar's own
 -- text ("Mining 88/150") and draws a plain fel bar on a glass track that
 -- ends where the bar frame does.
-local function barText(bar)
-    for _, r in ipairs({ bar:GetRegions() }) do
+local function rankIn(frame)
+    for _, r in ipairs({ frame:GetRegions() }) do
         if r:GetObjectType() == "FontString" then
             local t = r:GetText()
             if t and not (issecretvalue and issecretvalue(t)) then
@@ -982,6 +982,19 @@ local function barText(bar)
             end
         end
     end
+end
+
+-- The label may sit on the bar, on a child of it, or beside it on the
+-- panel; look in that order.
+local function barText(bar)
+    local cur, max = rankIn(bar)
+    if cur then return cur, max end
+    for _, child in ipairs({ bar:GetChildren() }) do
+        cur, max = rankIn(child)
+        if cur then return cur, max end
+    end
+    local parent = bar:GetParent()
+    if parent then return rankIn(parent) end
 end
 
 local function flatRankBar(bar)
@@ -1017,7 +1030,15 @@ local function flatRankBar(bar)
     end
     width = width or e.track:GetWidth() or 0
     local cur, max = barText(bar)
-    local frac = (cur and max and max > 0) and math.min(1, cur / max) or 0
+    local frac
+    if cur and max and max > 0 then
+        frac = math.min(1, cur / max)
+    elseif bar.Mask and bar.Mask:GetRight() and l and width then
+        -- No label to read: fall back to where Blizzard slid the mask.
+        frac = math.max(0, math.min(1, (bar.Mask:GetRight() - l) / width))
+    else
+        frac = 0
+    end
     e.bar:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
     if frac > 0 and width > 2 then
         e.bar:SetWidth((width - 2) * frac)
