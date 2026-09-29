@@ -1096,6 +1096,16 @@ local function stylePopouts()
             ns:Glyph(pop, dir, { tile = false, size = 12 })
         end
     end
+    -- The brass arrow between the ranged slot and the ammo slot.
+    local ammo = rawget(_G, "CharacterAmmoSlot")
+    if ammo then
+        for _, child in ipairs({ ammo:GetChildren() }) do
+            for _, r in ipairs({ child:GetRegions() }) do
+                local a = r:GetObjectType() == "Texture" and r:GetAtlas()
+                if a and a:find("GearSlot%-Arrow") and r:GetAlpha() > 0 then r:SetAlpha(0) end
+            end
+        end
+    end
     -- The flyout of items to choose from: its gold frame goes for a card.
     local fb = rawget(_G, "EquipmentFlyoutFrameButtons")
     if fb and fb:IsVisible() then
