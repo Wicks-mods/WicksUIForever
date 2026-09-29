@@ -190,10 +190,28 @@ end
 
 local issecretUF = rawget(_G, "issecretvalue")
 
+-- The look's own health colours (Rebel, Arena): one for you and your
+-- friends, one for anything you can attack.
+local function lookHealth(health, unit)
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    local h = st and st.health
+    if not h then return nil end
+    local hostile = unit and UnitCanAttack and UnitCanAttack("player", unit)
+    if issecretUF and issecretUF(hostile) then hostile = false end
+    local c = C[hostile and h.enemy or h.friend] or C.text
+    health:SetStatusBarColor(c[1], c[2], c[3])
+    return c
+end
+
 local function postUpdateHealthColor(health, unit, color)
     local bg = health.bg
     if not bg then return end
     local d = UF:db()
+    if d.healthColor == "look" then
+        lookHealth(health, unit)
+        bg:SetVertexColor(C.void[1], C.void[2], C.void[3], 1)
+        return
+    end
     -- Colour strength: the game's class colours are light tones, and on a
     -- flat fill a pale one (hunter, priest, rogue) reads nearly white.
     -- Scaling the colour down keeps the hue and loses the glare. A colour

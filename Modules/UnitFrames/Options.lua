@@ -20,7 +20,8 @@ ns.Config:AddPage("unitframes", "Unit Frames", function(L)
     L:Heading("Colours")
     L:Dropdown("Health bars", "healthColor", {
         { "class", "Class and reaction" }, { "dark", "Dark" }, { "gradient", "Red to green by health" },
-    }, { tooltip = "The gradient is worked out by the client from your health, which this client keeps from addons, so it still follows health in combat." })
+        { "look", "The look's colours" },
+    }, { tooltip = "The gradient is worked out by the client from your health, which this client keeps from addons, so it still follows health in combat. The look's colours are for the styles that have their own (Rebel, Arena): one for friends, one for enemies. Each style keeps its own choice." })
     L:Color("Dark colour", "darkColor", { disabled = function() return UF:db().healthColor ~= "dark" end })
     L:Toggle("Class colour behind the bar", "classBackdrop", { tooltip = "The empty part of the health bar in a dim class colour, so a dark bar still says who it is." })
     L:Slider("Behind the bar, strength", "bgAlpha", 0, 1, 0.05, { disabled = function() return not UF:db().classBackdrop end })

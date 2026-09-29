@@ -89,6 +89,7 @@ local function takeSizes(prof)
     for key, u in pairs(prof.unitframes and prof.unitframes.units or {}) do
         out.units[key] = { width = u.width, height = u.height }
     end
+    out.healthColor = prof.unitframes and prof.unitframes.healthColor
     local mm = prof.minimap
     if mm then
         out.minimap = {}
@@ -106,6 +107,7 @@ local function putSizes(prof, saved)
         local u = prof.unitframes and prof.unitframes.units and prof.unitframes.units[key]
         if u then u.width, u.height = s.width or u.width, s.height or u.height end
     end
+    if saved.healthColor and prof.unitframes then prof.unitframes.healthColor = saved.healthColor end
     if saved.minimap and prof.minimap then
         for _, k in ipairs(MINIMAP_KEYS) do
             if saved.minimap[k] ~= nil then prof.minimap[k] = saved.minimap[k] end
@@ -113,10 +115,30 @@ local function putSizes(prof, saved)
     end
 end
 
+-- Health colours. A look with colours of its own starts in them, once per
+-- profile, even for a profile already in that look before it had them;
+-- after that the player's choice stands, kept per style like the sizes. A
+-- style without them never keeps the setting, which would mean nothing.
+local function lookHealth(g, style)
+    local uf = ns.A.db.profile.unitframes
+    local Chrome = ns.Core and ns.Core.Chrome
+    local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    if not uf then return end
+    g.lookHealth = g.lookHealth or {}
+    if st and st.health then
+        if not g.lookHealth[style] then
+            uf.healthColor = "look"
+            g.lookHealth[style] = true
+        end
+    elseif uf.healthColor == "look" then
+        uf.healthColor = "class"
+    end
+end
+
 function ns:ApplyStylePreset(force)
     local g = ns:G()
     local style = styleKey()
-    if not force and g.presetFor == style then return end
+    if not force and g.presetFor == style then lookHealth(g, style) return end
     local p = presetFor(style)
     if not p then return end
     local prof = ns.A.db.profile
@@ -142,6 +164,8 @@ function ns:ApplyStylePreset(force)
         end
     end
     g.presetFor = style
+    -- After the style left behind was saved and this one's put back.
+    lookHealth(g, style)
 end
 
 -- ============================================================
