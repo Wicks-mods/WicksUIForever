@@ -48,10 +48,17 @@ local function postCreate(size, showTime)
     end
 end
 
+-- The corner the first icon sits in: the rows grow away from it, so
+-- growing left and up starts at the bottom right.
+local function startCorner(d)
+    return (d.growthY == "UP" and "BOTTOM" or "TOP") .. (d.growthX == "LEFT" and "RIGHT" or "LEFT")
+end
+
 local function build(self, which, d)
     local width = d.perRow * (d.size + d.spacing)
+    local corner = startCorner(d)
     local a = self:CreateAuras({
-        initialAnchor = d.growthX == "LEFT" and "TOPRIGHT" or "TOPLEFT",
+        initialAnchor = corner,
         growthX = d.growthX, growthY = d.growthY,
         layoutLimit = width,
     })
@@ -73,7 +80,7 @@ local function build(self, which, d)
     holder:SetSize(width, d.rows * (d.size + d.rowSpacing))
     a:SetParent(holder)
     a:ClearAllPoints()
-    a:SetPoint(d.growthX == "LEFT" and "TOPRIGHT" or "TOPLEFT", holder)
+    a:SetPoint(corner, holder)
     ns:CreateMover(holder, "auras_" .. which, which == "buffs" and "Buffs" or "Debuffs", d.point,
         { groups = "auras", config = "auras" })
     AU[which] = a
@@ -128,7 +135,9 @@ ns.Config:AddPage("auras", "Buffs", function(L)
         L:Slider("Rows", "rows", 1, 6, 1)
         L:Slider("Spacing", "spacing", 0, 20, 1)
         L:Slider("Row spacing", "rowSpacing", 0, 30, 1)
-        L:Dropdown("Grow across", "growthX", { { "LEFT", "Left" }, { "RIGHT", "Right" } })
-        L:Dropdown("Grow down or up", "growthY", { { "DOWN", "Down" }, { "UP", "Up" } })
+        L:Dropdown("Grow across", "growthX", { { "LEFT", "Left" }, { "RIGHT", "Right" } },
+            { tooltip = "Which way a row fills. Left starts on the right side of the mover." })
+        L:Dropdown("Grow down or up", "growthY", { { "DOWN", "Down" }, { "UP", "Up" } },
+            { tooltip = "Which way new rows go. Up starts at the bottom of the mover, so left and up begins in its bottom right corner." })
     end
 end, { onChange = function() AU:Update() end, order = 40 })
