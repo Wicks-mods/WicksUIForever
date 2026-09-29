@@ -1732,6 +1732,51 @@ PS.SPECIAL.CommunitiesFrame = function(frame)
     return "generic"
 end
 
+-- The calendar: the full skin. Each day's parchment becomes a black tile
+-- (dimmer for the days of the months either side, which Blizzard marks by
+-- darkening the parchment), the dark band behind event text goes, and the
+-- holiday art stays, as it says what is on. Month arrows are small tiles.
+PS.SPECIAL.CalendarFrame = function(frame)
+    styleClose(rawget(_G, "CalendarCloseButton"))
+    fullSkin(frame, function()
+        styleStepper(rawget(_G, "CalendarPrevMonthButton"), "<")
+        styleStepper(rawget(_G, "CalendarNextMonthButton"), ">")
+        for i = 1, 42 do
+            local b = rawget(_G, "CalendarDayButton" .. i)
+            if not b then break end
+            local e = extras[b] or {}
+            extras[b] = e
+            local dim = false
+            for _, r in ipairs({ b:GetRegions() }) do
+                if r:GetObjectType() == "Texture" and r ~= e.hover then
+                    local layer = r:GetDrawLayer()
+                    if layer == "BACKGROUND" then
+                        local vr = r:GetVertexColor()
+                        dim = vr and vr < 0.8 or false
+                        if r:GetAlpha() > 0 then r:SetAlpha(0) end
+                    elseif layer == "HIGHLIGHT" and r:GetAlpha() > 0 then
+                        r:SetAlpha(0)
+                    end
+                end
+            end
+            local n = b:GetName()
+            local band = rawget(_G, n .. "EventBackgroundTexture")
+            if band and band:GetAlpha() > 0 then band:SetAlpha(0) end
+            if not e.tile then
+                local bd = backdrop(b, "Default", false, 2)
+                ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+                e.tile = bd
+                local h = b:CreateTexture(nil, "HIGHLIGHT")
+                h:SetAllPoints(bd)
+                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.12)
+                e.hover = h
+            end
+            e.tile:SetAlpha(dim and 0.45 or 1)
+        end
+    end)
+    return "generic"
+end
+
 -- The talents tab. The painting behind the trees (ClassBackground) stays,
 -- as Wick wants; the brown frame around it (BackgroundBorder, with the gold
 -- bar across the top and the edge along the bottom) goes, the tree headers
