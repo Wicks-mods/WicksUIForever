@@ -1795,6 +1795,15 @@ PS.SPECIAL.CalendarFrame = function(frame)
     return "generic"
 end
 
+-- Collections and the transmog window: the full skin. The stone backing
+-- and its corner scrollwork go (the walk turns the backing into a black
+-- card); the slot buttons and models are left to Blizzard.
+PS.SPECIAL.CollectionsJournal = function(frame)
+    fullSkin(frame)
+    return "generic"
+end
+PS.SPECIAL.WardrobeFrame = PS.SPECIAL.CollectionsJournal
+
 -- The talents tab. The painting behind the trees (ClassBackground) stays,
 -- as Wick wants; the brown frame around it (BackgroundBorder, with the gold
 -- bar across the top and the edge along the bottom) goes, the tree headers
