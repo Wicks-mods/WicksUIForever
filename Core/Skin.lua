@@ -337,19 +337,30 @@ end
 -- library's duration string, centred, in our font at the icon's size.
 local hiddenCooldowns = setmetatable({}, { __mode = "k" })
 local cdTicker = CreateFrame("Frame")
+-- In combat the client locks its aura buttons (and their cooldowns) away
+-- from addons, although IsForbidden still says otherwise, so nothing here
+-- touches them until the fight is over. They keep the alpha set before
+-- it. The one guarded call is for a button the client made mid-fight.
+local function hide(cd)
+    if cd.IsForbidden and cd:IsForbidden() then return end
+    pcall(cd.SetAlpha, cd, 0)
+end
 cdTicker:SetScript("OnUpdate", function()
-    -- In combat the client's aura buttons (and their cooldowns) are
-    -- forbidden to addons; they keep the alpha set before the fight, so
-    -- they are only left alone, never touched.
-    for cd in pairs(hiddenCooldowns) do
-        if not (cd.IsForbidden and cd:IsForbidden()) then cd:SetAlpha(0) end
-    end
+    if InCombatLockdown() then return end
+    for cd in pairs(hiddenCooldowns) do hide(cd) end
 end)
 
 function ns:AuraCountdown(button, iconSize, show)
+    -- A button the client makes mid-fight is locked until it is over.
+    if InCombatLockdown() then
+        local cd = button and button.Cooldown
+        if cd then hiddenCooldowns[cd] = true end
+        ns:AfterCombat("auracountdown:" .. tostring(button), function() ns:AuraCountdown(button, iconSize, show) end)
+        return
+    end
     local cd = button and button.Cooldown
     if cd then
-        if not (cd.IsForbidden and cd:IsForbidden()) then cd:SetAlpha(0) end
+        hide(cd)
         hiddenCooldowns[cd] = true
     end
     local t = button and button.Time
