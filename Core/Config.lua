@@ -368,7 +368,9 @@ end
 local function build()
     frame = CreateFrame("Frame", "WicksUIConfig", UIParent)
     frame:SetSize(WIDTH, HEIGHT)
-    frame:SetPoint("CENTER")
+    -- Near the top of the screen rather than its middle, so the action bars
+    -- and unit frames along the bottom stay in view while settings change.
+    frame:SetPoint("TOP", UIParent, "TOP", 0, -60)
     -- DIALOG, the layer Blizzard's own dialogs use, so no frame of the
     -- interface (unit frames, bars, their text overlays) draws over it.
     -- Its dropdown menus and confirms sit higher still, in FULLSCREEN_DIALOG.
