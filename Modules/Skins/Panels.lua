@@ -1532,6 +1532,57 @@ local function treeCards(tf)
     end
 end
 
+-- Talent nodes: Blizzard's square frames (StateBorder, its hover twin,
+-- the drop shadow, the sheen that sweeps across, the glows) go. Each node
+-- is a tile with a ring in its state's colour, read from the frame
+-- Blizzard picked: maxed in the accent, spendable in green, open but not
+-- yet affordable in a quiet grey, locked with no ring at all (Blizzard's
+-- own dark overlay already dims those). Run every frame while the tab
+-- shows, so a point spent recolours at once.
+local NODE_FADE = { "StateBorder", "StateBorderHover", "Shadow", "BorderSheen", "Glow", "SelectableGlow" }
+local GREEN = { 0.35, 0.85, 0.45 }
+local function nodeColor(atlas)
+    atlas = atlas and atlas:lower() or ""
+    if atlas:find("yellow") or atlas:find("gold") then return C.fel end
+    if atlas:find("green") then return GREEN end
+    if atlas:find("gray") or atlas:find("grey") then return C.border end
+end
+local function styleNodes(tf)
+    local bp = tf.ButtonsParent
+    if not bp then return end
+    for _, b in ipairs({ bp:GetChildren() }) do
+        local sb = b.StateBorder
+        if sb and b.Icon and b:IsShown() then
+            local c = nodeColor(sb:GetAtlas())
+            for _, k in ipairs(NODE_FADE) do
+                local t = b[k]
+                if t and t:GetAlpha() > 0 then t:SetAlpha(0) end
+            end
+            local e = extras[b] or {}
+            extras[b] = e
+            if not e.ring then
+                local bd = backdrop(b, "Default", false, 0)
+                bd:ClearAllPoints()
+                bd:SetPoint("TOPLEFT", b.Icon, "TOPLEFT", -2, 2)
+                bd:SetPoint("BOTTOMRIGHT", b.Icon, "BOTTOMRIGHT", 2, -2)
+                ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+                local ring = b:CreateTexture(nil, "OVERLAY", nil, 1)
+                ring:SetTexture(ns.Media.ring)
+                if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
+                ring:SetAllPoints(bd)
+                e.ring = ring
+            end
+            if c then
+                e.ring:SetVertexColor(c[1], c[2], c[3], 1)
+                e.ring:Show()
+            else
+                e.ring:Hide()
+            end
+        end
+    end
+end
+PS.styleNodes = styleNodes
+
 local function styleTalents(tf)
     treeCards(tf)
     -- The search options button: its yellow arrow greyed on a black tile.
@@ -1599,6 +1650,7 @@ PS.SPECIAL.PlayerSpellsFrame = function(frame)
             -- the other full-skin windows; the spellbook keeps its own look.
             local win = extras[frame] and extras[frame].backdrop
             if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
+            styleNodes(tf)
             acc = acc + e
             if acc < 0.5 then return end
             acc = 0
