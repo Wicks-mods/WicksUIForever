@@ -313,7 +313,11 @@ local function build()
     frame = CreateFrame("Frame", "WicksUIConfig", UIParent)
     frame:SetSize(WIDTH, HEIGHT)
     frame:SetPoint("CENTER")
-    frame:SetFrameStrata("HIGH")
+    -- DIALOG, the layer Blizzard's own dialogs use, so no frame of the
+    -- interface (unit frames, bars, their text overlays) draws over it.
+    -- Its dropdown menus and confirms sit higher still, in FULLSCREEN_DIALOG.
+    frame:SetFrameStrata("DIALOG")
+    frame:SetFrameLevel(100)
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
     frame:EnableMouse(true)
