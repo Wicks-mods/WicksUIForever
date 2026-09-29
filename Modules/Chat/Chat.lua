@@ -30,6 +30,7 @@ ns.defaults.profile.chat = {
     editBoxTop = false,
     hideButtons = true,
     copyButton = true,
+    alignToInfo = true,       -- the chat's panel as wide as the info panel under it, sat on it
     maxLines = 500,
 }
 
@@ -143,6 +144,39 @@ end
 -- ============================================================
 -- The panel
 -- ============================================================
+-- Lined up with the info panel under it: the chat's panel reaches the
+-- panel's two edges and sits a few pixels above it. The chat window is
+-- Blizzard's and Edit Mode places it, so this is held (out of combat, a
+-- few times a second) rather than set once; turning it off hands the chat
+-- back to Edit Mode after a reload.
+local GAP = 4
+function CH:Align()
+    local d = db()
+    if not d.alignToInfo or InCombatLockdown() then return end
+    local cf = _G.ChatFrame1
+    local info = ns.DataTexts and ns.DataTexts.panels and ns.DataTexts.panels.left
+    if not (cf and info and info:IsShown()) then return end
+    local w = info:GetWidth()
+    if not (w and w > 20) then return end
+    -- The panel is the chat frame widened by 6 each side, 8 below it.
+    local want = w - 12
+    if math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
+    local p, rel, rp, x, y = cf:GetPoint(1)
+    if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - 6) > 0.5
+        or math.abs((y or 0) - (GAP + 8)) > 0.5 or cf:GetNumPoints() ~= 1 then
+        cf:ClearAllPoints()
+        cf:SetPoint("BOTTOMLEFT", info, "TOPLEFT", 6, GAP + 8)
+    end
+end
+
+local holder = CreateFrame("Frame")
+local holdAcc = 0
+holder:SetScript("OnUpdate", function(_, e)
+    holdAcc = holdAcc + e
+    if holdAcc < 0.25 then return end
+    holdAcc = 0
+    if CH.initialized and db().enable then CH:Align() end
+end)
 function CH:Panel()
     local p = self.panel
     if not p then
@@ -158,6 +192,7 @@ function CH:Panel()
         p.copy = copy
     end
     local cf = _G.ChatFrame1
+    self:Align()
     p:ClearAllPoints()
     p:SetPoint("TOPLEFT", cf, "TOPLEFT", -6, 30)
     p:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", 6, -8)
@@ -269,6 +304,7 @@ ns.Config:AddPage("chat", "Chat", function(L)
     L:DB(db)
     L:Note("The chat windows stay where Edit Mode puts them. Everything here is the look. Nothing in this module touches the messages themselves, which this client can hand over as secrets during an encounter.")
     L:Toggle("Wick panel behind the chat", "panel")
+    L:Toggle("Line up with the info panel", "alignToInfo", { tooltip = "The chat window is made as wide as the info panel under it and sits just above it. Off leaves it to Edit Mode (after a reload)." })
     L:Slider("Panel alpha", "panelAlpha", 0, 1, 0.05, { tooltip = "How solid the chat panel is. The damage meter's panel follows it, so the two match." })
     L:Toggle("Copy button on the panel", "copyButton")
     L:Toggle("Hide the chat buttons", "hideButtons", { tooltip = "The menu, channel and social buttons beside the chat. Takes effect after a reload." })

@@ -22,6 +22,7 @@ ns.defaults.profile.skins = {
     enable = true,
     tracker = true, trackerFontSize = 12,
     damageMeter = true,
+    meterAlign = true,           -- the meter as wide as the right info panel, sat on it
     microMenu = "mouseover",     -- show, mouseover, hide
     bagsBar = "mouseover",
 }
@@ -39,7 +40,7 @@ local function strip(frame, keep)
     end
 end
 
-local function panelBehind(frame, template, inset)
+local function panelBehind(frame, template, inset, brackets)
     local p = panels[frame]
     if p then return p end
     p = CreateFrame("Frame", nil, frame)
@@ -47,7 +48,7 @@ local function panelBehind(frame, template, inset)
     p:SetPoint("TOPLEFT", -o, o)
     p:SetPoint("BOTTOMRIGHT", o, -o)
     p:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
-    ns:SetTemplate(p, template or "Transparent")
+    ns:SetTemplate(p, template or "Transparent", { brackets = brackets })
     panels[frame] = p
     return p
 end
@@ -141,6 +142,25 @@ function SK:AlignMeterHeader(win)
     put(ss, "CENTER", sd, "CENTER", -24, 0)
 end
 
+-- The first meter window lined up with the right info panel: as wide as
+-- it and sat a few pixels above it. The meter is Edit Mode's, so this is
+-- held out of combat rather than set once.
+function SK:AlignMeter()
+    if not db().meterAlign or InCombatLockdown() then return end
+    local win = rawget(_G, "DamageMeterSessionWindow1")
+    local info = ns.DataTexts and ns.DataTexts.panels and ns.DataTexts.panels.right
+    if not (win and info and info:IsShown() and win:IsShown()) then return end
+    local w = info:GetWidth()
+    if not (w and w > 20) then return end
+    if math.abs((win:GetWidth() or 0) - w) > 0.5 then win:SetWidth(w) end
+    local p, rel, rp, x, y = win:GetPoint(1)
+    if p ~= "BOTTOMRIGHT" or rel ~= info or rp ~= "TOPRIGHT" or math.abs(x or 0) > 0.5
+        or math.abs((y or 0) - 4) > 0.5 or win:GetNumPoints() ~= 1 then
+        win:ClearAllPoints()
+        win:SetPoint("BOTTOMRIGHT", info, "TOPRIGHT", 0, 4)
+    end
+end
+
 -- The meter's panel takes the chat panel's see-through setting, so the two
 -- always match; Panel alpha on the Chat page sets both.
 function SK:MatchChat(p)
@@ -165,7 +185,8 @@ function SK:DamageMeter()
         -- colour of the chat panel.
         if win.MinimizeContainer then strip(win.MinimizeContainer) end
         if win:IsShown() then
-            local p = panelBehind(win, "Transparent")
+            -- The OG style's fel corners on the meter, as on every panel.
+            local p = panelBehind(win, "Transparent", nil, not ns:Modern())
             SK:MatchChat(p)
         end
         ns:Glyph(win.MinimizeButton, "minus", { tileSize = 20 })
@@ -206,6 +227,7 @@ poll:SetScript("OnUpdate", function(_, e)
     acc = acc + e
     if acc < 0.1 then return end
     acc = 0
+    SK:AlignMeter()
     -- The bag bar's fold arrow turns as it is clicked.
     local toggle = rawget(_G, "BagBarExpandToggle")
     if toggle and ns.glyphs and ns.glyphs[toggle] and toggle:IsVisible() then
@@ -366,6 +388,7 @@ ns.Config:AddPage("skins", "Blizzard frames", function(L)
     L:Toggle("Objective tracker", "tracker")
     L:Slider("Tracker text size", "trackerFontSize", 8, 18, 1)
     L:Toggle("Damage meter window", "damageMeter", { tooltip = "The window only. The bars show combat numbers the client keeps secret, and are left exactly as the game draws them." })
+    L:Toggle("Line the meter up with the info panel", "meterAlign", { tooltip = "The meter's window is made as wide as the right info panel and sits just above it. Off leaves it to Edit Mode (after a reload)." })
     L:Dropdown("Micro menu", "microMenu", { { "show", "Always" }, { "mouseover", "When moused over" }, { "hide", "Hidden" } })
     L:Dropdown("Bag bar", "bagsBar", { { "show", "Always" }, { "mouseover", "When moused over" }, { "hide", "Hidden" } })
 end, { onChange = function() SK:Update() end, order = 95 })
