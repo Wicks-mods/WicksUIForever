@@ -668,7 +668,11 @@ local function scanButtons(frame, depth)
         local w, h = child:GetSize()
         w, h = w or 0, h or 0
         local isButton = kind == "Button" or kind == "CheckButton"
-        if kind == "Button" and isFilter(child) then
+        if isButton and (w < 1 or h < 1) then
+            -- Not laid out yet (a list row the moment it is made): judged
+            -- by its size it would pass for a small icon button. Left for a
+            -- later pass, once it has one.
+        elseif kind == "Button" and isFilter(child) then
             styleFilter(child)
         elseif kind == "Button" and child.StateIcon and child.Name then
             -- A collapsible heading (skills, currencies): its brown bar,
@@ -1841,7 +1845,9 @@ local function walkProfessions(frame, depth, root)
         if child:IsShown() then
             local kind = child:GetObjectType()
             local fill = child.Fill
-            if (kind == "ItemButton" or kind == "Button") and child.IconBorder and (child.icon or child.Icon)
+            if (kind == "Button" or kind == "CheckButton") and ((child:GetWidth() or 0) < 1 or (child:GetHeight() or 0) < 1) then
+                -- Not laid out yet; seen again once it has a size.
+            elseif (kind == "ItemButton" or kind == "Button") and child.IconBorder and (child.icon or child.Icon)
                 and (child.JunkIcon or child.NewItemTexture or kind == "ItemButton") then
                 styleItemButton(child)
             elseif (kind == "Button" or kind == "CheckButton") and styleListButton(child) then
@@ -2024,6 +2030,9 @@ local function fullSkin(frame, each)
             local n, top = 0, 0
             for _, row in ipairs({ t:GetChildren() }) do
                 if row:IsShown() then
+                    -- Blizzard inks list text for parchment as it fills a
+                    -- row; ours goes on the same frame.
+                    recolorText(row)
                     n = n + 1
                     if n == 1 then top = math.floor((row:GetTop() or 0) + 0.5) end
                 end
