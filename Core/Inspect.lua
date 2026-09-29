@@ -79,6 +79,24 @@ end
 function I:Run()
     local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
     local f = foci and foci[1]
+    -- Things that let the mouse through (aura icons, most text) never
+    -- become the focus. Then take the smallest of our skinned frames and
+    -- aura containers that the pointer is over.
+    if not f or f == WorldFrame or f == UIParent then
+        local best, area
+        local function consider(fr)
+            if fr and fr.IsVisible and fr:IsVisible() and fr:IsMouseOver() then
+                local w, h = fr:GetSize()
+                local a = (w or 0) * (h or 0)
+                if a > 0 and (not area or a < area) then best, area = fr, a end
+            end
+        end
+        for fr in pairs(ns.skinned or {}) do
+            consider(fr)
+            if fr.GetParent then consider(fr:GetParent()) end
+        end
+        f = best or f
+    end
     if not f or f == WorldFrame then
         ns.A:Print("point at something first, then type /wui inspect.")
         return

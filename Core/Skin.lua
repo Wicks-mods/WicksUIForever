@@ -264,7 +264,14 @@ end
 -- swirl, so they are hidden on every aura button.
 function ns:QuietAuraCooldown(button)
     local cd = button and button.Cooldown
-    if cd and cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
+    if not cd then return end
+    -- The aura container turns the numbers back on when it redraws the
+    -- button, so the switch alone does not hold. The countdown's own text
+    -- is faded as well, which the container leaves alone.
+    if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
+    local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
+    if fs then fs:SetAlpha(0) end
+    cd.noCooldownCount = true   -- and OmniCC-style addons stay off it too
 end
 
 function ns:CreateText(parent, size, justify, outline, layer)
