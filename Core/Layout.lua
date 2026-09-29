@@ -440,7 +440,7 @@ local LAYOUT = {
         hideButtons = true,
         maxLines = 500,
         panel = true,
-        panelAlpha = 1,
+        panelAlpha = 0.5,
         tabFontSize = 12,
     },
     databars = {
@@ -508,206 +508,6 @@ local LAYOUT = {
         fontSize = 14,
         pixelPerfect = true,
         statusbar = "Wick Flat",
-        styleSizes = {
-            modern = {
-                bars = {
-                    [1] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [2] = {
-                        size = 38,
-                        spacing = 6,
-                    },
-                    [3] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [4] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [5] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [6] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [7] = {
-                        size = 38,
-                        spacing = 6,
-                    },
-                    [8] = {
-                        size = 38,
-                        spacing = 6,
-                    },
-                    [9] = {
-                        size = 38,
-                        spacing = 6,
-                    },
-                    [10] = {
-                        size = 38,
-                        spacing = 6,
-                    },
-                    [13] = {
-                        size = 38,
-                        spacing = 6,
-                    },
-                    [14] = {
-                        size = 38,
-                        spacing = 6,
-                    },
-                    [15] = {
-                        size = 38,
-                        spacing = 6,
-                    },
-                },
-                minimap = {
-                    fill = true,
-                    ring = false,
-                    square = false,
-                },
-                units = {
-                    boss = {
-                        height = 44,
-                        width = 190,
-                    },
-                    focus = {
-                        height = 44,
-                        width = 180,
-                    },
-                    focustarget = {
-                        height = 34,
-                        width = 120,
-                    },
-                    party = {
-                        height = 46,
-                        width = 117,
-                    },
-                    pet = {
-                        height = 34,
-                        width = 120,
-                    },
-                    player = {
-                        height = 90,
-                        width = 272,
-                    },
-                    raid = {
-                        height = 44,
-                        width = 84,
-                    },
-                    target = {
-                        height = 86,
-                        width = 214,
-                    },
-                    targettarget = {
-                        height = 34,
-                        width = 144,
-                    },
-                },
-            },
-            wick = {
-                bars = {
-                    [1] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [2] = {
-                        size = 34,
-                        spacing = 2,
-                    },
-                    [3] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [4] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [5] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [6] = {
-                        size = 40,
-                        spacing = 2,
-                    },
-                    [7] = {
-                        size = 34,
-                        spacing = 2,
-                    },
-                    [8] = {
-                        size = 34,
-                        spacing = 2,
-                    },
-                    [9] = {
-                        size = 34,
-                        spacing = 2,
-                    },
-                    [10] = {
-                        size = 34,
-                        spacing = 2,
-                    },
-                    [13] = {
-                        size = 34,
-                        spacing = 2,
-                    },
-                    [14] = {
-                        size = 34,
-                        spacing = 2,
-                    },
-                    [15] = {
-                        size = 34,
-                        spacing = 2,
-                    },
-                },
-                minimap = {
-                    fill = true,
-                    ring = false,
-                    square = true,
-                },
-                units = {
-                    boss = {
-                        height = 36,
-                        width = 190,
-                    },
-                    focus = {
-                        height = 32,
-                        width = 180,
-                    },
-                    focustarget = {
-                        height = 26,
-                        width = 120,
-                    },
-                    party = {
-                        height = 40,
-                        width = 117,
-                    },
-                    pet = {
-                        height = 26,
-                        width = 120,
-                    },
-                    player = {
-                        height = 77,
-                        width = 272,
-                    },
-                    raid = {
-                        height = 42,
-                        width = 84,
-                    },
-                    target = {
-                        height = 77,
-                        width = 214,
-                    },
-                    targettarget = {
-                        height = 26,
-                        width = 144,
-                    },
-                },
-            },
-        },
     },
     minimap = {
         clock = true,
@@ -798,12 +598,7 @@ local LAYOUT = {
         mapWindowed = true,
         moveWindows = true,
         tabs = true,
-        windowPos = {
-            CharacterFrame = {
-                [1] = 81.7777,
-                [2] = 718.9346,
-            },
-        },
+        windowPos = {},
     },
     skins = {
         bagsBar = "mouseover",
@@ -849,7 +644,7 @@ local LAYOUT = {
         },
         enable = true,
         font = "Wick",
-        fontOutline = "NONE",
+        fontOutline = "OUTLINE",
         healthColor = "class",
         rangeAlpha = 0.45,
         smooth = true,
@@ -877,7 +672,6 @@ local LAYOUT = {
                 castbar = {
                     detach = false,
                     enable = true,
-                    fontSize = 15,
                     height = 14,
                     icon = true,
                     latency = false,
@@ -928,7 +722,7 @@ local LAYOUT = {
                     left = {
                         enable = true,
                         point = "LEFT",
-                        size = 16,
+                        size = 12,
                         tag = "[wui:namecolor][name]",
                         x = 4,
                         y = 0,
@@ -936,7 +730,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -944,7 +738,7 @@ local LAYOUT = {
                     right = {
                         enable = true,
                         point = "RIGHT",
-                        size = 16,
+                        size = 12,
                         tag = "[wui:health]",
                         x = -4,
                         y = 0,
@@ -973,7 +767,6 @@ local LAYOUT = {
                 castbar = {
                     detach = false,
                     enable = true,
-                    fontSize = 15,
                     height = 16,
                     icon = true,
                     latency = false,
@@ -1023,7 +816,7 @@ local LAYOUT = {
                     left = {
                         enable = true,
                         point = "LEFT",
-                        size = 16,
+                        size = 12,
                         tag = "[wui:namecolor][name]",
                         x = 4,
                         y = 0,
@@ -1031,7 +824,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1039,7 +832,7 @@ local LAYOUT = {
                     right = {
                         enable = true,
                         point = "RIGHT",
-                        size = 16,
+                        size = 12,
                         tag = "[wui:health]",
                         x = -4,
                         y = 0,
@@ -1068,7 +861,6 @@ local LAYOUT = {
                 castbar = {
                     detach = false,
                     enable = false,
-                    fontSize = 15,
                     height = 18,
                     icon = true,
                     latency = false,
@@ -1118,7 +910,7 @@ local LAYOUT = {
                     left = {
                         enable = true,
                         point = "CENTER",
-                        size = 16,
+                        size = 11,
                         tag = "[wui:namecolor][name]",
                         x = 0,
                         y = 0,
@@ -1126,7 +918,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1134,7 +926,7 @@ local LAYOUT = {
                     right = {
                         enable = false,
                         point = "RIGHT",
-                        size = 16,
+                        size = 11,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1163,7 +955,6 @@ local LAYOUT = {
                 castbar = {
                     detach = false,
                     enable = false,
-                    fontSize = 15,
                     height = 18,
                     icon = true,
                     latency = false,
@@ -1222,7 +1013,7 @@ local LAYOUT = {
                     left = {
                         enable = true,
                         point = "LEFT",
-                        size = 16,
+                        size = 12,
                         tag = "[wui:namecolor][name]",
                         x = 4,
                         y = 0,
@@ -1230,7 +1021,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1238,7 +1029,7 @@ local LAYOUT = {
                     right = {
                         enable = true,
                         point = "RIGHT",
-                        size = 16,
+                        size = 11,
                         tag = "[wui:deficit]",
                         x = -4,
                         y = 0,
@@ -1268,7 +1059,6 @@ local LAYOUT = {
                 castbar = {
                     detach = false,
                     enable = false,
-                    fontSize = 15,
                     height = 18,
                     icon = true,
                     latency = false,
@@ -1318,7 +1108,7 @@ local LAYOUT = {
                     left = {
                         enable = true,
                         point = "LEFT",
-                        size = 16,
+                        size = 11,
                         tag = "[name]",
                         x = 4,
                         y = 0,
@@ -1326,7 +1116,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1334,7 +1124,7 @@ local LAYOUT = {
                     right = {
                         enable = true,
                         point = "RIGHT",
-                        size = 16,
+                        size = 11,
                         tag = "[wui:perhp]",
                         x = -4,
                         y = 0,
@@ -1363,7 +1153,6 @@ local LAYOUT = {
                 castbar = {
                     detach = true,
                     enable = true,
-                    fontSize = 15,
                     height = 22,
                     icon = true,
                     latency = true,
@@ -1418,7 +1207,7 @@ local LAYOUT = {
                     left = {
                         enable = true,
                         point = "LEFT",
-                        size = 19,
+                        size = 18,
                         tag = "[wui:level] [wui:namecolor][name]",
                         x = 3,
                         y = -1,
@@ -1426,7 +1215,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1434,7 +1223,7 @@ local LAYOUT = {
                     right = {
                         enable = true,
                         point = "RIGHT",
-                        size = 16,
+                        size = 17,
                         tag = "[wui:health]",
                         x = -4,
                         y = 0,
@@ -1463,7 +1252,6 @@ local LAYOUT = {
                 castbar = {
                     detach = false,
                     enable = false,
-                    fontSize = 15,
                     height = 18,
                     icon = true,
                     latency = false,
@@ -1524,7 +1312,7 @@ local LAYOUT = {
                     left = {
                         enable = true,
                         point = "TOP",
-                        size = 16,
+                        size = 11,
                         tag = "[wui:namecolor][name]",
                         x = 0,
                         y = -4,
@@ -1532,7 +1320,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1540,7 +1328,7 @@ local LAYOUT = {
                     right = {
                         enable = true,
                         point = "BOTTOM",
-                        size = 16,
+                        size = 10,
                         tag = "[wui:deficit]",
                         x = 0,
                         y = 6,
@@ -1570,7 +1358,6 @@ local LAYOUT = {
                 castbar = {
                     detach = false,
                     enable = true,
-                    fontSize = 15,
                     height = 18,
                     icon = true,
                     latency = false,
@@ -1628,7 +1415,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1636,7 +1423,7 @@ local LAYOUT = {
                     right = {
                         enable = true,
                         point = "RIGHT",
-                        size = 16,
+                        size = 12,
                         tag = "[wui:health]",
                         x = -4,
                         y = 0,
@@ -1665,7 +1452,6 @@ local LAYOUT = {
                 castbar = {
                     detach = false,
                     enable = false,
-                    fontSize = 15,
                     height = 18,
                     icon = true,
                     latency = false,
@@ -1715,7 +1501,7 @@ local LAYOUT = {
                     left = {
                         enable = true,
                         point = "CENTER",
-                        size = 12,
+                        size = 11,
                         tag = "[wui:namecolor][name]",
                         x = 0,
                         y = 0,
@@ -1723,7 +1509,7 @@ local LAYOUT = {
                     power = {
                         enable = false,
                         point = "RIGHT",
-                        size = 14,
+                        size = 10,
                         tag = "",
                         x = -4,
                         y = 0,
@@ -1731,7 +1517,7 @@ local LAYOUT = {
                     right = {
                         enable = false,
                         point = "RIGHT",
-                        size = 16,
+                        size = 11,
                         tag = "",
                         x = -4,
                         y = 0,

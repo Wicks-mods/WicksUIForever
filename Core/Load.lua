@@ -79,8 +79,9 @@ end
 -- and the minimap's shape (round
 -- suits one style, square the other): leaving a style saves what it had
 -- (general settings are per profile), and coming back to it puts them
--- back. The preset is only for a style this profile has never been in, or
--- on request, and it never touches the minimap.
+-- back. A style met for the first time keeps what the profile has; a
+-- style's own spacing is only laid on on request, and never touches the
+-- minimap.
 local MINIMAP_KEYS = { "square", "ring", "fill" }
 local function takeSizes(prof)
     local out = { bars = {}, units = {} }
@@ -161,7 +162,11 @@ function ns:ApplyStylePreset(force)
     local saved = g.styleSizes[style]
     if saved and not force then
         putSizes(prof, saved)
-    else
+    elseif force then
+        -- Only on request ("Apply the style's spacing again"): a style met
+        -- for the first time keeps the sizes the profile already has, which
+        -- its frame positions were set for. Laying a style's own spacing
+        -- over them shrank frames and ran bars into each other.
         if prof.actionbars and prof.actionbars.bars then
             for _, d in pairs(prof.actionbars.bars) do
                 d.size, d.spacing = p.bars.size, p.bars.spacing
