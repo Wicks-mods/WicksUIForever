@@ -72,8 +72,12 @@ local function onUnit(tt)
     if tt ~= GameTooltip or tt:IsForbidden() then return end
     local d = db()
     local _, unit = tt:GetUnit()
-    if not unit then return end
     if d.hideUnitsInCombat and InCombatLockdown() then tt:Hide() return end
+    -- The unit token itself can be secret (world tooltips in combat or an
+    -- instance), and unit API calls refuse a secret from addon code. Then
+    -- there is nothing to read: the plain border stays.
+    unit = plain(unit)
+    if not unit then setBorder(tt) return end
     if d.classBorder and plain(UnitIsPlayer(unit)) then
         local _, class = UnitClass(unit)
         class = plain(class)
