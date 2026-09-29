@@ -1680,6 +1680,45 @@ PS.SPECIAL.CommunitiesFrame = function(frame)
         styleMaxMin(f.MaximizeMinimizeFrame)
         local list = f.CommunitiesList
         if list and list.FilligreeOverlay then fadeRegions(list.FilligreeOverlay) end
+        -- The community entries: their green and blue bars go for grey
+        -- pills; the chosen one wears the accent ring. The guild emblem
+        -- stays, its banner and border go.
+        local target = list and list.ScrollBox and list.ScrollBox.ScrollTarget
+        if target then
+            for _, row in ipairs({ target:GetChildren() }) do
+                if row.Selection and row.Background and row:IsShown() then
+                    for _, k in ipairs({ "Background", "Selection", "GuildTabardBackground", "GuildTabardBorder", "IconRing" }) do
+                        local t = row[k]
+                        if t and t:GetAlpha() > 0 then t:SetAlpha(0) end
+                    end
+                    for _, r in ipairs({ row:GetRegions() }) do
+                        if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "HIGHLIGHT" and not (extras[row] and extras[row].hover == r) then
+                            r:SetAlpha(0)
+                        end
+                    end
+                    local e = extras[row] or {}
+                    extras[row] = e
+                    if not e.ring then
+                        local bd = backdrop(row, "Shadow", false, 0)
+                        bd:ClearAllPoints()
+                        bd:SetPoint("TOPLEFT", 6, -4)
+                        bd:SetPoint("BOTTOMRIGHT", -6, 4)
+                        local ring = row:CreateTexture(nil, "OVERLAY", nil, 2)
+                        ring:SetTexture(ns.Media.ring)
+                        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
+                        ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                        ring:SetAllPoints(bd)
+                        e.ring = ring
+                        local h = row:CreateTexture(nil, "HIGHLIGHT")
+                        h:SetAllPoints(bd)
+                        ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.12)
+                        e.hover = h
+                    end
+                    e.ring:SetShown(row.Selection:IsShown())
+                    if row.Name then row.Name:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+                end
+            end
+        end
         local members = f.MemberList
         if members and members:IsVisible() then
             if members.WatermarkFrame then fadeRegions(members.WatermarkFrame) end
