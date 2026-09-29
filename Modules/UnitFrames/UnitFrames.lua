@@ -553,7 +553,10 @@ function UF:LayoutClassPower(self, maxNum)
         b:ClearAllPoints()
         b:SetSize(each, h)
         b:SetPoint("BOTTOMLEFT", self, "TOPLEFT", (d.classPowerX or 0) + (i - 1) * (each + gap), d.classPowerY or 3)
-        b:SetShown(i <= maxNum and d.classPower)
+        -- Only ever hidden here. Whether the points show at all is the
+        -- class power element's call (a druid's only in cat form); showing
+        -- them here put an empty bar over every druid out of form.
+        if i > maxNum or not d.classPower then b:Hide() end
     end
 end
 
