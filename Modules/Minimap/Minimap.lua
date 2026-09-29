@@ -99,9 +99,9 @@ function MM:Fill()
     local cl = rawget(_G, "MinimapCluster")
     if not cl or InCombatLockdown() then return end
     remember()
-    -- Only the square map fills the box; round keeps Blizzard's size so
-    -- the ring still fits it.
-    if not (d.fill and d.square) then restore() return end
+    -- The round map keeps Blizzard's size while its ring shows, since the
+    -- ring is drawn for that size; without the ring it fills the box too.
+    if not (d.fill and (d.square or not d.ring)) then restore() return end
     original.moved = true
     local w, h = cl:GetSize()
     if not (w and w > 0) then return end
@@ -146,6 +146,14 @@ function MM:Shape()
         if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, ROUND) end
         blob(1)
         for _, t in ipairs(ringArt()) do t:SetAlpha(d.ring and 1 or 0) end
+    end
+    -- The text bands follow the map's shape.
+    if self.bandMask then
+        if d.square then
+            self.bandMask:SetTexture(ns.Media.roundmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        else
+            self.bandMask:SetTexture(ROUND, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        end
     end
     -- Our text shows on either shape; the corner brackets only suit the
     -- square one.
@@ -246,6 +254,7 @@ function MM:BuildText()
         m:SetAllPoints(Minimap)
         top:AddMaskTexture(m)
         bottom:AddMaskTexture(m)
+        self.bandMask = m
     end
     self.zone = ns:CreateText(chrome, 12, "CENTER")
     self.zone:SetWordWrap(false)
@@ -391,7 +400,7 @@ ns.Config:AddPage("minimap", "Minimap", function(L)
     L:DB(db)
     L:Note("Move the minimap with Edit Mode.")
     L:Toggle("Square", "square", { tooltip = "Off gives back Blizzard's round map and its ring." })
-    L:Toggle("Ring around the round map", "ring", { tooltip = "Blizzard's gold ring and north marker, on the round map only." })
+    L:Toggle("Ring around the round map", "ring", { tooltip = "Blizzard's gold ring and north marker, on the round map only. With the ring the map keeps Blizzard's size so the ring fits; without it the map fills the box." })
     L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. The round map keeps Blizzard's size, so its ring fits." })
     L:Toggle("Hide the zoom buttons", "hideZoom")
     L:Toggle("Hide Blizzard's zone header and clock", "hideBlizzardText")
