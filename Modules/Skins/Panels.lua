@@ -2098,7 +2098,25 @@ end
 -- The vendor, the auction house, Social, the group finder and the bags:
 -- the full skin. Their lists, item buttons and tabs are handled by the
 -- walk's general rules above.
-for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame",
+-- The vendor: each item gets a small card of its own. Blizzard's name
+-- plates are tall enough to earn a card from the walk, and five of them in
+-- a column ran together into one long block, so they are kept out of it.
+PS.SPECIAL.MerchantFrame = function(frame)
+    fullSkin(frame, function()
+        for i = 1, 12 do
+            local item = rawget(_G, "MerchantItem" .. i)
+            if not item then break end
+            local plate = rawget(_G, "MerchantItem" .. i .. "NameFrame")
+            if plate then noCard[plate] = true; plate:SetAlpha(0) end
+            if item:IsShown() then card(item, "wuiCard", "TOPLEFT", item, "BOTTOMRIGHT", item, -3, 3, 3, -3) end
+        end
+        local bb = rawget(_G, "MerchantBuyBackItemNameFrame")
+        if bb then noCard[bb] = true; bb:SetAlpha(0) end
+    end)
+    return "generic"
+end
+
+for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame", "ClassTrainerFrame",
     "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3",
     "ContainerFrame4", "ContainerFrame5", "ContainerFrame6" }) do
     if not PS.SPECIAL[name] then
