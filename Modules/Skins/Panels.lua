@@ -32,6 +32,8 @@ ns.defaults.profile.panelskins = {
     tabs = true,
     exclude = "",           -- window names to leave alone, comma separated
     include = "",           -- windows added with /wui skin
+    mapWindowed = true,     -- the map opens at its windowed size, not fullscreen
+    mapScale = 1,           -- the windowed map's size, set with its corner grip
 }
 
 local function db() return PS:db() end
@@ -764,7 +766,78 @@ local function styleMaxMin(mm)
     if mm.MinimizeButton then ns:Glyph(mm.MinimizeButton, "minus", { tile = false, size = 12 }) end
 end
 
+-- The world map: windowed, not fullscreen, when it opens; no blackout
+-- behind it when it is maximised; and a grip in its corner that scales the
+-- windowed map (Blizzard's map has only its two fixed sizes), kept between
+-- sessions. The scale is only ever changed out of combat.
+local function mapMaximized(frame)
+    return frame.IsMaximized and frame:IsMaximized() or false
+end
+
+local function applyMapScale(frame)
+    if InCombatLockdown() then return end
+    local want = mapMaximized(frame) and 1 or (db().mapScale or 1)
+    if math.abs((frame:GetScale() or 1) - want) > 0.005 then frame:SetScale(want) end
+end
+
+local function mapGrip(frame)
+    local e = extras[frame] or {}
+    extras[frame] = e
+    if e.grip then return e.grip end
+    local g = CreateFrame("Button", nil, frame)
+    g:SetSize(16, 16)
+    g:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
+    g:SetFrameLevel(frame:GetFrameLevel() + 600)
+    local t = g:CreateTexture(nil, "OVERLAY")
+    t:SetAllPoints()
+    t:SetTexture(ns.Media:Glyph("right"))
+    t:SetRotation(-math.pi / 4)
+    t:SetVertexColor(C.text[1], C.text[2], C.text[3], 0.7)
+    local h = g:CreateTexture(nil, "HIGHLIGHT")
+    h:SetAllPoints()
+    h:SetTexture(ns.Media:Glyph("right"))
+    h:SetRotation(-math.pi / 4)
+    h:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+    -- Dragging away from the top left corner grows the map; the size is
+    -- taken from how far the pointer is from that corner.
+    g:SetScript("OnMouseDown", function(self, button)
+        if button ~= "LeftButton" or InCombatLockdown() or mapMaximized(frame) then return end
+        local left, top = frame:GetLeft(), frame:GetTop()
+        local w = frame:GetWidth()
+        if not (left and top and w and w > 0) then return end
+        self.drag = { left = left * frame:GetEffectiveScale(), top = top * frame:GetEffectiveScale(),
+                      w = w, parent = frame:GetParent():GetEffectiveScale() }
+    end)
+    g:SetScript("OnMouseUp", function(self) self.drag = nil end)
+    g:SetScript("OnUpdate", function(self)
+        local d = self.drag
+        if not d then return end
+        if not IsMouseButtonDown("LeftButton") or InCombatLockdown() then self.drag = nil; return end
+        local cx = GetCursorPosition()
+        local scale = (cx - d.left) / (d.w * d.parent)
+        scale = math.max(0.6, math.min(1.6, scale))
+        db().mapScale = scale
+        -- Keep the top left corner where it is while the map grows.
+        frame:SetScale(scale)
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", d.left / (scale * d.parent), d.top / (scale * d.parent))
+    end)
+    e.grip = g
+    return g
+end
+
 PS.SPECIAL.WorldMapFrame = function(frame)
+    -- Open windowed: the client keeps the last size in this setting.
+    if db().mapWindowed and SetCVar then pcall(SetCVar, "miniWorldMap", "1") end
+    local watch = CreateFrame("Frame", nil, frame)
+    watch:SetScript("OnUpdate", function()
+        local maxed = mapMaximized(frame)
+        -- The black around a maximised map.
+        if frame.BlackoutFrame then frame.BlackoutFrame:SetAlpha(0) end
+        local g = mapGrip(frame)
+        g:SetShown(not maxed)
+        applyMapScale(frame)
+    end)
     local bf = frame.BorderFrame
     fadeRegions(frame)
     if bf then
