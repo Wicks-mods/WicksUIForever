@@ -2333,8 +2333,9 @@ for _, name in ipairs({ "GossipFrame", "QuestFrame", "QuestLogPopupDetailFrame",
     end
 end
 
+-- (The flight map is not here: its map is Blizzard art, and the full skin
+-- would strip it. It keeps the lighter skin every window gets.)
 for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame", "ClassTrainerFrame",
-    "TaxiFrame",
     "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3",
     "ContainerFrame4", "ContainerFrame5", "ContainerFrame6" }) do
     if not PS.SPECIAL[name] then
