@@ -300,11 +300,63 @@ local function makeScroll(parent)
     child:SetSize(1, 1)
     sf:SetScrollChild(child)
     sf:EnableMouseWheel(true)
-    sf:SetScript("OnMouseWheel", function(self, delta)
-        local max = math.max(0, child:GetHeight() - self:GetHeight())
-        local v = math.max(0, math.min(max, self:GetVerticalScroll() - delta * 40))
-        self:SetVerticalScroll(v)
+    local function maxScroll() return math.max(0, child:GetHeight() - sf:GetHeight()) end
+
+    -- A slim bar inside the right edge: a track and a thumb sized to how
+    -- much of the page shows, dragged or wheeled. It hides when the page
+    -- fits.
+    local track = CreateFrame("Frame", nil, sf)
+    track:SetPoint("TOPRIGHT", -3, -6)
+    track:SetPoint("BOTTOMRIGHT", -3, 6)
+    track:SetWidth(4)
+    local line = track:CreateTexture(nil, "BACKGROUND")
+    line:SetAllPoints()
+    ns:Fill(line, C.border[1], C.border[2], C.border[3], 0.6)
+    local thumb = CreateFrame("Button", nil, track)
+    thumb:SetWidth(4)
+    local tt = thumb:CreateTexture(nil, "ARTWORK")
+    tt:SetAllPoints()
+    ns:Fill(tt, C.fel[1], C.fel[2], C.fel[3], 0.8)
+    thumb:EnableMouse(true)
+    thumb:RegisterForDrag("LeftButton")
+
+    local function layout()
+        local max = maxScroll()
+        if max <= 0 then track:Hide(); return end
+        track:Show()
+        local th = track:GetHeight()
+        local h = math.max(24, th * sf:GetHeight() / child:GetHeight())
+        thumb:SetHeight(h)
+        local y = (th - h) * (sf:GetVerticalScroll() / max)
+        thumb:ClearAllPoints()
+        thumb:SetPoint("TOP", track, "TOP", 0, -y)
+    end
+    sf.layoutBar = layout
+
+    local dragFrom, dragScroll
+    thumb:SetScript("OnDragStart", function()
+        local _, cy = GetCursorPosition()
+        dragFrom, dragScroll = cy / thumb:GetEffectiveScale(), sf:GetVerticalScroll()
     end)
+    thumb:SetScript("OnDragStop", function() dragFrom = nil end)
+    thumb:SetScript("OnUpdate", function()
+        if not dragFrom then return end
+        local _, cy = GetCursorPosition()
+        cy = cy / thumb:GetEffectiveScale()
+        local room = track:GetHeight() - thumb:GetHeight()
+        if room <= 0 then return end
+        local v = dragScroll + (dragFrom - cy) / room * maxScroll()
+        sf:SetVerticalScroll(math.max(0, math.min(maxScroll(), v)))
+        layout()
+    end)
+
+    sf:SetScript("OnMouseWheel", function(self, delta)
+        local v = math.max(0, math.min(maxScroll(), self:GetVerticalScroll() - delta * 40))
+        self:SetVerticalScroll(v)
+        layout()
+    end)
+    sf:SetScript("OnSizeChanged", layout)
+    child:SetScript("OnSizeChanged", layout)
     sf.child = child
     return sf
 end
@@ -421,6 +473,7 @@ function Config:Show(key)
     page.content:Show()
     scroll.child:SetHeight(page.content:GetHeight())
     scroll:SetVerticalScroll(0)
+    if scroll.layoutBar then scroll.layoutBar() end
     self:RefreshPage(page)
     drawNav()
     frame:Show()
