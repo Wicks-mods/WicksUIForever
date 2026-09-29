@@ -1462,7 +1462,7 @@ PS.SPECIAL.MailFrame = function(frame)
         if sf then
             noCard[_G.SendStationeryBackgroundLeft or sf] = true
             noCard[_G.SendStationeryBackgroundRight or sf] = true
-            card(sf, "wuiLetter", "TOPLEFT", sf, "BOTTOMRIGHT", sf, -6, 6, 6, -6)
+            card(sf, "wuiLetter", "TOPLEFT", sf, "BOTTOMRIGHT", sf, -4, 6, 6, -6)
         end
         local money = _G.SendMailMoneyBg
         if money then card(money, "wuiMoney", "TOPLEFT", money, "BOTTOMRIGHT", money, 0, 0, 0, 0) end
@@ -1480,7 +1480,7 @@ PS.SPECIAL.OpenMailFrame = function(frame)
         if sf then
             noCard[_G.OpenStationeryBackgroundLeft or sf] = true
             noCard[_G.OpenStationeryBackgroundRight or sf] = true
-            card(sf, "wuiLetter", "TOPLEFT", sf, "BOTTOMRIGHT", sf, -6, 6, 6, -6)
+            card(sf, "wuiLetter", "TOPLEFT", sf, "BOTTOMRIGHT", sf, -4, 6, 6, -6)
         end
         local body = _G.OpenMailBodyText
         if not body or not body:IsVisible() then return end
