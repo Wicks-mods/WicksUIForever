@@ -1069,9 +1069,8 @@ local function styleSidebarTabs()
 end
 
 PS.SPECIAL.CharacterFrame = function(frame)
-    -- The race backdrop behind the model stays: Wick likes it. (It is
-    -- CharacterModelFrameBackground* plus BackgroundOverlay on the model
-    -- scene, should that ever change.)
+    -- The race backdrop behind the model goes (Wick chose a card over it,
+    -- 2026-09-28): CharacterModelFrameBackground* and BackgroundOverlay.
     for _, s in ipairs(SLOTS) do
         local b = _G["Character" .. s .. "Slot"]
         if b then styleSlot(b) end
@@ -1087,6 +1086,16 @@ PS.SPECIAL.CharacterFrame = function(frame)
         styleSidebarTabs()
         -- The right pane as one black card; the arrow that folds it away
         -- greyed on a tile.
+        local scene = rawget(_G, "CharacterModelScene")
+        if scene then
+            for _, k in ipairs({ "BackgroundTopLeft", "BackgroundTopRight", "BackgroundBotLeft", "BackgroundBotRight", "BackgroundOverlay" }) do
+                fade(scene[k])
+            end
+        end
+        local left = rawget(_G, "CharacterFrameLeftPaneHost")
+        if left and left:IsVisible() then
+            card(left, "wuiPane", "TOPLEFT", left, "BOTTOMRIGHT", left, 6, -4, -4, 6)
+        end
         local host = rawget(_G, "CharacterFrameRightPaneHost")
         if host and host:IsVisible() then
             card(host, "wuiPane", "TOPLEFT", host, "BOTTOMRIGHT", host, 4, -4, -6, 6)
@@ -1104,10 +1113,23 @@ PS.SPECIAL.CharacterFrame = function(frame)
         end
     end)
     -- The grey window, as in the other full-skin windows.
+    -- The character's name in the title in their class colour, like the
+    -- unit frames; other tabs' titles keep the accent.
     local flip = CreateFrame("Frame", nil, frame)
+    local _, class = UnitClass("player")
+    local me = UnitName("player")
     flip:SetScript("OnUpdate", function()
         local win = extras[frame] and extras[frame].backdrop
         if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
+        local title = frame.TitleContainer and frame.TitleContainer.TitleText
+        if title then
+            local t = title:GetText()
+            if t and not (issecretvalue and issecretvalue(t)) and me and t:find(me, 1, true) then
+                title:SetTextColor(ns:ClassColor(class))
+            else
+                title:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+            end
+        end
     end)
     return "generic"
 end
