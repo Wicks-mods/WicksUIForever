@@ -34,6 +34,7 @@ ns.defaults.profile.panelskins = {
     include = "",           -- windows added with /wui skin
     mapWindowed = true,     -- the map opens at its windowed size, not fullscreen
     mapScale = 1,           -- the windowed map's size, set with its corner grip
+    mapPos = false,         -- where the windowed map was dragged: { left, top } on screen
 }
 
 local function db() return PS:db() end
@@ -780,6 +781,63 @@ local function applyMapScale(frame)
     if math.abs((frame:GetScale() or 1) - want) > 0.005 then frame:SetScale(want) end
 end
 
+-- Where the windowed map sits, saved as its top left corner in screen
+-- units so it survives a change of its own scale.
+local function saveMapPos(frame)
+    local left, top = frame:GetLeft(), frame:GetTop()
+    if not (left and top) then return end
+    local s = frame:GetEffectiveScale()
+    db().mapPos = { left * s, top * s }
+end
+
+local function applyMapPos(frame)
+    local pos = db().mapPos
+    if not pos or InCombatLockdown() or mapMaximized(frame) then return end
+    local s = frame:GetEffectiveScale()
+    if not (s and s > 0) then return end
+    local x, y = pos[1] / s, pos[2] / s
+    local p, rel, rp, px, py = frame:GetPoint(1)
+    if p ~= "TOPLEFT" or rel ~= UIParent or rp ~= "BOTTOMLEFT" or math.abs((px or 0) - x) > 0.5
+        or math.abs((py or 0) - y) > 0.5 or frame:GetNumPoints() ~= 1 then
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
+    end
+end
+
+-- A strip over the map's title bar that drags the windowed map.
+local function mapMover(frame)
+    local e = extras[frame] or {}
+    extras[frame] = e
+    if e.mover then return e.mover end
+    local bf = frame.BorderFrame or frame
+    local title = bf.TitleContainer
+    local m = CreateFrame("Frame", nil, frame)
+    if title then
+        m:SetPoint("TOPLEFT", title, "TOPLEFT", 0, 0)
+        m:SetPoint("BOTTOMRIGHT", title, "BOTTOMRIGHT", -60, 0)
+    else
+        m:SetPoint("TOPLEFT", frame, "TOPLEFT", 60, 0)
+        m:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -60, 0)
+        m:SetHeight(20)
+    end
+    m:SetFrameLevel(frame:GetFrameLevel() + 600)
+    m:EnableMouse(true)
+    m:SetScript("OnMouseDown", function(_, button)
+        if button ~= "LeftButton" or InCombatLockdown() or mapMaximized(frame) then return end
+        frame:SetMovable(true)
+        frame:StartMoving()
+        m.moving = true
+    end)
+    m:SetScript("OnMouseUp", function()
+        if not m.moving then return end
+        m.moving = false
+        frame:StopMovingOrSizing()
+        saveMapPos(frame)
+    end)
+    e.mover = m
+    return m
+end
+
 local function mapGrip(frame)
     local e = extras[frame] or {}
     extras[frame] = e
@@ -808,7 +866,10 @@ local function mapGrip(frame)
         self.drag = { left = left * frame:GetEffectiveScale(), top = top * frame:GetEffectiveScale(),
                       w = w, parent = frame:GetParent():GetEffectiveScale() }
     end)
-    g:SetScript("OnMouseUp", function(self) self.drag = nil end)
+    g:SetScript("OnMouseUp", function(self)
+        if self.drag then saveMapPos(frame) end
+        self.drag = nil
+    end)
     g:SetScript("OnUpdate", function(self)
         local d = self.drag
         if not d then return end
@@ -836,7 +897,11 @@ PS.SPECIAL.WorldMapFrame = function(frame)
         if frame.BlackoutFrame then frame.BlackoutFrame:SetAlpha(0) end
         local g = mapGrip(frame)
         g:SetShown(not maxed)
+        local m = mapMover(frame)
+        m:SetShown(not maxed)
         applyMapScale(frame)
+        -- Put back where it was dragged, unless it is being dragged now.
+        if not m.moving and not g.drag then applyMapPos(frame) end
     end)
     local bf = frame.BorderFrame
     fadeRegions(frame)

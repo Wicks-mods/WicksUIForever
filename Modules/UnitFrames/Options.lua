@@ -80,14 +80,23 @@ local function auraSection(L, key, which, title)
     L:Toggle("Show", "enable")
     L:Toggle("Only mine", "onlyMine")
     L:Dropdown("Side", "attach", SIDES)
-    L:Dropdown("Start from", "anchor", { { "TOPLEFT", "Left" }, { "TOPRIGHT", "Right" } })
+    -- Starting from the right grows the row to the left, and from the left
+    -- to the right: the two go together unless changed below.
+    L:Dropdown("Start from", "anchor", { { "TOPLEFT", "Left" }, { "TOPRIGHT", "Right" } }, {
+        setter = function(v)
+            local t = UF:UnitDB(key)[which]
+            t.anchor = v
+            t.growthX = v:find("RIGHT") and "LEFT" or "RIGHT"
+        end,
+    })
+    L:Dropdown("Grow sideways", "growthX", { { "RIGHT", "Right" }, { "LEFT", "Left" } })
     L:Slider("Across", "x", -300, 300, 1)
     L:Slider("Up and down", "y", -300, 300, 1)
     L:Slider("Icon size", "size", 10, 48, 1)
     L:Slider("Per row", "perRow", 1, 16, 1)
     L:Slider("Rows", "rows", 1, 4, 1)
     L:Dropdown("Grow", "growthY", { { "UP", "Up" }, { "DOWN", "Down" } })
-    L:Note("Icon size, count and the only-mine filter are handed to the client's aura container when the frame is made, so those three take effect after a reload.")
+    L:Note("Icon size, count, the only-mine filter and which way the icons grow are handed to the client's aura container when the frame is made, so those take effect after a reload.")
 end
 
 local function unitPage(key, order)
