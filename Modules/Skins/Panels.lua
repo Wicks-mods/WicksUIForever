@@ -476,6 +476,10 @@ end
 -- corners, and a checked tab wears the fel ring.
 local function styleIconButton(b)
     if done[b] then return end
+    -- A recipe's skill-up chevrons: their colour (orange, yellow, green) is
+    -- the chance of a skill point, so they are not greyed like a control.
+    local parent = b:GetParent()
+    if parent and parent.SkillUps == b then return end
     -- Only ever an icon-sized button: a list row caught mid-layout, while it
     -- was briefly small, must not have its icon moved to its middle.
     local bw0, bh0 = b:GetSize()
@@ -555,6 +559,8 @@ end
 -- on each scan in case the arrow turns (a pane that folds away).
 local arrowGlyphs = setmetatable({}, { __mode = "k" })
 local function styleArrow(b)
+    local parent = b:GetParent()
+    if parent and parent.SkillUps == b then return end   -- coloured on purpose
     if arrowGlyphs[b] then
         local dir = ns:ArrowDirection(b)
         if dir then ns:Glyph(b, dir) end
