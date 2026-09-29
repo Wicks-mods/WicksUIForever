@@ -94,7 +94,9 @@ local function walk(frame, depth, lines, limit)
             -- it shows.
             if not (key:find("JumpHint$") or key == "FrameGlow" or key == "TabIndicators") then
                 lines[#lines + 1] = describe(c, frame, indent .. "  ")
-                if c:IsShown() then walk(c, depth + 1, lines, limit) end
+                -- A secret "shown" is walked into: better too much than nothing.
+                local shown = c:IsShown()
+                if secret(shown) or shown then walk(c, depth + 1, lines, limit) end
             end
         end
     end
@@ -120,7 +122,8 @@ local function firstAura(unit)
         local a = uf[which]
         if a and a.GetChildren then
             for _, b in ipairs({ a:GetChildren() }) do
-                if b:IsShown() and b.Cooldown then return b end
+                local shown = b:IsShown()
+                if b.Cooldown and (secret(shown) or shown) then return b end
             end
         end
     end
@@ -154,7 +157,8 @@ function I:Run(path)
     if not f or f == WorldFrame or f == UIParent then
         local best, area
         local function consider(fr)
-            if fr and fr.IsVisible and fr:IsVisible() and fr:IsMouseOver() then
+            local okV, vis = pcall(function() return fr and fr.IsVisible and fr:IsVisible() and fr:IsMouseOver() end)
+            if okV and vis and not secret(vis) then
                 local w, h = fr:GetSize()
                 local a = (w or 0) * (h or 0)
                 if a > 0 and (not area or a < area) then best, area = fr, a end
