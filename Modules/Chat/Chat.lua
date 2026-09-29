@@ -101,6 +101,16 @@ local function scrollButton(frame)
     local o = ours[frame] or {}
     ours[frame] = o
     if o.scroll then return o.scroll end
+    -- This client has its own jump-to-bottom arrow: it gets our chevron (in
+    -- the text colour, the accent on hover) and ours is not made. It shows
+    -- and hides itself as the chat scrolls, as before.
+    local own = frame.ScrollToBottomButton
+    if own then
+        ns:Glyph(own, "down", { tile = false, size = 12 })
+        if own.Flash then own.Flash:SetAlpha(0) end
+        o.scroll = own
+        return own
+    end
     local b = W:Button(UIParent, "v", 20, function() frame:ScrollToBottom() end)
     b:SetParent(frame)
     b:SetFrameLevel(frame:GetFrameLevel() + 10)
