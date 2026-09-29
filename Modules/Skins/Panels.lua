@@ -1035,6 +1035,29 @@ end
 -- flat. Headers are pooled, so this runs while the tab is open.
 local function styleTalents(tf)
     fade(tf.BackgroundBorder)
+    -- The window-wide backing the painting sits on; its top 70 px are the
+    -- gold bar across the top. The painting itself is ClassBackground.
+    fade(tf.Background)
+    fade(tf.DividerHorizontalLeft)
+    fade(tf.DividerHorizontalRight)
+    -- The unspent-talents count: its ornate box becomes a glass tile.
+    local cur = tf.ClassCurrencyDisplay
+    if cur and cur.Border then
+        cur.Border:SetAlpha(0)
+        if not done[cur] then
+            done[cur] = true
+            local bd = backdrop(cur, "Default", false, 0)
+            bd:ClearAllPoints()
+            bd:SetPoint("TOPLEFT", cur.Border, "TOPLEFT", 60, -8)
+            bd:SetPoint("BOTTOMRIGHT", cur.Border, "BOTTOMRIGHT", -4, 8)
+        end
+    end
+    -- The search results dropdown under the search box.
+    local sp = tf.SearchPreviewContainer
+    if sp and sp:IsShown() then
+        fadeRegions(sp)
+        if not done[sp] then done[sp] = true; backdrop(sp, "Default", false, 0) end
+    end
     local ts = tf.TabSystem
     if ts and type(ts.tabs) == "table" then
         for _, t in ipairs(ts.tabs) do styleTab(t) end
