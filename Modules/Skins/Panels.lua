@@ -88,6 +88,20 @@ local function backdrop(frame, template, brackets, inset)
     return bd
 end
 
+-- A black card of our own over a region Blizzard leaves bare.
+local function card(parent, key, a1, r1, a2, r2, x1, y1, x2, y2)
+    local e = extras[parent] or {}
+    extras[parent] = e
+    if e[key] then return e[key] end
+    local c = CreateFrame("Frame", nil, parent)
+    c:SetPoint(a1, r1, a1, x1 or 0, y1 or 0)
+    c:SetPoint(a2, r2, a2, x2 or 0, y2 or 0)
+    c:SetFrameLevel(math.max(0, parent:GetFrameLevel() - 1))
+    ns:SetTemplate(c, "Default", { alpha = 0.9, shadow = false })
+    e[key] = c
+    return c
+end
+
 -- ============================================================
 -- Pieces
 -- ============================================================
@@ -1000,6 +1014,56 @@ local function styleStats()
                 e.rule = rule
             end
             row.Title:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+        elseif row.Label and row.Value and row.Background then
+            -- Stat rows: Blizzard's brown stripe becomes a faint one of
+            -- ours; Blizzard still decides which rows are striped.
+            local bg = row.Background
+            if bg:GetAtlas() then
+                bg:ClearAllPoints()
+                bg:SetPoint("TOPLEFT", row, "TOPLEFT", 2, 0)
+                bg:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -2, 0)
+                ns:Fill(bg, 1, 1, 1, 0.045)
+            end
+            row.Label:SetTextColor(C.text[1], C.text[2], C.text[3])
+        end
+    end
+    -- The gold rule under the scroll box.
+    for _, r in ipairs({ sb:GetRegions() }) do
+        local a = r:GetObjectType() == "Texture" and r:GetAtlas()
+        if a and a:find("ScrollLine") then r:SetAlpha(0) end
+    end
+end
+
+-- The portrait and titles tabs above the stats: their gold frames go, each
+-- icon sits on a black tile, the open one wears the accent ring.
+local function styleSidebarTabs()
+    local host = rawget(_G, "PaperDollSidebarTabs")
+    if not host then return end
+    for _, tab in ipairs({ host:GetChildren() }) do
+        local icon = tab.Icon
+        if icon then
+            fade(tab.TabBg); fade(tab.Highlight)
+            local e = extras[tab] or {}
+            extras[tab] = e
+            if not e.ring then
+                ns:CropIcon(icon)
+                local bd = backdrop(tab, "Default", false, 0)
+                bd:ClearAllPoints()
+                bd:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
+                bd:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
+                ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+                local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
+                ring:SetTexture(ns.Media.ring)
+                if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
+                ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                ring:SetAllPoints(bd)
+                e.ring = ring
+                local h = tab:CreateTexture(nil, "HIGHLIGHT")
+                h:SetAllPoints(icon)
+                ns:Fill(h, 1, 1, 1, 0.12)
+            end
+            -- Blizzard darkens the tabs that are not open with Hider.
+            e.ring:SetShown(not (tab.Hider and tab.Hider:IsShown()))
         end
     end
 end
@@ -1020,6 +1084,30 @@ PS.SPECIAL.CharacterFrame = function(frame)
         acc = 0
         paintSlots()
         styleStats()
+        styleSidebarTabs()
+        -- The right pane as one black card; the arrow that folds it away
+        -- greyed on a tile.
+        local host = rawget(_G, "CharacterFrameRightPaneHost")
+        if host and host:IsVisible() then
+            card(host, "wuiPane", "TOPLEFT", host, "BOTTOMRIGHT", host, 4, -4, -6, 6)
+        end
+        local tog = rawget(_G, "CharacterFrameRightPaneToggleButton")
+        if tog then
+            for _, r in ipairs({ tog:GetRegions() }) do
+                if r:GetObjectType() == "Texture" and r:GetDrawLayer() ~= "HIGHLIGHT" and r.SetDesaturated then r:SetDesaturated(true) end
+            end
+            if not done[tog] then
+                done[tog] = true
+                local bd = backdrop(tog, "Default", false, 3)
+                ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+            end
+        end
+    end)
+    -- The grey window, as in the other full-skin windows.
+    local flip = CreateFrame("Frame", nil, frame)
+    flip:SetScript("OnUpdate", function()
+        local win = extras[frame] and extras[frame].backdrop
+        if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
     end)
     return "generic"
 end
@@ -1407,19 +1495,6 @@ local function fullSkin(frame, each)
 end
 PS.fullSkin = fullSkin
 
--- A black card of our own over a region Blizzard leaves bare.
-local function card(parent, key, a1, r1, a2, r2, x1, y1, x2, y2)
-    local e = extras[parent] or {}
-    extras[parent] = e
-    if e[key] then return e[key] end
-    local c = CreateFrame("Frame", nil, parent)
-    c:SetPoint(a1, r1, a1, x1 or 0, y1 or 0)
-    c:SetPoint(a2, r2, a2, x2 or 0, y2 or 0)
-    c:SetFrameLevel(math.max(0, parent:GetFrameLevel() - 1))
-    ns:SetTemplate(c, "Default", { alpha = 0.9, shadow = false })
-    e[key] = c
-    return c
-end
 
 PS.SPECIAL.ProfessionsFrame = function(frame)
     -- Bars already found follow their label every frame, so a tab or page
