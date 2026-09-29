@@ -307,7 +307,7 @@ end
 
 -- Icon cropped to lose Blizzard's baked-in border. In the modern style
 -- the icon also gets the rounded mask, so its corners follow the panel.
-function ns:CropIcon(tex, zoom)
+function ns:CropIcon(tex, zoom, whole)
     local z = zoom or 0.08
     tex:SetTexCoord(z, 1 - z, z, 1 - z)
     if ns:Modern() and tex.AddMaskTexture and tex.GetParent then
@@ -315,7 +315,9 @@ function ns:CropIcon(tex, zoom)
         if parent and parent.CreateMaskTexture and not tex.wuiMask then
             local m = parent:CreateMaskTexture()
             m:SetTexture(ns.Media.iconmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-            if Chrome.PlaceIconMask then Chrome:PlaceIconMask(m, tex) else m:SetAllPoints(tex) end
+            -- whole: the icon has been drawn shorter already (TabIcon), so the
+            -- mask covers all of it rather than cutting its top.
+            if Chrome.PlaceIconMask and not whole then Chrome:PlaceIconMask(m, tex) else m:SetAllPoints(tex) end
             tex:AddMaskTexture(m)
             tex.wuiMask = m
         end

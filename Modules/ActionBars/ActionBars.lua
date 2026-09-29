@@ -273,13 +273,9 @@ function AB:StyleButton(button)
         -- Rounded in the modern style, plain square in the crisp one.
         local shape = ns:Modern() and ns.Media.iconmask or ns.Media:Statusbar("Wick Flat")
         button.IconMask:SetTexture(shape, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-        if ns:Modern() and Chrome.PlaceIconMask then
-            Chrome:PlaceIconMask(button.IconMask, icon, 1)   -- icons sit 1 px in
-        else
-            button.IconMask:ClearAllPoints()
-            button.IconMask:SetPoint("TOPLEFT", icon, "TOPLEFT", 0, 0)
-            button.IconMask:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 0, 0)
-        end
+        button.IconMask:ClearAllPoints()
+        button.IconMask:SetPoint("TOPLEFT", icon, "TOPLEFT", 0, 0)
+        button.IconMask:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 0, 0)
     end
     for _, key in ipairs({ "SlotArt", "SlotBackground", "FloatingBG", "RightDivider", "BottomDivider" }) do
         local t = button[key]
@@ -292,7 +288,10 @@ function AB:StyleButton(button)
     icon:ClearAllPoints()
     icon:SetPoint("TOPLEFT", 1, -1)
     icon:SetPoint("BOTTOMRIGHT", -1, 1)
-    ns:CropIcon(icon)
+    -- In a look with an icon tab (Arena) the icon is drawn shorter under
+    -- the tile's shaped top; its masks then cover all of it.
+    local tabbed = Chrome.TabIcon and Chrome:TabIcon(icon, button)
+    ns:CropIcon(icon, nil, tabbed)
     icon:SetDrawLayer("BACKGROUND", 7)
 
     local bg = button:CreateTexture(nil, "BACKGROUND", nil, -1)
