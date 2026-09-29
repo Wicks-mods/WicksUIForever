@@ -195,6 +195,10 @@ function ns:SetBorderColor(f, color, alpha)
         else
             local c = type(color) == "string" and (C[color] or C.fel) or color
             r:SetVertexColor(c[1] or c.r, c[2] or c.g, c[3] or c.b, alpha or 1)
+            -- A ring in a palette colour follows a theme change.
+            if type(color) == "string" and C[color] and Chrome.Register then
+                Chrome:Register(r, color, "vertex", alpha or 1)
+            end
             r:Show()
         end
         return
@@ -239,13 +243,26 @@ end
 
 -- A plain colour fill: flat in the crisp style, rounded in the modern one,
 -- so hover, press and active overlays follow the button's corners.
+-- The palette colour a fill was given, if it is one: such fills are
+-- handed to WickCore's repaint, so a theme change reaches them too.
+local TOKENS = { "fel", "border", "shadow", "void", "text", "muted" }
+local function tokenOf(r, g, b)
+    for _, k in ipairs(TOKENS) do
+        local c = C[k]
+        if c and math.abs(r - c[1]) < 0.002 and math.abs(g - c[2]) < 0.002 and math.abs(b - c[3]) < 0.002 then return k end
+    end
+end
+
 function ns:Fill(tex, r, g, b, a)
+    local token = tokenOf(r, g, b)
     if ns:Modern() then
         tex:SetTexture(ns.Media.rounded)
         if tex.SetTextureSliceMargins then tex:SetTextureSliceMargins(8, 8, 8, 8) end
         tex:SetVertexColor(r, g, b, a or 1)
+        if token and Chrome.Register then Chrome:Register(tex, token, "vertex", a or 1) end
     else
         tex:SetColorTexture(r, g, b, a or 1)
+        if token and Chrome.Register then Chrome:Register(tex, token, "texture", a or 1) end
     end
 end
 
