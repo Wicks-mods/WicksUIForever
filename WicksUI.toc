@@ -27,6 +27,7 @@ Core\Config.lua
 Modules\ActionBars\ActionBars.lua
 Modules\ActionBars\Special.lua
 Modules\ActionBars\Keybind.lua
+Modules\ActionBars\AutoRank.lua
 
 Modules\UnitFrames\Tags.lua
 Modules\UnitFrames\UnitFrames.lua

@@ -132,6 +132,7 @@ local defaults = {
     cooldownText  = true,
     lockBars      = true,       -- the game's own Lock Action Bars
     keyDown       = true,       -- cast on key down, the game's own setting
+    autoRank      = true,       -- a newly learned rank replaces the older ones on the bars
     procGlow      = true,
     matchedGame   = false,      -- set once the bars have been matched to the game's
     -- Fade
@@ -738,6 +739,7 @@ ns.Config:AddPage("actionbars", "Action Bars", function(L)
     L:DB(function() return AB:db() end)
     L:Heading("Behaviour")
     L:Toggle("Lock the bars", "lockBars", { tooltip = "The game's own Lock Action Bars. Hold Shift to drag a spell off a locked bar." })
+    L:Toggle("Put new spell ranks on your bars", "autoRank", { tooltip = "When you learn a higher rank of a spell, every button holding an older rank of it takes the new one. Buttons you set to an older rank afterwards are left alone until the next rank comes. Waits until the fight is over." })
     L:Toggle("Cast on key down", "keyDown", { tooltip = "Casts as the key goes down rather than when it comes back up. Fractionally faster, and the game's own setting." })
     L:Toggle("Cooldown numbers", "cooldownText", { tooltip = "The game's countdown numbers on cooldowns. Drawn by the client, so they keep working in combat." })
     L:Toggle("Shorten keybind text", "abbreviate", { tooltip = "SHIFT-5 shows as S5, Mouse Button 4 as M4." })

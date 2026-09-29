@@ -22,6 +22,7 @@ ns.Minimap = MM
 ns.defaults.profile.minimap = {
     enable = true,
     square = true,
+    ring = false,                -- the round map's gold ring and north marker
     fill = true,                 -- the map fills Blizzard's minimap box, to its top right corner
     hideZoom = true,
     hideBlizzardText = true,     -- Blizzard's zone header, replaced by ours
@@ -144,7 +145,7 @@ function MM:Shape()
         -- Round again, Blizzard's own mask and ring back, at once.
         if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, ROUND) end
         blob(1)
-        for _, t in ipairs(ringArt()) do t:SetAlpha(1) end
+        for _, t in ipairs(ringArt()) do t:SetAlpha(d.ring and 1 or 0) end
     end
     -- Our text shows on either shape; the corner brackets only suit the
     -- square one.
@@ -390,6 +391,7 @@ ns.Config:AddPage("minimap", "Minimap", function(L)
     L:DB(db)
     L:Note("Move the minimap with Edit Mode.")
     L:Toggle("Square", "square", { tooltip = "Off gives back Blizzard's round map and its ring." })
+    L:Toggle("Ring around the round map", "ring", { tooltip = "Blizzard's gold ring and north marker, on the round map only." })
     L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. The round map keeps Blizzard's size, so its ring fits." })
     L:Toggle("Hide the zoom buttons", "hideZoom")
     L:Toggle("Hide Blizzard's zone header and clock", "hideBlizzardText")
