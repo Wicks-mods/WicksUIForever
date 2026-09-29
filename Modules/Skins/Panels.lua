@@ -459,6 +459,10 @@ end
 -- corners, and a checked tab wears the fel ring.
 local function styleIconButton(b)
     if done[b] then return end
+    -- Only ever an icon-sized button: a list row caught mid-layout, while it
+    -- was briefly small, must not have its icon moved to its middle.
+    local bw0, bh0 = b:GetSize()
+    if not (bw0 and bh0) or bw0 < 1 or bh0 < 1 or bw0 > 64 or bh0 > 64 then return end
     done[b] = true
     for _, k in ipairs({ "Border", "Background", "Glow", "BorderSelected", "SelectedTexture", "IconOverlay",
         "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow", "SquareBorder",
@@ -1701,8 +1705,14 @@ local function isIcon(frame, r)
     return n and (n:find("Icon$") or n:find("IconTexture$")) and true or false
 end
 
+-- Windows whose art comes in several pieces (a parchment in two halves)
+-- get one card of their own over the content instead of one per piece.
+local ONE_CARD = { GossipFrame = true, QuestFrame = true, QuestLogPopupDetailFrame = true, ItemTextFrame = true }
+
 local function stripArt(frame, root)
     if frame.wuiBG or rankBars[frame] then return end
+    local rootName = root.GetName and root:GetName()
+    local oneCard = rootName and ONE_CARD[rootName]
     local rw, rh = root:GetSize()
     for _, r in ipairs({ frame:GetRegions() }) do
         local n = r:GetName()
@@ -1710,7 +1720,7 @@ local function stripArt(frame, root)
             and not (n and n:find("BlackFilter$")) then
             r:SetAlpha(0)
             local w, h = r:GetSize()
-            if frame ~= root and w and h and w >= 120 and h >= 60 and not (w >= rw * 0.9 and h >= rh * 0.85) and not cards[r] and not noCard[r] then
+            if not oneCard and frame ~= root and w and h and w >= 120 and h >= 60 and not (w >= rw * 0.9 and h >= rh * 0.85) and not cards[r] and not noCard[r] then
                 local card = CreateFrame("Frame", nil, frame)
                 card:SetAllPoints(r)
                 card:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
@@ -2283,8 +2293,26 @@ PS.SPECIAL.MerchantFrame = function(frame)
     return "generic"
 end
 
+-- The talking windows: one black card over the content (the Inset), the
+-- parchment's pieces stripped without cards of their own.
+for _, name in ipairs({ "GossipFrame", "QuestFrame", "QuestLogPopupDetailFrame", "ItemTextFrame" }) do
+    PS.SPECIAL[name] = function(frame)
+        fullSkin(frame, function(f)
+            local host = f.Inset or f
+            if host:IsVisible() then
+                if host == f then
+                    card(f, "wuiContent", "TOPLEFT", f, "BOTTOMRIGHT", f, 8, -62, -8, 34)
+                else
+                    card(host, "wuiContent", "TOPLEFT", host, "BOTTOMRIGHT", host, 4, -4, -4, 4)
+                end
+            end
+        end)
+        return "generic"
+    end
+end
+
 for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame", "ClassTrainerFrame",
-    "GossipFrame", "QuestFrame", "QuestLogPopupDetailFrame", "ItemTextFrame", "TaxiFrame",
+    "TaxiFrame",
     "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3",
     "ContainerFrame4", "ContainerFrame5", "ContainerFrame6" }) do
     if not PS.SPECIAL[name] then
