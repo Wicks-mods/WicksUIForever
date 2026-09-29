@@ -65,6 +65,8 @@ end
 -- ============================================================
 -- Button
 -- ============================================================
+-- opts.reload: the button reloads the interface after onClick (at once,
+-- or when a fight ends; see Chrome:Reload).
 function W:Button(parent, text, width, onClick, opts)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(width or 100, 22)
@@ -74,7 +76,14 @@ function W:Button(parent, text, width, onClick, opts)
     b.text:SetJustifyH("CENTER")
     b:SetScript("OnEnter", function(self) if not self.disabled then ns:SetBorderColor(self, "fel") end end)
     b:SetScript("OnLeave", function(self) ns:SetBorderColor(self, "border") end)
-    b:SetScript("OnClick", function(self, ...) if not self.disabled and onClick then onClick(self, ...) end end)
+    local reload = opts and opts.reload
+    b:SetScript("OnClick", function(self, ...)
+        if self.disabled then return end
+        if onClick then onClick(self, ...) end
+        if reload then
+            if Chrome.Reload then Chrome:Reload() else ReloadUI() end
+        end
+    end)
     b.labelText = text
     base(b, opts)
     tooltipOn(b)
@@ -513,7 +522,8 @@ end
 -- Confirm dialog
 -- ============================================================
 local confirm
-function W:Confirm(text, onYes, yesText, noText)
+-- opts.reload: the yes button reloads the interface after onYes.
+function W:Confirm(text, onYes, yesText, noText, opts)
     if not confirm then
         confirm = CreateFrame("Frame", "WicksUIConfirm", UIParent)
         confirm:SetSize(340, 110)
@@ -527,12 +537,19 @@ function W:Confirm(text, onYes, yesText, noText)
         confirm.text:SetPoint("TOPRIGHT", -14, -14)
         confirm.yes = W:Button(confirm, "Yes", 100, function() confirm:Hide(); if confirm.fn then confirm.fn() end end)
         confirm.yes:SetPoint("BOTTOMRIGHT", confirm, "BOTTOM", -4, 12)
+        -- The same yes, as a button that reloads afterwards.
+        confirm.yesReload = W:Button(confirm, "Yes", 100, function() confirm:Hide(); if confirm.fn then confirm.fn() end end, { reload = true })
+        confirm.yesReload:SetPoint("BOTTOMRIGHT", confirm, "BOTTOM", -4, 12)
         confirm.no = W:Button(confirm, "Cancel", 100, function() confirm:Hide() end)
         confirm.no:SetPoint("BOTTOMLEFT", confirm, "BOTTOM", 4, 12)
         Chrome:CloseOnEscape(confirm)
     end
     confirm.text:SetText(text)
+    local reload = opts and opts.reload
+    confirm.yes:SetShown(not reload)
+    confirm.yesReload:SetShown(reload and true or false)
     confirm.yes.text:SetText(yesText or "Yes")
+    confirm.yesReload.text:SetText(yesText or "Yes")
     confirm.no.text:SetText(noText or "Cancel")
     confirm.fn = onYes
     confirm:SetHeight(math.max(110, confirm.text:GetStringHeight() + 60))

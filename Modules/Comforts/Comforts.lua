@@ -155,17 +155,18 @@ function CM:CopyFromComforts()
     return true
 end
 
+-- Its settings across and Comforts switched off; the button that calls
+-- this reloads afterwards (a secure /reload, see W:Confirm).
 function CM:TurnComfortsOff()
     self:CopyFromComforts()
     local disable = (C_AddOns and C_AddOns.DisableAddOn) or rawget(_G, "DisableAddOn")
     if disable then pcall(disable, "WicksComforts") end
-    ReloadUI()
 end
 
 function CM:OfferToTurnComfortsOff()
     if not comfortsOn() then return end
     W:Confirm("Wick's UI now does everything Wick's Comforts does: the tooltips, looting, the vendor, quests, the camera and the client fixes. While both are on, Wick's UI leaves those to Comforts.\n\nTurn Wick's Comforts off? Your Comforts settings come across first, and the interface reloads.",
-        function() CM:TurnComfortsOff() end, "Turn it off", "Keep both")
+        function() CM:TurnComfortsOff() end, "Turn it off", "Keep both", { reload = true })
 end
 
 -- ============================================================

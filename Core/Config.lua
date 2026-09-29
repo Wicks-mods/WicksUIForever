@@ -567,7 +567,7 @@ local function build()
     end)
     keys:SetPoint("RIGHT", movers, "LEFT", -6, 0)
 
-    local reload = W:Button(header, "Reload", 70, function() ReloadUI() end)
+    local reload = W:Button(header, "Reload", 70, nil, { reload = true })
     reload:SetPoint("RIGHT", keys, "LEFT", -6, 0)
 
     -- The page list.

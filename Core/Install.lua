@@ -89,10 +89,9 @@ local PAGES = {
     {
         title = "Done",
         text = "Your frames start in Wick's own layout. Type |cff4FC778/wui move|r to place them, |cff4FC778/wui|r for the settings and |cff4FC778/wui kb|r to bind keys by pointing at a button.\n\nA reload finishes the setup.",
-        button = "Reload now", action = function()
+        button = "Reload now", reload = true, action = function()
             if pendingStyle and Chrome.SetStyle then Chrome:SetStyle(pendingStyle) end
             I:Finish()
-            ReloadUI()
         end,
     },
 }
@@ -138,6 +137,12 @@ function I:Show(page)
         f.text:SetPoint("TOPRIGHT", -18, -70)
         f.action = W:Button(f, "", 160, function() end)
         f.action:SetPoint("BOTTOMLEFT", 18, 50)
+        -- The last page's button reloads, through a secure /reload.
+        f.reloadAction = W:Button(f, "Reload now", 160, function()
+            local p = PAGES[I.page]
+            if p and p.action then p.action() end
+        end, { reload = true })
+        f.reloadAction:SetPoint("BOTTOMLEFT", 18, 50)
         -- Up to nine answers, three to a row, above the Back and Next buttons.
         f.choices = {}
         for i = 1, 9 do
@@ -168,8 +173,11 @@ function I:Show(page)
     f.step:SetText(("%d of %d"):format(page, #PAGES))
     f.title:SetText(p.title)
     f.text:SetText(p.text)
-    f.action:SetShown(p.button ~= nil)
-    if p.button then
+    f.action:SetShown(p.button ~= nil and not p.reload)
+    f.reloadAction:SetShown(p.reload and true or false)
+    if p.button and p.reload then
+        f.reloadAction.text:SetText(p.button)
+    elseif p.button then
         f.action.text:SetText(p.button)
         f.action:SetScript("OnClick", function() p.action(); if page < #PAGES then I:Show(page + 1) end end)
     end
@@ -204,9 +212,10 @@ function I:Show(page)
     f.next:SetScript("OnClick", function()
         if page == #PAGES then
             if pendingStyle and pendingStyle ~= Chrome:StyleID() and Chrome.SetStyle then
+                -- Saved now, drawn after a reload.
                 Chrome:SetStyle(pendingStyle)
                 I:Finish()
-                ReloadUI()
+                ns.A:Print("your new style shows after a reload: type /reload, or press Reload in the settings.")
                 return
             end
             I:Finish()

@@ -373,8 +373,7 @@ ns.Config:AddPage("general", "General", function(L)
             ns.Widgets:Confirm(("%s: %s\n\nChanging the style rebuilds every frame, and every Wick addon follows it, so the interface reloads. Reload now?"):format(st.name, st.blurb), function()
                 -- The suite's style lives in WickCore; the whole suite follows.
                 Chrome:SetStyle(v)
-                ReloadUI()
-            end, "Reload")
+            end, "Reload", nil, { reload = true })
         end,
         tooltip = "The shape everything is drawn in, across the suite. Each style keeps its own frame positions, button sizes, frame heights, health colours and minimap shape.",
     })
