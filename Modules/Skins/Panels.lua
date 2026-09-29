@@ -2346,6 +2346,18 @@ for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "L
     end
 end
 
+-- The flight map: the map itself is the window's InsetBg texture, which
+-- the fade every window gets would put away with the frame art. It is
+-- kept drawn, and held so (Blizzard redraws it as the map opens).
+PS.SPECIAL.TaxiFrame = function(frame)
+    local keep = CreateFrame("Frame", nil, frame)
+    keep:SetScript("OnUpdate", function()
+        local map = frame.InsetBg or rawget(_G, "TaxiFrameInsetBg")
+        if map and map:GetAlpha() < 1 then map:SetAlpha(1) end
+    end)
+    return "generic"
+end
+
 -- The talents tab. The painting behind the trees (ClassBackground) stays,
 -- as Wick wants; the brown frame around it (BackgroundBorder, with the gold
 -- bar across the top and the edge along the bottom) goes, the tree headers
