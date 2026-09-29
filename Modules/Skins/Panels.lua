@@ -291,7 +291,8 @@ end
 local fontSet = setmetatable({}, { __mode = "k" })
 local function styleFont(fs)
     local path, size, flags = fs:GetFont()
-    if not size or isOurs(path) then return end
+    -- A string with no font yet reports nil and a garbage height; leave it.
+    if not path or not size or size < 1 or size > 64 or isOurs(path) then return end
     local want = fontSet[fs] and fontSet[fs] or math.floor(size + 1.5)
     fs:SetFont(ns.Media:Font(), want, flags or "")
     fs:SetShadowOffset(1, -1)
