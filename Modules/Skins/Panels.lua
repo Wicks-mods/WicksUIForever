@@ -1598,16 +1598,28 @@ function PS:Initialize()
     -- scroll bars) are caught by a rescan of whichever windows are open.
     -- Hooking their OnShow instead would make Blizzard's own handler run
     -- tainted, which this client punishes.
+    -- A window that has just opened is scanned the same frame it shows
+    -- (OnUpdate runs after the event that opened it, before the frame is
+    -- drawn), again on the next two frames as Blizzard fills it in, and
+    -- then once a second like the rest.
     local tick = CreateFrame("Frame")
-    local acc = 0
+    local acc, names = 1, allNames()
+    local shown, fresh = {}, {}
     tick:SetScript("OnUpdate", function(_, e)
-        acc = acc + e
-        if acc < 1 then return end
-        acc = 0
         if not db().enable then return end
-        for _, n in ipairs(allNames()) do
+        acc = acc + e
+        local full = acc >= 1
+        if full then acc = 0; names = allNames() end
+        for _, n in ipairs(names) do
             local f = _G[n]
-            if f and f.IsShown and f:IsShown() and done[f] then scanButtons(f, 1) end
+            local on = f and f.IsShown and f:IsShown() or false
+            if on and not shown[n] then
+                fresh[n] = 3
+                if not done[f] then pcall(PS.Skin, PS, f) end
+            end
+            shown[n] = on
+            if on and done[f] and (full or fresh[n]) then scanButtons(f, 1) end
+            if fresh[n] then fresh[n] = fresh[n] > 1 and fresh[n] - 1 or nil end
         end
     end)
     -- Load-on-demand windows appear with their addon.
