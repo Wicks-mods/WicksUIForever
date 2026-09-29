@@ -52,6 +52,8 @@ PS.WINDOWS = {
     "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4", "ReadyCheckFrame", "ReadyCheckListenerFrame",
     "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4", "LFGDungeonReadyDialog",
     "LFDRoleCheckPopup", "RolePollPopup", "GuildInviteFrame", "PVPReadyDialog", "LFGInvitePopup",
+    "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4",
+    "ContainerFrame5", "ContainerFrame6",
 }
 
 local done = setmetatable({}, { __mode = "k" })
@@ -122,7 +124,8 @@ local function styleButton(b)
     -- their atlases on press, the old ones Left, Middle and Right. Their
     -- atlas swaps leave alpha alone, so fading them holds.
     -- Named pieces only: a button's icon is a texture too, and must stay.
-    for _, k in ipairs({ "Left", "Middle", "Center", "Right", "LeftSeparator", "RightSeparator", "Background" }) do fade(b[k]) end
+    for _, k in ipairs({ "Left", "Middle", "Center", "Right", "LeftSeparator", "RightSeparator", "Background",
+        "LeftActive", "MiddleActive", "RightActive", "LeftHighlight", "MiddleHighlight", "RightHighlight" }) do fade(b[k]) end
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
         local t = b[get] and b[get](b)
         if t then t:SetAlpha(0) end
@@ -1627,6 +1630,65 @@ local function optionsHeader(f)
     return found
 end
 
+-- List buttons drawn with Blizzard's list art (the auction house's
+-- categories, the large list rows): the bar and its hover go for a grey
+-- pill, and the selected art is repainted as the accent ring so it shows
+-- and hides with the selection by itself.
+local LIST_ART = { "nav%-button", "button%-list%-large" }
+local function listArt(a)
+    for _, pat in ipairs(LIST_ART) do if a:find(pat) then return true end end
+    return false
+end
+local function styleListButton(b)
+    local any = false
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local a = r:GetAtlas()
+            if a and listArt(a) then
+                any = true
+                local al = a:lower()
+                if al:find("select") then
+                    r:SetTexture(ns.Media.ring)
+                    if r.SetTextureSliceMargins then r:SetTextureSliceMargins(8, 8, 8, 8) end
+                    r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                    r:ClearAllPoints()
+                    r:SetPoint("TOPLEFT", b, "TOPLEFT", 1, -1)
+                    r:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
+                    r:SetAlpha(1)
+                elseif r:GetAlpha() > 0 then
+                    r:SetAlpha(0)
+                end
+            end
+        end
+    end
+    if any and not done[b] then
+        done[b] = true
+        local bd = backdrop(b, "Shadow", false, 1)
+        bd:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
+    end
+    return any
+end
+
+-- Bag and vendor item buttons: the slot art goes for a black tile, the
+-- icon is cropped; the quality ring, the junk coin and the new-item glow
+-- are Blizzard's and stay, as they carry meaning.
+local function styleItemButton(b)
+    local icon = b.icon or b.Icon
+    local nt = b.GetNormalTexture and b:GetNormalTexture()
+    if nt and nt:GetAlpha() > 0 then nt:SetAlpha(0) end
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local a = r:GetAtlas()
+            if a and a:find("item%-slot") and r:GetAlpha() > 0 then r:SetAlpha(0) end
+        end
+    end
+    if done[b] then return end
+    done[b] = true
+    if icon then ns:CropIcon(icon) end
+    local bd = backdrop(b, "Default", false, 0)
+    ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+end
+
 local function walkProfessions(frame, depth, root)
     if depth > 8 or not frame.GetChildren then return end
     root = root or frame
@@ -1642,7 +1704,12 @@ local function walkProfessions(frame, depth, root)
         if child:IsShown() then
             local kind = child:GetObjectType()
             local fill = child.Fill
-            if kind == "Button" and frame.CloseButton == child then
+            if (kind == "ItemButton" or kind == "Button") and child.IconBorder and (child.icon or child.Icon)
+                and (child.JunkIcon or child.NewItemTexture or kind == "ItemButton") then
+                styleItemButton(child)
+            elseif (kind == "Button" or kind == "CheckButton") and styleListButton(child) then
+                -- done above
+            elseif kind == "Button" and frame.CloseButton == child then
                 -- A close button inside the window (a popup's): our x.
                 styleClose(child)
             elseif kind == "StatusBar" then
@@ -2000,6 +2067,20 @@ PS.SPECIAL.SettingsPanel = function(frame)
         if f.Container then card(f.Container, "wuiCard", "TOPLEFT", f.Container, "BOTTOMRIGHT", f.Container, -6, 6, 6, -6) end
     end)
     return "generic"
+end
+
+-- The vendor, the auction house, Social, the group finder and the bags:
+-- the full skin. Their lists, item buttons and tabs are handled by the
+-- walk's general rules above.
+for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame",
+    "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3",
+    "ContainerFrame4", "ContainerFrame5", "ContainerFrame6" }) do
+    if not PS.SPECIAL[name] then
+        PS.SPECIAL[name] = function(frame)
+            fullSkin(frame)
+            return "generic"
+        end
+    end
 end
 
 -- The talents tab. The painting behind the trees (ClassBackground) stays,
