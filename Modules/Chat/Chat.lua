@@ -150,6 +150,9 @@ end
 -- few times a second) rather than set once; turning it off hands the chat
 -- back to Edit Mode after a reload.
 local GAP = 4
+-- The chat text sits this much further left inside the panel than the
+-- Edit Mode box would put it, closer to the panel's edge.
+local NUDGE = 8
 
 -- Blizzard's Edit Mode box for the chat (its Selection frame) is larger
 -- than the chat's text area, padded on every side. The panel fills that
@@ -175,12 +178,23 @@ function CH:FitPanel()
         r = sel:GetRight() - cf:GetRight()
         bt = cf:GetBottom() - sel:GetBottom()
     end
-    local key = ("%.1f,%.1f,%.1f"):format(l, r, bt)
+    local info = ns.DataTexts and ns.DataTexts.panels and ns.DataTexts.panels.left
+    local aligned = db().alignToInfo and info and info:IsShown() and info:GetTop() and cf:GetTop()
+    -- How far above the info panel the panel's top sits: just over the tabs.
+    local topOff = aligned and math.floor(cf:GetTop() + 30 - info:GetTop() + 0.5) or 0
+    local key = ("%s,%.1f,%.1f,%.1f,%d"):format(tostring(aligned and true), l, r, bt, topOff)
     if key == self.fitKey then return end
     self.fitKey = key
     p:ClearAllPoints()
-    p:SetPoint("TOPLEFT", cf, "TOPLEFT", -l, 30)
-    p:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", r, -bt)
+    if aligned then
+        -- The panel is the info panel's width, sat on it; the chat inside
+        -- is nudged left (see CH:Align), the panel is not.
+        p:SetPoint("TOPLEFT", info, "TOPLEFT", 0, topOff)
+        p:SetPoint("BOTTOMRIGHT", info, "TOPRIGHT", 0, GAP)
+    else
+        p:SetPoint("TOPLEFT", cf, "TOPLEFT", -l, 30)
+        p:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", r, -bt)
+    end
 end
 
 function CH:Align()
@@ -200,13 +214,14 @@ function CH:Align()
         r = sel:GetRight() - cf:GetRight()
         bt = cf:GetBottom() - sel:GetBottom()
     end
-    local want = w - l - r
+    local left = math.max(2, l - NUDGE)
+    local want = w - left - r
     if want > 50 and math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
     local p, rel, rp, x, y = cf:GetPoint(1)
-    if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - l) > 0.5
+    if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - left) > 0.5
         or math.abs((y or 0) - (GAP + bt)) > 0.5 or cf:GetNumPoints() ~= 1 then
         cf:ClearAllPoints()
-        cf:SetPoint("BOTTOMLEFT", info, "TOPLEFT", l, GAP + bt)
+        cf:SetPoint("BOTTOMLEFT", info, "TOPLEFT", left, GAP + bt)
     end
 end
 
