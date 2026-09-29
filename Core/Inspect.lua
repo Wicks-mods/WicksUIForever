@@ -173,9 +173,12 @@ function I:Run(path)
     if not f or f == WorldFrame or f == UIParent then
         local best, area
         local function consider(fr)
+            -- Locked frames answer in secrets: the secret is checked
+            -- before the answer is tested, and so is the size.
             local okV, vis = pcall(function() return fr and fr.IsVisible and fr:IsVisible() and fr:IsMouseOver() end)
-            if okV and vis and not secret(vis) then
+            if okV and not secret(vis) and vis then
                 local w, h = fr:GetSize()
+                if secret(w) or secret(h) then return end
                 local a = (w or 0) * (h or 0)
                 if a > 0 and (not area or a < area) then best, area = fr, a end
             end

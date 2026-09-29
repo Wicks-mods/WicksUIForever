@@ -2553,6 +2553,27 @@ for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "L
     end
 end
 
+-- The dressing room: the painted backdrop behind the model goes for one of
+-- our cards, and the outfit list beside it loses its stone frame and class
+-- art for a card of its own. The model itself, and the item icons and
+-- names in the list, are content and stay. Held every pass: Blizzard sets
+-- the backdrop again for each race and class it shows.
+PS.SPECIAL.DressUpFrame = function(frame)
+    fullSkin(frame, function(f)
+        fade(f.ModelBackground)
+        if f.ModelScene then
+            card(f.ModelScene, "wuiCard", "TOPLEFT", f.ModelScene, "BOTTOMRIGHT", f.ModelScene, 0, 0, 0, 0)
+        end
+        local od = f.OutfitDetailsPanel
+        if od then
+            fade(od.NineSlice); fade(od.BorderFrame); fade(od.ClassBackground); fade(od.Background)
+            fadeRegions(od)
+            card(od, "wuiCard", "TOPLEFT", od, "BOTTOMRIGHT", od, 0, 0, 0, 0)
+        end
+    end)
+    return "generic"
+end
+
 -- The game's bags stack up from the bottom right of the screen, and Blizzard
 -- lays them out again whenever one opens or closes. Straight after it
 -- does, a bag window that would cover the damage meter is lifted to sit
