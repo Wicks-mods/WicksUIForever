@@ -273,9 +273,13 @@ function AB:StyleButton(button)
         -- Rounded in the modern style, plain square in the crisp one.
         local shape = ns:Modern() and ns.Media.iconmask or ns.Media:Statusbar("Wick Flat")
         button.IconMask:SetTexture(shape, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-        button.IconMask:ClearAllPoints()
-        button.IconMask:SetPoint("TOPLEFT", icon, "TOPLEFT", 0, 0)
-        button.IconMask:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 0, 0)
+        if ns:Modern() and Chrome.PlaceIconMask then
+            Chrome:PlaceIconMask(button.IconMask, icon, 1)   -- icons sit 1 px in
+        else
+            button.IconMask:ClearAllPoints()
+            button.IconMask:SetPoint("TOPLEFT", icon, "TOPLEFT", 0, 0)
+            button.IconMask:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 0, 0)
+        end
     end
     for _, key in ipairs({ "SlotArt", "SlotBackground", "FloatingBG", "RightDivider", "BottomDivider" }) do
         local t = button[key]

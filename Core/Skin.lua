@@ -315,7 +315,7 @@ function ns:CropIcon(tex, zoom)
         if parent and parent.CreateMaskTexture and not tex.wuiMask then
             local m = parent:CreateMaskTexture()
             m:SetTexture(ns.Media.iconmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-            m:SetAllPoints(tex)
+            if Chrome.PlaceIconMask then Chrome:PlaceIconMask(m, tex) else m:SetAllPoints(tex) end
             tex:AddMaskTexture(m)
             tex.wuiMask = m
         end

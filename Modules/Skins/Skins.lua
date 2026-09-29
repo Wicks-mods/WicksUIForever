@@ -293,8 +293,12 @@ local function styleBagSlot(b)
         if sm and sm.SetTexture then
             local shape = ns:Modern() and ns.Media.iconmask or ns.Media:Statusbar("Wick Flat")
             sm:SetTexture(shape, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-            sm:ClearAllPoints()
-            sm:SetAllPoints(icon)
+            if ns:Modern() and Chrome.PlaceIconMask then
+                Chrome:PlaceIconMask(sm, icon)
+            else
+                sm:ClearAllPoints()
+                sm:SetAllPoints(icon)
+            end
         end
         -- The key ring's picture is Blizzard's empty-slot art, not an item.
         if not (icon.GetAtlas and icon:GetAtlas()) then ns:CropIcon(icon) end
