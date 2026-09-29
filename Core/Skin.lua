@@ -70,9 +70,9 @@ local function modernTemplate(f, template, opts)
         f.wuiBG:SetAllPoints()
     end
     f.wuiBG:SetTexture(ns.Media.rounded)
-    slice(f.wuiBG, 8)
+    slice(f.wuiBG, ns.Media.slice)
     if t.bg then
-        paintGlass(f.wuiBG, t.bg, opts.alpha or t.alpha)
+        paintGlass(f.wuiBG, t.bg, Chrome.GlassAlpha and Chrome:GlassAlpha(opts.alpha or t.alpha) or (opts.alpha or t.alpha))
         f.wuiBG:Show()
     else
         f.wuiBG:Hide()
@@ -85,22 +85,28 @@ local function modernTemplate(f, template, opts)
         slice(s, 28)
         s:SetPoint("TOPLEFT", f, "TOPLEFT", -12, 10)
         s:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 12, -14)
-        s:SetVertexColor(0, 0, 0, 0.6)
+        -- The style's lift: black by default, a glow in the accent for some.
+        local lift = Chrome.StyleDef and Chrome:StyleDef().lift or {}
+        if lift.token then
+            paintGlass(s, lift.token, lift.alpha or 0.6)
+        else
+            s:SetVertexColor(0, 0, 0, lift.alpha or 0.6)
+        end
         f.wuiShadow = s
     end
     -- The ring stands in for a coloured border: hidden at rest.
     if not f.wuiRing then
         local r = f:CreateTexture(nil, "BORDER", nil, 2)
         r:SetTexture(ns.Media.ring)
-        slice(r, 8)
+        slice(r, ns.Media.slice)
         r:SetAllPoints()
         r:Hide()
         f.wuiRing = r
     end
     f.wuiBorder = f.wuiBorder or {}
-    ns:SetBorderColor(f, opts.border or "border")
     f.wuiTemplate = template or "Default"
     f.wuiModern = true
+    ns:SetBorderColor(f, opts.border or "border")
     ns.skinned = ns.skinned or setmetatable({}, { __mode = "k" })
     ns.skinned[f] = true
     return f
@@ -150,7 +156,7 @@ local function layoutBorder(f)
         e.bottom:ClearAllPoints(); e.bottom:SetPoint("TOPLEFT", f, "BOTTOMLEFT", -px, 0);   e.bottom:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", px, 0);   e.bottom:SetHeight(px)
         e.left:ClearAllPoints();   e.left:SetPoint("TOPRIGHT", f, "TOPLEFT", 0, 0);         e.left:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", 0, 0);    e.left:SetWidth(px)
         e.right:ClearAllPoints();  e.right:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, 0);        e.right:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", 0, 0);   e.right:SetWidth(px)
-        local show = ns:G().edges ~= false
+        local show = ns:G().edges ~= false and not (Chrome.StyleDef and Chrome:StyleDef().edge == false)
         for _, t in pairs(e) do t:SetShown(show) end
     end
 end
@@ -174,6 +180,22 @@ function ns:SetTemplate(f, template, opts)
     if not f.wuiBorder then makeBorder(f) end
     layoutBorder(f)
     ns:SetBorderColor(f, opts.border or "border")
+    -- A second, fainter line inside the border on panels, where the style
+    -- draws one (Runic).
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    if st and st.double and (template == nil or template == "Default" or template == "Transparent") and not f.wuiInner then
+        local inner = {}
+        for _, side in ipairs({ "top", "bottom", "left", "right" }) do
+            local t = f:CreateTexture(nil, "BORDER", nil, 1)
+            paint(t, "border", 0.55)
+            inner[side] = t
+        end
+        inner.top:SetPoint("TOPLEFT", 3, -3); inner.top:SetPoint("TOPRIGHT", -3, -3); inner.top:SetHeight(1)
+        inner.bottom:SetPoint("BOTTOMLEFT", 3, 3); inner.bottom:SetPoint("BOTTOMRIGHT", -3, 3); inner.bottom:SetHeight(1)
+        inner.left:SetPoint("TOPLEFT", 3, -3); inner.left:SetPoint("BOTTOMLEFT", 3, 3); inner.left:SetWidth(1)
+        inner.right:SetPoint("TOPRIGHT", -3, -3); inner.right:SetPoint("BOTTOMRIGHT", -3, 3); inner.right:SetWidth(1)
+        f.wuiInner = inner
+    end
     if opts.brackets and ns:G().brackets and not f.brackets then
         Chrome:AddBrackets(f)
     end
@@ -190,7 +212,13 @@ function ns:SetBorderColor(f, color, alpha)
     if f.wuiModern then
         local r = f.wuiRing
         if not r then return end
-        if color == "border" or color == nil then
+        local rest = Chrome.StyleDef and Chrome:StyleDef().ringRest
+        if (color == "border" or color == nil) and rest and f.wuiTemplate ~= "None" then
+            local c = C[rest.token] or C.border
+            r:SetVertexColor(c[1], c[2], c[3], rest.alpha)
+            if Chrome.Register then Chrome:Register(r, rest.token, "vertex", rest.alpha) end
+            r:Show()
+        elseif color == "border" or color == nil then
             r:Hide()
         else
             local c = type(color) == "string" and (C[color] or C.fel) or color
@@ -257,7 +285,8 @@ function ns:Fill(tex, r, g, b, a)
     local token = tokenOf(r, g, b)
     if ns:Modern() then
         tex:SetTexture(ns.Media.rounded)
-        if tex.SetTextureSliceMargins then tex:SetTextureSliceMargins(8, 8, 8, 8) end
+        local m = ns.Media.slice
+        if tex.SetTextureSliceMargins then tex:SetTextureSliceMargins(m, m, m, m) end
         tex:SetVertexColor(r, g, b, a or 1)
         if token and Chrome.Register then Chrome:Register(tex, token, "vertex", a or 1) end
     else
@@ -275,7 +304,7 @@ function ns:CropIcon(tex, zoom)
         local parent = tex:GetParent()
         if parent and parent.CreateMaskTexture and not tex.wuiMask then
             local m = parent:CreateMaskTexture()
-            m:SetTexture(ns.Media.roundmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            m:SetTexture(ns.Media.iconmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             m:SetAllPoints(tex)
             tex:AddMaskTexture(m)
             tex.wuiMask = m
@@ -341,6 +370,14 @@ function ns:QuietAuraCooldown(button)
     local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
     if fs then fs:SetAlpha(0) end
     cd.noCooldownCount = true   -- and OmniCC-style addons stay off it too
+end
+
+-- Headings in the style's heading face, where it has one (Runic).
+function ns:HeadingFont(fs, size)
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    if st and st.headingFont then
+        fs:SetFont(st.headingFont, size + (st.headingBump or 0), "")
+    end
 end
 
 function ns:CreateText(parent, size, justify, outline, layer)

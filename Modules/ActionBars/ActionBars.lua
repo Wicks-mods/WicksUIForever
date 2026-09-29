@@ -271,7 +271,7 @@ function AB:StyleButton(button)
     -- icon. Given our own rounded shape, it matches ours wherever it lands.
     if button.IconMask and button.IconMask.SetTexture then
         -- Rounded in the modern style, plain square in the crisp one.
-        local shape = ns:Modern() and ns.Media.roundmask or ns.Media:Statusbar("Wick Flat")
+        local shape = ns:Modern() and ns.Media.iconmask or ns.Media:Statusbar("Wick Flat")
         button.IconMask:SetTexture(shape, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         button.IconMask:ClearAllPoints()
         button.IconMask:SetPoint("TOPLEFT", icon, "TOPLEFT", 0, 0)

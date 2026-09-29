@@ -617,6 +617,7 @@ function Config:Show(key)
         local L = newLayout(page, content)
         page.layout = L
         local title = ns:CreateText(content, 18, "LEFT", "NONE")
+        ns:HeadingFont(title, 18)
         title:SetPoint("TOPLEFT", PAD, -PAD)
         title:SetText(page.title)
         L.y = -PAD - 30

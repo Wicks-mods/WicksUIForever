@@ -60,7 +60,25 @@ local PRESETS = {
         bars = { size = 34, spacing = 2 },
         units = { player = 40, target = 40, focus = 32, focustarget = 26, targettarget = 26, pet = 26, boss = 36, party = 40, raid = 42 },
     },
+    -- Slate is dense: smaller buttons close together, shorter frames.
+    slate = {
+        bars = { size = 32, spacing = 1 },
+        units = { player = 36, target = 36, focus = 28, focustarget = 22, targettarget = 22, pet = 22, boss = 32, party = 36, raid = 38 },
+    },
 }
+
+-- The key a style's sizes are kept under. Wick OG predates the others and
+-- is saved as "wick"; the rest by their own id.
+local function styleKey()
+    local Chrome = ns.Core and ns.Core.Chrome
+    local id = Chrome and Chrome.StyleID and Chrome:StyleID() or (ns:Modern() and "modern" or "og")
+    return id == "og" and "wick" or id
+end
+
+local function presetFor(key)
+    if PRESETS[key] then return PRESETS[key] end
+    return ns:Modern() and PRESETS.modern or PRESETS.wick
+end
 
 -- Each style keeps the player's own sizes, and the minimap's shape (round
 -- suits one style, square the other): leaving a style saves what it had
@@ -102,9 +120,9 @@ end
 
 function ns:ApplyStylePreset(force)
     local g = ns:G()
-    local style = ns:Modern() and "modern" or "wick"
+    local style = styleKey()
     if not force and g.presetFor == style then return end
-    local p = PRESETS[style]
+    local p = presetFor(style)
     if not p then return end
     local prof = ns.A.db.profile
     g.styleSizes = g.styleSizes or {}
@@ -294,21 +312,22 @@ ns.Config:AddPage("general", "General", function(L)
 
     L:Heading("Appearance")
     L:Note("Shared by the whole suite: every Wick addon follows these, and they are the same settings WickCore's own panel shows.")
-    L:Dropdown("Style", "style", {
-        { "modern", "Wick Modern: rounded glass, soft shadows" },
-        { "wick", "Wick OG: crisp borders, fel corners" },
-    }, {
-        get = function() return ns:Modern() and "modern" or "wick" end,
+    L:Dropdown("Style", "style", function()
+        local out = {}
+        for _, st in ipairs(Chrome.Styles or {}) do out[#out + 1] = { st.id, st.name } end
+        return out
+    end, {
+        get = function() return Chrome.StyleID and Chrome:StyleID() or "modern" end,
         setter = function(v)
-            if v == (ns:Modern() and "modern" or "wick") then return end
-            ns.Widgets:Confirm("Changing the style rebuilds every frame, and every Wick addon follows it, so the interface reloads. Reload now?", function()
+            if v == Chrome:StyleID() then return end
+            local st = Chrome.StyleByID[v]
+            ns.Widgets:Confirm(("%s: %s\n\nChanging the style rebuilds every frame, and every Wick addon follows it, so the interface reloads. Reload now?"):format(st.name, st.blurb), function()
                 -- The suite's style lives in WickCore; the whole suite follows.
-                local Chrome = ns.Core and ns.Core.Chrome
-                if Chrome and Chrome.SetStyle then Chrome:SetStyle(v == "wick" and "og" or "modern") end
+                Chrome:SetStyle(v)
                 ReloadUI()
             end, "Reload")
         end,
-        tooltip = "Wick Modern is borderless, lifted and airy, with fel kept for signals. Wick OG is the original look: single-pixel borders, a black edge and fel corners.",
+        tooltip = "The shape everything is drawn in, across the suite. Each style keeps its own button sizes, frame heights and minimap shape.",
     })
     L:Dropdown("Class colours", "classColorSet", {
         { "client", "The game's own" }, { "classic", "Classic era" },

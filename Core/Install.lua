@@ -20,7 +20,7 @@ ns.Install = I
 -- The style chosen here; applied by the reload on the last page.
 local pendingStyle
 
-local function currentStyle() return pendingStyle or (Chrome:Modern() and "modern" or "og") end
+local function currentStyle() return pendingStyle or Chrome:StyleID() end
 
 local PAGES = {
     {
@@ -29,13 +29,16 @@ local PAGES = {
     },
     {
         title = "Style",
-        text = "The shape everything is drawn in, across every Wick addon.\n\nWick Modern: rounded glass panels on a soft shadow, the Wick font, no border lines.\nWick OG: the original look, flat panels with a single-pixel border and fel corners.\n\nThe change shows after the reload at the end.",
-        choices = {
-            { label = "Wick Modern", on = function() return currentStyle() == "modern" end,
-              pick = function() pendingStyle = "modern" end },
-            { label = "Wick OG", on = function() return currentStyle() == "og" end,
-              pick = function() pendingStyle = "og" end },
-        },
+        text = "The shape everything is drawn in, across every Wick addon. Point at one to read about it; the change shows after the reload at the end.",
+        choices = function()
+            local out = {}
+            for _, st in ipairs(Chrome.Styles) do
+                out[#out + 1] = { label = st.name, tip = st.blurb,
+                    on = function() return currentStyle() == st.id end,
+                    pick = function() pendingStyle = st.id end }
+            end
+            return out
+        end,
     },
     {
         title = "Colours",
@@ -125,11 +128,20 @@ function I:Show(page)
         f.text:SetPoint("TOPRIGHT", -18, -70)
         f.action = W:Button(f, "", 160, function() end)
         f.action:SetPoint("BOTTOMLEFT", 18, 50)
-        -- Up to three answers in a row above the Back and Next buttons.
+        -- Up to six answers, three to a row, above the Back and Next buttons.
         f.choices = {}
-        for i = 1, 3 do
+        for i = 1, 6 do
             local b = W:Button(f, "", CHOICE_W, function() end)
-            b:SetPoint("BOTTOMLEFT", 18 + (i - 1) * (CHOICE_W + 8), 50)
+            local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+            b:SetPoint("BOTTOMLEFT", 18 + col * (CHOICE_W + 8), 84 - row * 34)
+            b:HookScript("OnEnter", function()
+                if not b.tip then return end
+                GameTooltip:SetOwner(b, "ANCHOR_TOP")
+                GameTooltip:SetText(b.text:GetText() or "", 1, 1, 1)
+                GameTooltip:AddLine(b.tip, 0.8, 0.8, 0.8, true)
+                GameTooltip:Show()
+            end)
+            b:HookScript("OnLeave", function() GameTooltip:Hide() end)
             f.choices[i] = b
         end
         f.next = W:Button(f, "Next", 90, function() I:Show(I.page + 1) end)
@@ -151,7 +163,14 @@ function I:Show(page)
         f.action.text:SetText(p.button)
         f.action:SetScript("OnClick", function() p.action(); if page < #PAGES then I:Show(page + 1) end end)
     end
-    local list = p.choices or {}
+    local list = (type(p.choices) == "function" and p.choices()) or p.choices or {}
+    -- One row sits on the lower line; two fill both.
+    local rows = math.ceil(#list / 3)
+    for i, btn in ipairs(f.choices) do
+        local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+        btn:ClearAllPoints()
+        btn:SetPoint("BOTTOMLEFT", 18 + col * (CHOICE_W + 8), 50 + (rows - 1 - row) * 34)
+    end
     local function paintAll()
         for i, c in ipairs(list) do paintChoice(f.choices[i], c.on and c.on()) end
     end
@@ -160,6 +179,7 @@ function I:Show(page)
         btn:SetShown(c ~= nil)
         if c then
             btn.text:SetText(c.label)
+            btn.tip = c.tip
             -- Picked, lit, and on to the next question.
             btn:SetScript("OnClick", function()
                 pcall(c.pick)
@@ -173,7 +193,7 @@ function I:Show(page)
     f.next.text:SetText(page == #PAGES and "Finish" or (p.choices and "Skip" or "Next"))
     f.next:SetScript("OnClick", function()
         if page == #PAGES then
-            if pendingStyle and pendingStyle ~= (Chrome:Modern() and "modern" or "og") and Chrome.SetStyle then
+            if pendingStyle and pendingStyle ~= Chrome:StyleID() and Chrome.SetStyle then
                 Chrome:SetStyle(pendingStyle)
                 I:Finish()
                 ReloadUI()

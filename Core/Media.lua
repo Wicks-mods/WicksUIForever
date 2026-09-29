@@ -39,10 +39,17 @@ M.blank = "Interface\\Buttons\\WHITE8X8"
 -- any frame size), a soft shadow (9-sliced, 28 px margins) and a rounded
 -- mask for icons.
 local TEX = "Interface\\AddOns\\WicksUI\\Media\\Textures\\"
-M.rounded   = TEX .. "rounded.png"
-M.ring      = TEX .. "ring.png"
-M.shadow    = TEX .. "shadow.png"
-M.roundmask = TEX .. "roundmask.png"
+-- These follow the suite's style (WickCore's Chrome.Media): each style has
+-- its own panel, ring and masks, and its own 9-slice margin. Read when a
+-- frame is drawn, so they are always the style in use.
+local STYLED = { rounded = true, ring = true, shadow = true, roundmask = true, iconmask = true, slice = true }
+setmetatable(M, { __index = function(_, k)
+    if not STYLED[k] then return nil end
+    local Chrome = ns.Core and ns.Core.Chrome
+    if Chrome and Chrome.Media then return Chrome.Media[k] end
+    if k == "slice" then return 8 end
+    return TEX .. (k == "iconmask" and "roundmask" or k) .. ".png"
+end })
 -- Flat white marks for small buttons, tinted as they are drawn.
 function M:Glyph(name) return TEX .. "glyph-" .. name .. ".png" end
 
@@ -71,6 +78,12 @@ end
 
 function M:Font(name)
     name = name or ns:G().font
+    -- The Wick font is the style's own where the style has one.
+    if name == "Wick" then
+        local Chrome = ns.Core and ns.Core.Chrome
+        local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+        if st and st.uiFont then return st.uiFont end
+    end
     local all = merged(self.fonts, "font")
     return all[name] or self.fonts["Wick"]
 end

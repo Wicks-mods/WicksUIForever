@@ -554,7 +554,7 @@ local function styleIconButton(b)
     local ct = tex(b, "GetCheckedTexture")
     if ct then
         ct:SetTexture(ns.Media.ring)
-        if ct.SetTextureSliceMargins then ct:SetTextureSliceMargins(8, 8, 8, 8) end
+        if ct.SetTextureSliceMargins then ct:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
         ct:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(ct, "fel", "vertex", 1)
         ct:SetAllPoints(icon or b)
@@ -674,7 +674,7 @@ local function styleListRow(b)
     bd:SetFrameLevel(math.max(0, lvl - 2))
     local sel = b.selectedTexture
     sel:SetTexture(ns.Media.ring)
-    if sel.SetTextureSliceMargins then sel:SetTextureSliceMargins(8, 8, 8, 8) end
+    if sel.SetTextureSliceMargins then sel:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
     sel:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
     Chrome:Register(sel, "fel", "vertex", 1)
     sel:ClearAllPoints()
@@ -1598,7 +1598,7 @@ local function styleSidebarTabs()
                 ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
                 local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
                 ring:SetTexture(ns.Media.ring)
-                if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
+                if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
                 ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
                 Chrome:Register(ring, "fel", "vertex", 1)
                 ring:SetAllPoints(bd)
@@ -1957,7 +1957,7 @@ local function styleListButton(b)
                 local al = a:lower()
                 if al:find("select") then
                     r:SetTexture(ns.Media.ring)
-                    if r.SetTextureSliceMargins then r:SetTextureSliceMargins(8, 8, 8, 8) end
+                    if r.SetTextureSliceMargins then r:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
                     r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
                     Chrome:Register(r, "fel", "vertex", 1)
                     r:ClearAllPoints()
@@ -2119,7 +2119,7 @@ local function styleSideTab(tab)
         if icon then ns:CropIcon(icon) end
         local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
         ring:SetTexture(ns.Media.ring)
-        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
+        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(ring, "fel", "vertex", 1)
         ring:SetAllPoints(bd)
@@ -2327,7 +2327,7 @@ PS.SPECIAL.CommunitiesFrame = function(frame)
                         bd:SetPoint("BOTTOMRIGHT", -6, 4)
                         local ring = row:CreateTexture(nil, "OVERLAY", nil, 2)
                         ring:SetTexture(ns.Media.ring)
-                        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
+                        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
                         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
                         Chrome:Register(ring, "fel", "vertex", 1)
                         ring:SetAllPoints(bd)
@@ -2589,7 +2589,7 @@ local function styleNodes(tf)
                 ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
                 local ring = b:CreateTexture(nil, "OVERLAY", nil, 1)
                 ring:SetTexture(ns.Media.ring)
-                if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
+                if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
                 ring:SetAllPoints(bd)
                 e.ring = ring
             end

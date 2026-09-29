@@ -291,7 +291,7 @@ local function styleBagSlot(b)
         -- shape it matches our tile, attached or not.
         local sm = b.SquareMask
         if sm and sm.SetTexture then
-            local shape = ns:Modern() and ns.Media.roundmask or ns.Media:Statusbar("Wick Flat")
+            local shape = ns:Modern() and ns.Media.iconmask or ns.Media:Statusbar("Wick Flat")
             sm:SetTexture(shape, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             sm:ClearAllPoints()
             sm:SetAllPoints(icon)
