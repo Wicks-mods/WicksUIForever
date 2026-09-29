@@ -32,7 +32,7 @@ do
     for name, file in pairs({
         ["Anton"] = "Anton-Regular", ["Archivo Narrow"] = "ArchivoNarrow-Bold",
         ["Barlow Condensed"] = "BarlowCondensed-SemiBold", ["Cormorant"] = "CormorantGaramond-SemiBold",
-        ["Cormorant SC"] = "CormorantSC-SemiBold", ["Exo 2"] = "Exo2-Medium", ["Italiana"] = "Italiana-Regular",
+        ["Cormorant SC"] = "CormorantSC-SemiBold", ["Exo 2"] = "Exo2-Medium", ["Italiana"] = "Italiana-Regular", ["Jost"] = "Jost-Medium",
         ["Michroma"] = "Michroma-Regular", ["Rajdhani"] = "Rajdhani-SemiBold",
         ["Saira Semi Condensed"] = "SairaSemiCondensed-Medium", ["Tektur"] = "Tektur-Medium",
     }) do M.fonts[name] = WF .. file .. ".ttf" end
