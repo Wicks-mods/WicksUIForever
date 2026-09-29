@@ -177,7 +177,7 @@ local HELP = {
     "/wui unskin [name]  undo the last /wui skin, or the named one",
 }
 
-A:RegisterSlash(function(_, msg)
+local function slash(_, msg)
     local cmd = (msg or ""):lower()
     if cmd == "" or cmd == "config" or cmd == "options" then
         ns.Config:Toggle()
@@ -203,6 +203,18 @@ A:RegisterSlash(function(_, msg)
         end
     else
         for _, line in ipairs(HELP) do A:Print(line) end
+    end
+end
+
+-- WickCore's slash wrapper keeps quiet about an error unless its debug is
+-- on, which made a failing command look like one that did nothing. Ours
+-- says so.
+A:RegisterSlash(function(self, msg)
+    local ok, err = pcall(slash, self, msg)
+    if not ok then
+        A:Print("|cffff6060that command failed:|r " .. tostring(err))
+        ns.errors = ns.errors or {}
+        ns.errors[#ns.errors + 1] = "slash: " .. tostring(err)
     end
 end, "/wui", "/wicksui")
 

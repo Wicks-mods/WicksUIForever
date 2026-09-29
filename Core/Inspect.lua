@@ -23,9 +23,19 @@ local function keyOn(parent, obj)
     end
 end
 
-local function fmt(n) return n and ("%.0f"):format(n) or "?" end
+local function secret(v) return issecretvalue and issecretvalue(v) end
+local function fmt(n)
+    if secret(n) then return "secret" end
+    return type(n) == "number" and ("%.0f"):format(n) or "?"
+end
+-- A value the client hands out as a secret (sizes and places of aura
+-- buttons in combat, their text) is shown as the word, never used.
+local function safeText(v)
+    if secret(v) then return "secret" end
+    return tostring(v)
+end
 
-local function describe(obj, parent, indent)
+local function describeUnsafe(obj, parent, indent)
     local kind = obj.GetObjectType and obj:GetObjectType() or "?"
     local name = obj.GetName and obj:GetName()
     local key = keyOn(parent, obj)
@@ -39,8 +49,8 @@ local function describe(obj, parent, indent)
         key and ("." .. key) or "",
         name and (" " .. name) or "",
         (" %sx%s"):format(fmt(w), fmt(h)),
-        obj.IsShown and (obj:IsShown() and " shown" or " hidden") or "",
-        obj.GetAlpha and (" a=%.2f"):format(obj:GetAlpha()) or "",
+        obj.IsShown and (secret(obj:IsShown()) and " shown?" or (obj:IsShown() and " shown" or " hidden")) or "",
+        obj.GetAlpha and (secret(obj:GetAlpha()) and " a=secret" or (" a=%.2f"):format(obj:GetAlpha())) or "",
     }
     if kind == "Texture" or kind == "MaskTexture" then
         local layer, sub = obj:GetDrawLayer()
@@ -52,12 +62,20 @@ local function describe(obj, parent, indent)
             parts[#parts + 1] = " tex=" .. tostring(obj:GetTexture())
         end
     elseif kind == "FontString" then
-        parts[#parts + 1] = " text=" .. tostring(obj:GetText())
+        parts[#parts + 1] = " text=" .. safeText(obj:GetText())
+        local font, size = obj:GetFont()
+        parts[#parts + 1] = (" font=%s/%s"):format(safeText(font and font:match("[^\/]+$") or font), fmt(size))
     else
         if obj.GetFrameLevel then parts[#parts + 1] = " lvl=" .. obj:GetFrameLevel() end
     end
     if p then parts[#parts + 1] = (" @%s %s %s %s,%s"):format(p, relName, rp or "", fmt(x), fmt(y)) end
     return table.concat(parts)
+end
+
+local function describe(obj, parent, indent)
+    local ok, line = pcall(describeUnsafe, obj, parent, indent)
+    if ok then return line end
+    return indent .. "(could not read: " .. tostring(line) .. ")"
 end
 
 local function walk(frame, depth, lines, limit)
