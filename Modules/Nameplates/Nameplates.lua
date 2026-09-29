@@ -160,8 +160,8 @@ local function style(self, unit)
         a.size = d.debuffSize
         a.elementSpacing = 2
         a.showCount = true
-        -- The time is the client's countdown (see ns:AuraCountdown).
-        a.showDuration = false
+        -- Our own time text (the client's countdown is hidden: ns:AuraCountdown).
+        a.showDuration = true
         a.disableMouse = true
         a:AddGroup("HARMFUL|PLAYER", { maxFrameCount = d.debuffCount })
         a:SetSize(d.debuffCount * (d.debuffSize + 2), d.debuffSize)
@@ -182,7 +182,7 @@ local function style(self, unit)
         b:AddGroup("HELPFUL|RAID", { maxFrameCount = 4 })
         b:SetSize(4 * (d.buffSize + 2), d.buffSize)
         b.PostCreateButton = function(_, button)
-        ns:QuietAuraCooldown(button)
+        ns:AuraCountdown(button, nil, false)
             if button.Icon then ns:CropIcon(button.Icon) end
             ns:CreateBackdrop(button, "Default", ns.mult)
         end

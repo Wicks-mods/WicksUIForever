@@ -66,8 +66,8 @@ local function build(self, which, d)
     a.elementSpacing = d.spacing
     a.lineSpacing = d.rowSpacing
     a.showCount = d.showCount
-    -- The time is the client's countdown (see ns:AuraCountdown), not ours.
-    a.showDuration = false
+    -- Our own time text (the client's countdown is hidden: ns:AuraCountdown).
+    a.showDuration = true
     a.showDebuffBorder = which == "debuffs"
     a.cancelButton = which == "buffs" and "RightButtonUp" or nil
     a.tooltipAnchor = "ANCHOR_BOTTOMLEFT"

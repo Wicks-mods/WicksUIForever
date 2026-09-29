@@ -283,66 +283,34 @@ local function invisibleFont()
     return noCountdown
 end
 
--- An aura's time is the client's own countdown on its cooldown, centred
--- and in our font. Ours (the aura library's duration text) is not made:
--- the client's aura container keeps its countdown on however often it is
--- switched off, so two timers showed. One, the client's, it is.
-local countdownFonts = {}
-local function countdownFont(size)
-    size = math.max(8, math.floor(size + 0.5))
-    local f = countdownFonts[size]
-    if not f then
-        f = CreateFont("WicksUI_AuraCountdown" .. size)
-        f:SetFont(ns.Media:Font(), size, "OUTLINE")
-        f:SetTextColor(1, 1, 1, 1)
-        countdownFonts[size] = f
-    end
-    return f
-end
-
--- The font handed over at creation does not hold (the container sets its
--- own back), so the countdown's text is set directly and looked at again
--- every frame: our font, sized to the icon.
-local countdowns = setmetatable({}, { __mode = "k" })
-local auraButtons = setmetatable({}, { __mode = "k" })
-local function sizeText(fs, path, size)
-    local f, sz = fs:GetFont()
-    if f ~= path or not sz or math.abs(sz - size) > 0.5 then
-        fs:SetFont(path, size, "OUTLINE")
-        fs:SetShadowOffset(0, 0)
-    end
-end
--- Every piece of text on an aura button, and on the frames just inside it
--- (the cooldown's countdown, the container's own time), in our font at the
--- icon's size: whichever of them the client draws the time with.
-local function sizeAll(frame, path, size, depth)
-    for _, r in ipairs({ frame:GetRegions() }) do
-        if r:GetObjectType() == "FontString" then sizeText(r, path, size) end
-    end
-    if depth < 2 then
-        for _, c in ipairs({ frame:GetChildren() }) do sizeAll(c, path, size, depth + 1) end
-    end
-end
+-- An aura's time. The client draws the countdown on an aura's cooldown
+-- itself, in its own font and size, and keeps it on however it is told
+-- otherwise; addon code cannot restyle it. So the aura's cooldown frame is
+-- hidden (the frame's alpha, which the client leaves alone), taking its
+-- countdown and swirl with it, and the time is our own text: the aura
+-- library's duration string, centred, in our font at the icon's size.
+local hiddenCooldowns = setmetatable({}, { __mode = "k" })
 local cdTicker = CreateFrame("Frame")
 cdTicker:SetScript("OnUpdate", function()
-    local path = ns.Media:Font()
-    for cd, size in pairs(countdowns) do
-        local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
-        if fs then sizeText(fs, path, size) end
-    end
-    for b, size in pairs(auraButtons) do sizeAll(b, path, size, 0) end
+    for cd in pairs(hiddenCooldowns) do cd:SetAlpha(0) end
 end)
 
 function ns:AuraCountdown(button, iconSize, show)
     local cd = button and button.Cooldown
-    if not cd then return end
-    cd.noCooldownCount = true   -- OmniCC-style addons stay off it
-    if show == false then return ns:QuietAuraCooldown(button) end
-    if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(false) end
-    local size = math.max(8, math.floor((iconSize or 24) * 0.42 + 0.5))
-    if cd.SetCountdownFont then pcall(cd.SetCountdownFont, cd, countdownFont(size):GetName()) end
-    countdowns[cd] = size
-    auraButtons[button] = size
+    if cd then
+        cd.noCooldownCount = true   -- OmniCC-style addons stay off it
+        cd:SetAlpha(0)
+        hiddenCooldowns[cd] = true
+    end
+    local t = button and button.Time
+    if t then
+        local size = math.max(8, math.floor((iconSize or 24) * 0.42 + 0.5))
+        t:SetFont(ns.Media:Font(), size, "OUTLINE")
+        t:SetShadowOffset(0, 0)
+        t:ClearAllPoints()
+        t:SetPoint("CENTER", button, "CENTER", 0, 0)
+        t:SetShown(show ~= false)
+    end
 end
 
 function ns:QuietAuraCooldown(button)

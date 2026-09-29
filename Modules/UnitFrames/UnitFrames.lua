@@ -324,8 +324,8 @@ local function buildAuras(self, which, d)
     a.elementSpacing = d.spacing
     a.lineSpacing = d.spacing
     a.showCount = d.showCount
-    -- The time is the client's countdown (see ns:AuraCountdown), not ours.
-    a.showDuration = false
+    -- Our own time text (the client's countdown is hidden: ns:AuraCountdown).
+    a.showDuration = true
     a.showDebuffBorder = which == "debuffs"
     a.showStealableBorder = which == "buffs"
     a.tooltipAnchor = "ANCHOR_BOTTOMRIGHT"
