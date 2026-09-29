@@ -69,7 +69,7 @@ local function modernTemplate(f, template, opts)
         f.wuiBG = f:CreateTexture(nil, "BACKGROUND", nil, -7)
         f.wuiBG:SetAllPoints()
     end
-    f.wuiBG:SetTexture(ns.Media.rounded)
+    f.wuiBG:SetTexture(Chrome.PanelTex and Chrome:PanelTex(f) or ns.Media.rounded)
     slice(f.wuiBG, ns.Media.slice)
     if t.bg then
         paintGlass(f.wuiBG, t.bg, Chrome.GlassAlpha and Chrome:GlassAlpha(opts.alpha or t.alpha) or (opts.alpha or t.alpha))
@@ -97,7 +97,7 @@ local function modernTemplate(f, template, opts)
     -- The ring stands in for a coloured border: hidden at rest.
     if not f.wuiRing then
         local r = f:CreateTexture(nil, "BORDER", nil, 2)
-        r:SetTexture(ns.Media.ring)
+        r:SetTexture(Chrome.RingTex and Chrome:RingTex(f) or ns.Media.ring)
         slice(r, ns.Media.slice)
         r:SetAllPoints()
         r:Hide()
@@ -294,7 +294,7 @@ end
 function ns:Fill(tex, r, g, b, a)
     local token = tokenOf(r, g, b)
     if ns:Modern() then
-        tex:SetTexture(ns.Media.rounded)
+        tex:SetTexture(Chrome.PanelTex and Chrome:PanelTex(tex) or ns.Media.rounded)
         local m = ns.Media.slice
         if tex.SetTextureSliceMargins then tex:SetTextureSliceMargins(m, m, m, m) end
         tex:SetVertexColor(r, g, b, a or 1)
