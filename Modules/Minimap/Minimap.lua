@@ -33,7 +33,8 @@ ns.defaults.profile.minimap = {
 }
 
 local SQUARE = "Interface\\BUTTONS\\WHITE8X8"
-local ROUND = "Textures\\MinimapMask"
+-- This client's own round mask (the Classic path draws no map at all).
+local ROUND = "Interface\\Masks\\CircleMaskScalable"
 local function db() return MM:db() end
 
 local function ringArt()
@@ -61,14 +62,53 @@ end
 -- map in the box's top right corner at the box's full width, so a box
 -- pushed into the screen's corner puts the map there too. Blizzard lays
 -- the cluster out again after Edit Mode, so this is checked each tick.
+-- Blizzard's own size and place for the map, taken before we first touch
+-- it, so round mode (whose ring is drawn for that size) can have them back.
+local original
+local function remember()
+    if original or not Minimap then return end
+    local w, h = Minimap:GetSize()
+    original = { w = w, h = h, points = {} }
+    for i = 1, Minimap:GetNumPoints() do original.points[i] = { Minimap:GetPoint(i) } end
+end
+
+-- WickCore's own button rides on the map's edge; it is placed again
+-- whenever the map changes size or shape.
+local function placeLauncher()
+    local L = ns.Core and ns.Core.Launcher
+    if L and L.PlaceMinimapButton then pcall(L.PlaceMinimapButton) end
+end
+
+local function restore()
+    if not original or not original.moved or InCombatLockdown() then return end
+    Minimap:SetSize(original.w, original.h)
+    Minimap:ClearAllPoints()
+    for _, pt in ipairs(original.points) do Minimap:SetPoint(unpack(pt)) end
+    local diel = MinimapCluster and MinimapCluster.DielFrame
+    if diel and original.diel then
+        diel:ClearAllPoints()
+        for _, pt in ipairs(original.diel) do diel:SetPoint(unpack(pt)) end
+    end
+    original.moved = false
+    placeLauncher()
+end
+
 function MM:Fill()
     local d = db()
     local cl = rawget(_G, "MinimapCluster")
-    if not (d.fill and cl) or InCombatLockdown() then return end
+    if not cl or InCombatLockdown() then return end
+    remember()
+    -- Only the square map fills the box; round keeps Blizzard's size so
+    -- the ring still fits it.
+    if not (d.fill and d.square) then restore() return end
+    original.moved = true
     local w, h = cl:GetSize()
     if not (w and w > 0) then return end
     local size = math.floor(math.min(w, h))
-    if math.abs((Minimap:GetWidth() or 0) - size) > 0.5 then Minimap:SetSize(size, size) end
+    if math.abs((Minimap:GetWidth() or 0) - size) > 0.5 then
+        Minimap:SetSize(size, size)
+        placeLauncher()
+    end
     local p, rel = Minimap:GetPoint(1)
     if p ~= "TOPRIGHT" or rel ~= cl or Minimap:GetNumPoints() ~= 1 then
         Minimap:ClearAllPoints()
@@ -81,6 +121,10 @@ function MM:Fill()
     if diel then
         local dp, drel = diel:GetPoint(1)
         if dp ~= "TOPRIGHT" or drel ~= Minimap then
+            if not original.diel then
+                original.diel = {}
+                for i = 1, diel:GetNumPoints() do original.diel[i] = { diel:GetPoint(i) } end
+            end
             diel:ClearAllPoints()
             diel:SetPoint("TOPRIGHT", Minimap, "TOPRIGHT", -2, -40)
         end
@@ -96,19 +140,19 @@ function MM:Shape()
         if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, mask) end
         blob(0)
         for _, t in ipairs(ringArt()) do t:SetAlpha(0) end
-        self.chrome:Show()
-        local c = MinimapCluster and MinimapCluster.MinimapContainer
-        if c then
-            local w, h = Minimap:GetSize()
-            if w and w > 0 then c:SetSize(w, h) end
-        end
     else
         -- Round again, Blizzard's own mask and ring back, at once.
         if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, ROUND) end
         blob(1)
         for _, t in ipairs(ringArt()) do t:SetAlpha(1) end
-        self.chrome:Hide()
     end
+    -- Our text shows on either shape; the corner brackets only suit the
+    -- square one.
+    self.chrome:Show()
+    for _, pair in pairs(self.chrome.brackets or {}) do
+        for _, t in ipairs(pair) do t:SetShown(d.square and ns:G().brackets ~= false) end
+    end
+    placeLauncher()
     -- The soft lift is square-cornered; it only belongs under the square map.
     if self.chrome.wuiLift then self.chrome.wuiLift:SetShown(d.square) end
     local zoom = { Minimap.ZoomIn, Minimap.ZoomOut, rawget(_G, "MinimapZoomIn"), rawget(_G, "MinimapZoomOut") }
@@ -346,7 +390,7 @@ ns.Config:AddPage("minimap", "Minimap", function(L)
     L:DB(db)
     L:Note("Move the minimap with Edit Mode.")
     L:Toggle("Square", "square", { tooltip = "Off gives back Blizzard's round map and its ring." })
-    L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. Turning this off takes a reload." })
+    L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. The round map keeps Blizzard's size, so its ring fits." })
     L:Toggle("Hide the zoom buttons", "hideZoom")
     L:Toggle("Hide Blizzard's zone header and clock", "hideBlizzardText")
     L:Toggle("Gather addon buttons into a flyout", "collect", { tooltip = "Buttons made by LibDBIcon, which is most of them. Takes effect after a reload when switched off." })
