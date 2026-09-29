@@ -300,13 +300,34 @@ local function countdownFont(size)
     return f
 end
 
+-- The font handed over at creation does not hold (the container sets its
+-- own back), so the countdown's text is set directly and looked at again
+-- every frame: our font, sized to the icon.
+local countdowns = setmetatable({}, { __mode = "k" })
+local cdTicker = CreateFrame("Frame")
+cdTicker:SetScript("OnUpdate", function()
+    local path = ns.Media:Font()
+    for cd, size in pairs(countdowns) do
+        local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
+        if fs then
+            local f, sz = fs:GetFont()
+            if f ~= path or not sz or math.abs(sz - size) > 0.5 then
+                fs:SetFont(path, size, "OUTLINE")
+                fs:SetShadowOffset(0, 0)
+            end
+        end
+    end
+end)
+
 function ns:AuraCountdown(button, iconSize, show)
     local cd = button and button.Cooldown
     if not cd then return end
     cd.noCooldownCount = true   -- OmniCC-style addons stay off it
     if show == false then return ns:QuietAuraCooldown(button) end
     if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(false) end
-    if cd.SetCountdownFont then pcall(cd.SetCountdownFont, cd, countdownFont((iconSize or 24) * 0.42):GetName()) end
+    local size = math.max(8, math.floor((iconSize or 24) * 0.42 + 0.5))
+    if cd.SetCountdownFont then pcall(cd.SetCountdownFont, cd, countdownFont(size):GetName()) end
+    countdowns[cd] = size
 end
 
 function ns:QuietAuraCooldown(button)
