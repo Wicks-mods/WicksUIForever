@@ -1702,6 +1702,11 @@ local function styleSideTab(tab)
         ring:SetAllPoints(bd)
         e.ring = ring
     end
+    -- Blizzard's tabs are 55 px tall for its big tab art; around our 38 px
+    -- tiles that leaves wide gaps. Each tab is made just taller than its
+    -- tile, and as Blizzard stacks them one under the next, the column
+    -- closes up.
+    if not InCombatLockdown() and math.abs((tab:GetHeight() or 0) - 40) > 0.5 then tab:SetHeight(40) end
     -- Blizzard sets the icon back to its own size, place and tab-shaped
     -- mask when a tab is chosen, so they are put right on every pass.
     if icon and e.tile then
