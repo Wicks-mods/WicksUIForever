@@ -262,9 +262,24 @@ end
 -- Aura icons carry their own time-left text. The game's cooldown numbers
 -- (switched on for the action bars) would draw a second countdown on the
 -- swirl, so they are hidden on every aura button.
+-- A font object whose text is fully transparent. The aura container
+-- re-shows the countdown text whenever it redraws an icon, which undoes a
+-- hide or an alpha; the font it draws in is left alone, so the countdown
+-- goes on drawing, invisibly.
+local noCountdown
+local function invisibleFont()
+    if noCountdown then return noCountdown end
+    noCountdown = CreateFont("WicksUI_NoCountdown")
+    noCountdown:SetFont("Fonts\\ARIALN.TTF", 8, "")
+    noCountdown:SetTextColor(0, 0, 0, 0)
+    noCountdown:SetShadowColor(0, 0, 0, 0)
+    return noCountdown
+end
+
 function ns:QuietAuraCooldown(button)
     local cd = button and button.Cooldown
     if not cd then return end
+    if cd.SetCountdownFont then pcall(cd.SetCountdownFont, cd, invisibleFont():GetName()) end
     -- The aura container turns the numbers back on when it redraws the
     -- button, so the switch alone does not hold. The countdown's own text
     -- is faded as well, which the container leaves alone.

@@ -81,8 +81,8 @@ local function auraSection(L, key, which, title)
     L:Toggle("Only mine", "onlyMine")
     L:Dropdown("Side", "attach", SIDES)
     L:Dropdown("Start from", "anchor", { { "TOPLEFT", "Left" }, { "TOPRIGHT", "Right" } })
-    L:Slider("Across", "x", -100, 100, 1)
-    L:Slider("Up and down", "y", -100, 100, 1)
+    L:Slider("Across", "x", -300, 300, 1)
+    L:Slider("Up and down", "y", -300, 300, 1)
     L:Slider("Icon size", "size", 10, 48, 1)
     L:Slider("Per row", "perRow", 1, 16, 1)
     L:Slider("Rows", "rows", 1, 4, 1)
@@ -156,7 +156,15 @@ local function unitPage(key, order)
         if key == "player" then
             L:Toggle("In combat", "combat")
             L:Toggle("Resting", "resting")
-            if ns.myClass == "ROGUE" or ns.myClass == "DRUID" then L:Toggle("Combo points", "classPower") end
+            if ns.myClass == "ROGUE" or ns.myClass == "DRUID" then
+                L:Toggle("Combo points", "classPower")
+                L:Heading("Combo points")
+                L:Note("Buffs and debuffs on top of the frame start above the combo points by themselves; their own offsets then move them from there.")
+                L:Slider("Across", "classPowerX", -300, 300, 1, { disabled = function() return not d().classPower end })
+                L:Slider("Up and down", "classPowerY", -100, 300, 1, { disabled = function() return not d().classPower end })
+                L:Slider("Height", "classPowerHeight", 2, 30, 1, { disabled = function() return not d().classPower end })
+                L:Slider("Gap between points", "classPowerGap", 0, 20, 1, { disabled = function() return not d().classPower end })
+            end
         end
         L:Toggle("Role", "role")
         L:Toggle("Ready check", "readyCheck")

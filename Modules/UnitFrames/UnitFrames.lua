@@ -99,6 +99,7 @@ local defaults = {
             castbar = { enable = true, detach = true, width = 260, height = 22, latency = true, point = "BOTTOM,UIParent,BOTTOM,0,160" },
             debuffs = { enable = true, perRow = 8, size = 26 },
             classPower = true, combat = true, resting = true,
+            classPowerX = 0, classPowerY = 3, classPowerHeight = 6, classPowerGap = 2,
             texts = { right = text("[wui:health]", "RIGHT", -4, 0) },
         }),
         target = unit({
@@ -540,13 +541,13 @@ function UF:LayoutClassPower(self, maxNum)
     maxNum = maxNum or 5
     local d = UF:UnitDB(self.wuiKey)
     local w = self:GetWidth()
-    local h = 6
-    local gap = 2
+    local h = d.classPowerHeight or 6
+    local gap = d.classPowerGap or 2
     local each = (w - gap * (maxNum - 1)) / maxNum
     for i, b in ipairs(bars) do
         b:ClearAllPoints()
         b:SetSize(each, h)
-        b:SetPoint("BOTTOMLEFT", self, "TOPLEFT", (i - 1) * (each + gap), 3)
+        b:SetPoint("BOTTOMLEFT", self, "TOPLEFT", (d.classPowerX or 0) + (i - 1) * (each + gap), d.classPowerY or 3)
         b:SetShown(i <= maxNum and d.classPower)
     end
 end
@@ -774,7 +775,13 @@ function UF:Configure(self)
             local anchorPoint = (ad.anchor or "TOPLEFT")
             if attach == "TOP" or attach == "BOTTOM" then
                 local horiz = anchorPoint:find("RIGHT") and "RIGHT" or "LEFT"
-                a:SetPoint(opposite .. horiz, self, attach .. horiz, ad.x or 0, ad.y or 0)
+                -- Auras on top start above the combo points, so they never sit
+                -- on them; the player's own offset applies on top of that.
+                local lift = 0
+                if attach == "TOP" and self.wuiClassPower and d.classPower then
+                    lift = (d.classPowerY or 3) + (d.classPowerHeight or 6) + 2
+                end
+                a:SetPoint(opposite .. horiz, self, attach .. horiz, ad.x or 0, (ad.y or 0) + lift)
             else
                 a:SetPoint(opposite, self, attach, ad.x or 0, ad.y or 0)
             end
