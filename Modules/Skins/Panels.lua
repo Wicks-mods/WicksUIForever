@@ -1992,6 +1992,72 @@ function PS:Unskin(name)
     end
 end
 
+-- Blizzard's dropdown menus (every dropdown in the game opens one): the
+-- parchment-dark backing becomes our card, check boxes our small fields
+-- with the tick in the accent, the hover bar a fel wash, the text our
+-- font. The menu's rows are pooled and rebuilt as it opens, so the open
+-- menu is looked over every frame; pieces already ours are skipped.
+local function styleMenuRow(b)
+    for _, r in ipairs({ b:GetRegions() }) do
+        local kind = r:GetObjectType()
+        if kind == "FontString" then
+            styleFont(r)
+        elseif kind == "Texture" then
+            local a = r:GetAtlas()
+            if a then
+                local al = a:lower()
+                if al:find("checkmark") or al:find("radialtick") then
+                    r:SetDesaturated(true)
+                    r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                elseif al:find("ticksquare") or al:find("tickradial") then
+                    ns:Fill(r, C.shadow[1], C.shadow[2], C.shadow[3], 1)
+                elseif al:find("divider") then
+                    r:SetColorTexture(C.border[1], C.border[2], C.border[3], 0.8)
+                end
+            elseif r:GetTexture() == 136810 then
+                -- The hover bar Blizzard shows under the row.
+                ns:Fill(r, C.fel[1], C.fel[2], C.fel[3], 0.15)
+            end
+        end
+    end
+end
+
+local function styleMenu(m)
+    for _, r in ipairs({ m:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local a = r:GetAtlas()
+            if a and a:find("dropdown%-bg") and r:GetAlpha() > 0 then r:SetAlpha(0) end
+        elseif r:GetObjectType() == "FontString" then
+            styleFont(r)
+        end
+    end
+    if not done[m] then
+        done[m] = true
+        backdrop(m, "Default", false, 0)
+    end
+    for _, child in ipairs({ m:GetChildren() }) do
+        if child:IsShown() then
+            styleMenuRow(child)
+            for _, g in ipairs({ child:GetChildren() }) do
+                if g:IsShown() and g.GetRegions then styleMenuRow(g) end
+            end
+        end
+    end
+end
+
+local function openMenus()
+    local mgr = Menu and Menu.GetManager and Menu.GetManager()
+    if not mgr or not mgr.GetOpenMenu then return end
+    local m = mgr:GetOpenMenu()
+    local n = 0
+    -- A menu and the submenus opened from it.
+    while m and n < 6 do
+        if m.IsShown and m:IsShown() then styleMenu(m) end
+        n = n + 1
+        m = m.childMenu or m.submenu
+    end
+end
+
 function PS:Initialize()
     -- Drop anything screen-sized that an earlier /wui skin let through.
     local kept = {}
@@ -2014,6 +2080,7 @@ function PS:Initialize()
     local shown, fresh = {}, {}
     tick:SetScript("OnUpdate", function(_, e)
         if not db().enable then return end
+        pcall(openMenus)
         acc = acc + e
         local full = acc >= 1
         if full then acc = 0; names = allNames() end
