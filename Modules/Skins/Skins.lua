@@ -116,10 +116,29 @@ local function tileButton(b, fadeKey)
         end
     end
     local t = CreateFrame("Frame", nil, b)
-    t:SetPoint("TOPLEFT", -1, 1)
-    t:SetPoint("BOTTOMRIGHT", 1, -1)
+    t:SetPoint("CENTER", 0, 0)
+    t:SetSize(20, 20)
     t:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
     ns:SetTemplate(t, "Default", { alpha = 0.9, shadow = false })
+end
+
+-- Blizzard sets the three header buttons a few pixels apart in height and
+-- size; with our tiles on them that shows. They go on one line from the
+-- header's right edge, 20 px apart plus a gap, centred on the header.
+function SK:AlignMeterHeader(win)
+    local h = win.Header
+    local mb, sd, ss = win.MinimizeButton, win.SettingsDropdown, win.SessionDropdown
+    if not (h and mb and sd and ss) or InCombatLockdown() then return end
+    local function put(b, point, rel, relPoint, x, y)
+        local p, r, rp, px, py = b:GetPoint(1)
+        if p ~= point or r ~= rel or rp ~= relPoint or math.abs((px or 0) - x) > 0.5 or math.abs((py or 0) - y) > 0.5 then
+            b:ClearAllPoints()
+            b:SetPoint(point, rel, relPoint, x, y)
+        end
+    end
+    put(mb, "RIGHT", h, "RIGHT", -6, 0)
+    put(sd, "CENTER", mb, "CENTER", -24, 0)
+    put(ss, "CENTER", sd, "CENTER", -24, 0)
 end
 
 function SK:DamageMeter()
@@ -134,10 +153,11 @@ function SK:DamageMeter()
         if win.Header then strip(win.Header) end
         if win.NineSlice then win.NineSlice:SetAlpha(0) end
         if win:IsShown() then panelBehind(win, "Transparent") end
-        ns:Glyph(win.MinimizeButton, "minus")
-        ns:Glyph(win.SettingsDropdown, "gear")
+        ns:Glyph(win.MinimizeButton, "minus", { tileSize = 20 })
+        ns:Glyph(win.SettingsDropdown, "gear", { tileSize = 20 })
         tileButton(win.SessionDropdown, "Background")
-        ns:Glyph(win.DamageMeterTypeDropdown, "down")
+        ns:Glyph(win.DamageMeterTypeDropdown, "down", { tileSize = 20 })
+        SK:AlignMeterHeader(win)
         if win.SessionDropdown and win.SessionDropdown.SessionName then
             win.SessionDropdown.SessionName:SetTextColor(C.text[1], C.text[2], C.text[3])
         end
