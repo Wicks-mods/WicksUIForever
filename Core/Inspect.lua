@@ -70,8 +70,14 @@ local function walk(frame, depth, lines, limit)
     end
     if frame.GetChildren and depth < limit then
         for _, c in ipairs({ frame:GetChildren() }) do
-            lines[#lines + 1] = describe(c, frame, indent .. "  ")
-            walk(c, depth + 1, lines, limit)
+            local key = keyOn(frame, c) or ""
+            -- Gamepad hints and glows never matter to a skin: skipped. A
+            -- hidden child gets its one line; what is inside it waits until
+            -- it shows.
+            if not (key:find("JumpHint$") or key == "FrameGlow" or key == "TabIndicators") then
+                lines[#lines + 1] = describe(c, frame, indent .. "  ")
+                if c:IsShown() then walk(c, depth + 1, lines, limit) end
+            end
         end
     end
 end

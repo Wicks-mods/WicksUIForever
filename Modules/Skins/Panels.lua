@@ -1186,7 +1186,9 @@ local function stripArt(frame, root)
     if frame.wuiBG or rankBars[frame] then return end
     local rw, rh = root:GetSize()
     for _, r in ipairs({ frame:GetRegions() }) do
-        if r:GetObjectType() == "Texture" and r:GetAlpha() > 0 and not isOwn(frame, r) and not isIcon(frame, r) then
+        local n = r:GetName()
+        if r:GetObjectType() == "Texture" and r:GetAlpha() > 0 and not isOwn(frame, r) and not isIcon(frame, r)
+            and not (n and n:find("BlackFilter$")) then
             r:SetAlpha(0)
             local w, h = r:GetSize()
             if frame ~= root and w and h and w >= 120 and h >= 60 and not (w >= rw * 0.9 and h >= rh * 0.85) and not cards[r] then
@@ -1252,7 +1254,8 @@ end
 local function walkProfessions(frame, depth, root)
     if depth > 8 or not frame.GetChildren then return end
     root = root or frame
-    if frame:GetObjectType() == "Frame" then stripArt(frame, root) end
+    local fk = frame:GetObjectType()
+    if fk == "Frame" or fk == "ScrollFrame" then stripArt(frame, root) end
     fade(frame.NineSlice)
     recolorText(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
@@ -1294,9 +1297,21 @@ local function walkProfessions(frame, depth, root)
                 end
                 if math.abs(sel:GetAlpha() - 0.2) > 0.01 then sel:SetAlpha(0.2) end
                 if child.HighlightOverlay then child.HighlightOverlay:SetAlpha(0) end
+            elseif kind == "Button" and child.IconBorder and not (child.Icon or child.icon) and child:GetWidth() <= 64 then
+                -- An item slot that shows its item as its normal texture: the
+                -- slot art (unnamed, on the background layer) goes for a tile.
+                for _, r in ipairs({ child:GetRegions() }) do
+                    if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "BACKGROUND" and r:GetAlpha() > 0 then r:SetAlpha(0) end
+                end
+                if not done[child] then
+                    done[child] = true
+                    local bd = backdrop(child, "Default", false, 0)
+                    ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+                end
             elseif (kind == "Button" or kind == "CheckButton") and child:GetWidth() <= 64 and child:GetHeight() <= 64 then
                 local name = child.GetName and child:GetName()
-                local icon = child.Icon or child.icon or child.IconTexture or (name and _G[name .. "IconTexture"])
+                local icon = child.Icon or child.icon or child.IconTexture
+                    or (name and (_G[name .. "IconTexture"] or _G[name .. "Icon"]))
                 if icon and icon.GetObjectType and icon:GetObjectType() == "Texture" and not (icon.GetAtlas and icon:GetAtlas()) then
                     flatIcon(child, icon)
                 end
@@ -1357,22 +1372,18 @@ local function styleProfTabs(frame)
     end
 end
 
-PS.SPECIAL.ProfessionsFrame = function(frame)
-    -- Bars already found follow their label every frame, so a tab or page
-    -- change shows the right fill at once. The full walk, which finds new
-    -- bars and art, runs twice a second, and at once whenever the set of
-    -- open pages changes.
+-- The full skin, for windows done in the unit-frame style: nothing of
+-- Blizzard's art is kept, the window is the grey panel and its cards are
+-- black. The walk runs twice a second, and at once whenever the set of
+-- open pages changes; `each` runs every frame for pieces that must follow
+-- Blizzard without a lag.
+local function fullSkin(frame, each)
     local poll = CreateFrame("Frame", nil, frame)
     local acc, last = 0.5, nil
     poll:SetScript("OnUpdate", function(_, e)
-        -- Flipped from the other windows: the window is the grey panel and
-        -- its cards are black, which gives the lists and bars their depth.
         local win = extras[frame] and extras[frame].backdrop
         if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
-        for bar in pairs(rankBars) do
-            if bar:IsVisible() then flatRankBar(bar) end
-        end
-        styleProfTabs(frame)
+        if each then each(frame) end
         local sig = ""
         for _, child in ipairs({ frame:GetChildren() }) do
             sig = sig .. (child:IsShown() and "1" or "0")
@@ -1382,6 +1393,63 @@ PS.SPECIAL.ProfessionsFrame = function(frame)
             last, acc = sig, 0
             walkProfessions(frame, 1)
         end
+    end)
+end
+PS.fullSkin = fullSkin
+
+-- A black card of our own over a region Blizzard leaves bare.
+local function card(parent, key, a1, r1, a2, r2, x1, y1, x2, y2)
+    local e = extras[parent] or {}
+    extras[parent] = e
+    if e[key] then return e[key] end
+    local c = CreateFrame("Frame", nil, parent)
+    c:SetPoint(a1, r1, a1, x1 or 0, y1 or 0)
+    c:SetPoint(a2, r2, a2, x2 or 0, y2 or 0)
+    c:SetFrameLevel(math.max(0, parent:GetFrameLevel() - 1))
+    ns:SetTemplate(c, "Default", { alpha = 0.9, shadow = false })
+    e[key] = c
+    return c
+end
+
+PS.SPECIAL.ProfessionsFrame = function(frame)
+    -- Bars already found follow their label every frame, so a tab or page
+    -- change shows the right fill at once.
+    fullSkin(frame, function(f)
+        for bar in pairs(rankBars) do
+            if bar:IsVisible() then flatRankBar(bar) end
+        end
+        styleProfTabs(f)
+    end)
+    return "generic"
+end
+
+-- Mail: the parchment behind the inbox and the stationery behind a letter
+-- go; the list of mail and the letter become black cards, each row parted
+-- from the next by a fine line, the page arrows small tiles.
+PS.SPECIAL.MailFrame = function(frame)
+    local inbox = frame.InboxFrame or _G.InboxFrame
+    fullSkin(frame, function()
+        local first, last = _G.MailItem1, _G.MailItem7
+        if inbox and first and last then
+            card(inbox, "wuiList", "TOPLEFT", first, "BOTTOMRIGHT", last, -4, 4, 4, -4)
+            for i = 1, 7 do
+                local row = _G["MailItem" .. i]
+                local e = row and (extras[row] or {})
+                if row and not e.line and i < 7 then
+                    extras[row] = e
+                    local l = row:CreateTexture(nil, "ARTWORK")
+                    l:SetHeight(1)
+                    l:SetPoint("BOTTOMLEFT", 2, 0)
+                    l:SetPoint("BOTTOMRIGHT", -2, 0)
+                    l:SetColorTexture(C.border[1], C.border[2], C.border[3], 0.8)
+                    e.line = l
+                end
+            end
+        end
+        styleStepper(inbox and inbox.PrevPageButton, "<")
+        styleStepper(inbox and inbox.NextPageButton, ">")
+        local money = _G.SendMailMoneyBg
+        if money then card(money, "wuiMoney", "TOPLEFT", money, "BOTTOMRIGHT", money, 0, 0, 0, 0) end
     end)
     return "generic"
 end
