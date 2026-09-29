@@ -266,6 +266,17 @@ function AB:StyleButton(button)
 
     local icon = button.icon or button.Icon
     if button.IconMask and icon.RemoveMaskTexture then icon:RemoveMaskTexture(button.IconMask) end
+    -- The library can put Blizzard's mask back as the button updates; that
+    -- mask is cut to the old bevelled frame and left a dark edge round the
+    -- icon. Given our own rounded shape, it matches ours wherever it lands.
+    if button.IconMask and button.IconMask.SetTexture then
+        -- Rounded in the modern style, plain square in the crisp one.
+        local shape = ns:Modern() and ns.Media.roundmask or ns.Media:Statusbar("Wick Flat")
+        button.IconMask:SetTexture(shape, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        button.IconMask:ClearAllPoints()
+        button.IconMask:SetPoint("TOPLEFT", icon, "TOPLEFT", 0, 0)
+        button.IconMask:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 0, 0)
+    end
     for _, key in ipairs({ "SlotArt", "SlotBackground", "FloatingBG", "RightDivider", "BottomDivider" }) do
         local t = button[key]
         if t then t:SetAlpha(0); t:Hide() end

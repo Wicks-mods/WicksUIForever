@@ -232,15 +232,18 @@ local function styleMicro(b)
         local t = b[k]
         if t and t.SetAlpha then t:SetAlpha(0) end
     end
-    local hl = b.GetHighlightTexture and b:GetHighlightTexture()
-    if hl then hl:SetAlpha(0) end
-    local t = CreateFrame("Frame", nil, b)
-    t:SetPoint("TOPLEFT", 1, -1)
-    t:SetPoint("BOTTOMRIGHT", -1, 1)
-    t:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
-    ns:SetTemplate(t, "Default", { alpha = 0.9, shadow = false })
+    -- Blizzard's own mouseover art; ours is the fel wash below.
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "HIGHLIGHT" then
+            local a = r:GetAtlas()
+            if a and a:find("Mouseover") then r:SetAlpha(0) end
+        end
+    end
+    -- No tile of its own: the buttons overlap (Blizzard spaces them closer
+    -- than they are wide), so the menu gets one card behind them all.
     local h = b:CreateTexture(nil, "HIGHLIGHT")
-    h:SetAllPoints(t)
+    h:SetPoint("TOPLEFT", 3, -3)
+    h:SetPoint("BOTTOMRIGHT", -3, 3)
     ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
 end
 
@@ -272,6 +275,17 @@ end
 function SK:SkinMenus()
     local mm = rawget(_G, "MicroMenu") or rawget(_G, "MicroMenuContainer")
     if mm then
+        -- Blizzard's bar frame and its backing behind the buttons.
+        if mm.BorderArt then mm.BorderArt:SetAlpha(0) end
+        if mm.BackgroundArt then mm.BackgroundArt:SetAlpha(0) end
+        if not skinnedMenu[mm] then
+            skinnedMenu[mm] = true
+            local c = CreateFrame("Frame", nil, mm)
+            c:SetPoint("TOPLEFT", -3, 3)
+            c:SetPoint("BOTTOMRIGHT", 3, -3)
+            c:SetFrameLevel(math.max(0, mm:GetFrameLevel() - 1))
+            ns:SetTemplate(c, "Default")
+        end
         for _, b in ipairs({ mm:GetChildren() }) do
             if b:GetObjectType() == "Button" then styleMicro(b) end
         end
