@@ -62,6 +62,31 @@ local PRESETS = {
     },
 }
 
+-- Each style keeps the player's own sizes: leaving a style saves what it
+-- had (general settings are per profile), and coming back to it puts them back. The preset is
+-- only for a style this profile has never been in, or on request.
+local function takeSizes(prof)
+    local out = { bars = {}, units = {} }
+    for id, d in pairs(prof.actionbars and prof.actionbars.bars or {}) do
+        out.bars[id] = { size = d.size, spacing = d.spacing }
+    end
+    for key, u in pairs(prof.unitframes and prof.unitframes.units or {}) do
+        out.units[key] = { width = u.width, height = u.height }
+    end
+    return out
+end
+
+local function putSizes(prof, saved)
+    for id, s in pairs(saved.bars or {}) do
+        local d = prof.actionbars and prof.actionbars.bars and prof.actionbars.bars[id]
+        if d then d.size, d.spacing = s.size, s.spacing end
+    end
+    for key, s in pairs(saved.units or {}) do
+        local u = prof.unitframes and prof.unitframes.units and prof.unitframes.units[key]
+        if u then u.width, u.height = s.width or u.width, s.height or u.height end
+    end
+end
+
 function ns:ApplyStylePreset(force)
     local g = ns:G()
     local style = ns:Modern() and "modern" or "wick"
@@ -69,15 +94,25 @@ function ns:ApplyStylePreset(force)
     local p = PRESETS[style]
     if not p then return end
     local prof = ns.A.db.profile
-    if prof.actionbars and prof.actionbars.bars then
-        for _, d in pairs(prof.actionbars.bars) do
-            d.size, d.spacing = p.bars.size, p.bars.spacing
-        end
+    g.styleSizes = g.styleSizes or {}
+    -- What the style being left had, kept for coming back to it.
+    if g.presetFor and g.presetFor ~= style then
+        g.styleSizes[g.presetFor] = takeSizes(prof)
     end
-    local uf = prof.unitframes and prof.unitframes.units
-    if uf then
-        for key, h in pairs(p.units) do
-            if uf[key] then uf[key].height = h end
+    local saved = g.styleSizes[style]
+    if saved and not force then
+        putSizes(prof, saved)
+    else
+        if prof.actionbars and prof.actionbars.bars then
+            for _, d in pairs(prof.actionbars.bars) do
+                d.size, d.spacing = p.bars.size, p.bars.spacing
+            end
+        end
+        local uf = prof.unitframes and prof.unitframes.units
+        if uf then
+            for key, h in pairs(p.units) do
+                if uf[key] then uf[key].height = h end
+            end
         end
     end
     g.presetFor = style
