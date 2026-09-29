@@ -261,10 +261,25 @@ local function styleBagSlot(b)
         local x = b[k]
         if x and x.GetObjectType and x:GetObjectType() == "Texture" then x:SetAlpha(0) end
     end
+    local hl = b.GetHighlightTexture and b:GetHighlightTexture()
+    if hl then hl:SetAlpha(0) end
     if icon then
         if b.CircleMask and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, b.CircleMask) end
-        ns:CropIcon(icon)
+        -- Blizzard's square mask is cut to the bevelled frame; given our
+        -- shape it matches our tile, attached or not.
+        local sm = b.SquareMask
+        if sm and sm.SetTexture then
+            local shape = ns:Modern() and ns.Media.roundmask or ns.Media:Statusbar("Wick Flat")
+            sm:SetTexture(shape, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            sm:ClearAllPoints()
+            sm:SetAllPoints(icon)
+        end
+        -- The key ring's picture is Blizzard's empty-slot art, not an item.
+        if not (icon.GetAtlas and icon:GetAtlas()) then ns:CropIcon(icon) end
     end
+    local h = b:CreateTexture(nil, "HIGHLIGHT")
+    h:SetAllPoints(icon or b)
+    ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
     local t = CreateFrame("Frame", nil, b)
     t:SetPoint("TOPLEFT", -1, 1)
     t:SetPoint("BOTTOMRIGHT", 1, -1)
@@ -292,6 +307,17 @@ function SK:SkinMenus()
     end
     local bags = rawget(_G, "BagsBar")
     if bags then
+        -- Blizzard's bar frame, and the thin divider frames it stands
+        -- between the bags.
+        if bags.BorderArt then bags.BorderArt:SetAlpha(0) end
+        for _, c in ipairs({ bags:GetChildren() }) do
+            if c:GetObjectType() == "Frame" and c.GetRegions then
+                for _, r in ipairs({ c:GetRegions() }) do
+                    local a = r:GetObjectType() == "Texture" and r:GetAtlas()
+                    if a and a:find("Divider") then r:SetAlpha(0) end
+                end
+            end
+        end
         for _, b in ipairs({ bags:GetChildren() }) do
             local kind = b:GetObjectType()
             if (kind == "ItemButton" or kind == "Button" or kind == "CheckButton") and (b.icon or b.Icon) then
