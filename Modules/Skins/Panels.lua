@@ -827,16 +827,6 @@ PS.SPECIAL.WorldMapFrame = function(frame)
     -- backing that shows past the map's edges gone.
     local flip = CreateFrame("Frame", nil, frame)
     flip:SetScript("OnUpdate", function()
-        -- The side tabs (Character, Reputation, Currency...) down the right
-        -- edge, the same kind as the professions' side tabs, every frame:
-        -- Blizzard redraws a tab as it is clicked, and a slower look lets
-        -- its own art show for a moment.
-        local modes = rawget(_G, "CharacterFrameModeTabs")
-        if modes and PS.styleSideTab then
-            for _, tab in ipairs({ modes:GetChildren() }) do
-                if tab.Icon and tab:IsShown() then PS.styleSideTab(tab) end
-            end
-        end
         local win = extras[frame] and extras[frame].backdrop
         if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
     end)
@@ -1338,6 +1328,16 @@ PS.SPECIAL.CharacterFrame = function(frame)
     local _, class = UnitClass("player")
     local me = UnitName("player")
     flip:SetScript("OnUpdate", function()
+        -- The side tabs (Character, Reputation, Currency...) down the right
+        -- edge, the same kind as the professions' side tabs, every frame:
+        -- Blizzard redraws a tab as it is clicked, and a slower look lets
+        -- its own art show for a moment.
+        local modes = rawget(_G, "CharacterFrameModeTabs")
+        if modes and PS.styleSideTab then
+            for _, tab in ipairs({ modes:GetChildren() }) do
+                if tab.Icon and tab:IsShown() then PS.styleSideTab(tab) end
+            end
+        end
         local win = extras[frame] and extras[frame].backdrop
         if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
         local title = frame.TitleContainer and frame.TitleContainer.TitleText
@@ -1692,7 +1692,7 @@ local function styleSideTab(tab)
         local bd = backdrop(tab, "Shadow", false, 0)
         bd:ClearAllPoints()
         bd:SetPoint("LEFT", tab, "LEFT", 1, 0)
-        bd:SetSize(38, 38)
+        bd:SetSize(46, 46)
         e.tile = bd
         if icon then ns:CropIcon(icon) end
         local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
@@ -1702,17 +1702,17 @@ local function styleSideTab(tab)
         ring:SetAllPoints(bd)
         e.ring = ring
     end
-    -- Blizzard's tabs are 55 px tall for its big tab art; around our 38 px
+    -- Blizzard's tabs are 55 px tall for its big tab art; around our 46 px
     -- tiles that leaves wide gaps. Each tab is made just taller than its
     -- tile, and as Blizzard stacks them one under the next, the column
     -- closes up.
-    if not InCombatLockdown() and math.abs((tab:GetHeight() or 0) - 40) > 0.5 then tab:SetHeight(40) end
+    if not InCombatLockdown() and math.abs((tab:GetHeight() or 0) - 48) > 0.5 then tab:SetHeight(48) end
     -- Blizzard sets the icon back to its own size, place and tab-shaped
     -- mask when a tab is chosen, so they are put right on every pass.
     if icon and e.tile then
         if tab.Mask and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, tab.Mask) end
         local w = icon:GetWidth()
-        if not w or math.abs(w - 28) > 0.5 then icon:SetSize(28, 28) end
+        if not w or math.abs(w - 34) > 0.5 then icon:SetSize(34, 34) end
         local p, rel = icon:GetPoint(1)
         if p ~= "CENTER" or rel ~= e.tile or icon:GetNumPoints() ~= 1 then
             icon:ClearAllPoints()
