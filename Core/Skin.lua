@@ -419,6 +419,7 @@ function ns:Glyph(b, name, opts)
         hover:SetSize(size, size)
         hover:SetPoint("CENTER", 0, 0)
         hover:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(hover, "fel", "vertex", 1)
         g.hover = hover
     end
     if g.name ~= name then

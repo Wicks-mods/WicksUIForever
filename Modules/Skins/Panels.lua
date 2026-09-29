@@ -554,6 +554,7 @@ local function styleIconButton(b)
         ct:SetTexture(ns.Media.ring)
         if ct.SetTextureSliceMargins then ct:SetTextureSliceMargins(8, 8, 8, 8) end
         ct:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(ct, "fel", "vertex", 1)
         ct:SetAllPoints(icon or b)
     end
     local e = extras[b] or {}
@@ -673,6 +674,7 @@ local function styleListRow(b)
     sel:SetTexture(ns.Media.ring)
     if sel.SetTextureSliceMargins then sel:SetTextureSliceMargins(8, 8, 8, 8) end
     sel:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+    Chrome:Register(sel, "fel", "vertex", 1)
     sel:ClearAllPoints()
     sel:SetAllPoints(bd)
     local h = b:CreateTexture(nil, "HIGHLIGHT")
@@ -939,6 +941,7 @@ local function mapGrip(frame)
     h:SetTexture(ns.Media:Glyph("right"))
     h:SetRotation(-math.pi / 4)
     h:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+    Chrome:Register(h, "fel", "vertex", 1)
     -- Dragging away from the top left corner grows the map; the size is
     -- taken from how far the pointer is from that corner.
     g:SetScript("OnMouseDown", function(self, button)
@@ -1459,6 +1462,7 @@ local function stylePopouts()
                 if a and a:find("Icon%-Add") then
                     r:SetTexture(ns.Media:Glyph("plus"))
                     r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                    Chrome:Register(r, "fel", "vertex", 1)
                     r:SetSize(14, 14)
                 end
             end
@@ -1492,6 +1496,7 @@ local function styleSidebarTabs()
                 ring:SetTexture(ns.Media.ring)
                 if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
                 ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                Chrome:Register(ring, "fel", "vertex", 1)
                 ring:SetAllPoints(bd)
                 e.ring = ring
                 local h = tab:CreateTexture(nil, "HIGHLIGHT")
@@ -1683,6 +1688,7 @@ local function flatRankBar(bar)
         frac = 0
     end
     e.bar:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+    Chrome:Register(e.bar, "fel", "vertex", 1)
     local inner = width - PAD * 2
     if frac > 0 and inner > 0 then
         e.bar:SetWidth(inner * frac)
@@ -1849,6 +1855,7 @@ local function styleListButton(b)
                     r:SetTexture(ns.Media.ring)
                     if r.SetTextureSliceMargins then r:SetTextureSliceMargins(8, 8, 8, 8) end
                     r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                    Chrome:Register(r, "fel", "vertex", 1)
                     r:ClearAllPoints()
                     r:SetPoint("TOPLEFT", b, "TOPLEFT", 1, -1)
                     r:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
@@ -2010,6 +2017,7 @@ local function styleSideTab(tab)
         ring:SetTexture(ns.Media.ring)
         if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(ring, "fel", "vertex", 1)
         ring:SetAllPoints(bd)
         e.ring = ring
     end
@@ -2217,6 +2225,7 @@ PS.SPECIAL.CommunitiesFrame = function(frame)
                         ring:SetTexture(ns.Media.ring)
                         if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
                         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                        Chrome:Register(ring, "fel", "vertex", 1)
                         ring:SetAllPoints(bd)
                         e.ring = ring
                         local h = row:CreateTexture(nil, "HIGHLIGHT")
@@ -2744,6 +2753,7 @@ local function styleMenuRow(b)
                 if al:find("checkmark") or al:find("radialtick") then
                     r:SetDesaturated(true)
                     r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                    Chrome:Register(r, "fel", "vertex", 1)
                 elseif al:find("ticksquare") or al:find("tickradial") then
                     ns:Fill(r, C.shadow[1], C.shadow[2], C.shadow[3], 1)
                 elseif al:find("divider") then
