@@ -1849,19 +1849,45 @@ end
 -- black. The walk runs twice a second, and at once whenever the set of
 -- open pages changes; `each` runs every frame for pieces that must follow
 -- Blizzard without a lag.
+-- The lists inside a window (scroll boxes), found again on each full pass,
+-- so a list that gains, loses or swaps rows is seen the frame it happens.
+local function scrollTargets(f, depth, out)
+    if depth > 7 or not f.GetChildren then return out end
+    for _, c in ipairs({ f:GetChildren() }) do
+        if c.ScrollTarget then out[#out + 1] = c.ScrollTarget end
+        scrollTargets(c, depth + 1, out)
+    end
+    return out
+end
+
 local function fullSkin(frame, each)
     local poll = CreateFrame("Frame", nil, frame)
     local acc, last = 0.5, nil
+    local targets = {}
     poll:SetScript("OnUpdate", function(_, e)
         local win = extras[frame] and extras[frame].backdrop
         if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
         if each then each(frame) end
-        local sig = ""
+        local parts = {}
         for _, child in ipairs({ frame:GetChildren() }) do
-            sig = sig .. (child:IsShown() and "1" or "0")
+            parts[#parts + 1] = child:IsShown() and "1" or "0"
         end
+        -- Each list's shown rows and where the first one sits: a row added,
+        -- a section opened, or the list scrolled onto new rows all change it.
+        for _, t in ipairs(targets) do
+            local n, top = 0, 0
+            for _, row in ipairs({ t:GetChildren() }) do
+                if row:IsShown() then
+                    n = n + 1
+                    if n == 1 then top = math.floor((row:GetTop() or 0) + 0.5) end
+                end
+            end
+            parts[#parts + 1] = n .. ":" .. top
+        end
+        local sig = table.concat(parts, ",")
         acc = acc + e
         if sig ~= last or acc >= 0.5 then
+            if acc >= 0.5 then targets = scrollTargets(frame, 1, {}) end
             last, acc = sig, 0
             walkProfessions(frame, 1)
         end
