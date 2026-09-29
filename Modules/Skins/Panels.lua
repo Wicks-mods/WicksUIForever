@@ -827,6 +827,16 @@ PS.SPECIAL.WorldMapFrame = function(frame)
     -- backing that shows past the map's edges gone.
     local flip = CreateFrame("Frame", nil, frame)
     flip:SetScript("OnUpdate", function()
+        -- The side tabs (Character, Reputation, Currency...) down the right
+        -- edge, the same kind as the professions' side tabs, every frame:
+        -- Blizzard redraws a tab as it is clicked, and a slower look lets
+        -- its own art show for a moment.
+        local modes = rawget(_G, "CharacterFrameModeTabs")
+        if modes and PS.styleSideTab then
+            for _, tab in ipairs({ modes:GetChildren() }) do
+                if tab.Icon and tab:IsShown() then PS.styleSideTab(tab) end
+            end
+        end
         local win = extras[frame] and extras[frame].backdrop
         if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
     end)
@@ -1301,15 +1311,7 @@ PS.SPECIAL.CharacterFrame = function(frame)
         for sb in pairs(fillBars) do
             if sb:IsVisible() then paintFill(sb) end
         end
-        -- The side tabs (Character, Reputation, Currency...) down the right
-        -- edge: the same kind as the professions' side tabs. The deep fade
-        -- above took their icons; this gives them back in our style.
-        local modes = rawget(_G, "CharacterFrameModeTabs")
-        if modes and PS.styleSideTab then
-            for _, tab in ipairs({ modes:GetChildren() }) do
-                if tab.Icon and tab:IsShown() then PS.styleSideTab(tab) end
-            end
-        end
+
         -- The right pane as one black card; the arrow that folds it away
         -- greyed on a tile.
         local scene = rawget(_G, "CharacterModelScene")
