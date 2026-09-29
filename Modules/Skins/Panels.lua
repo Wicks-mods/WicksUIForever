@@ -1021,11 +1021,11 @@ end
 
 local rankBars = setmetatable({}, { __mode = "k" })
 
--- A rank bar is drawn the way a unit frame is: a rounded card, a flat
--- class-coloured fill inset in it, the name on the left and the numbers
--- on the right in the Wick font with a soft shadow. Blizzard's own label
--- is hidden and read for the numbers.
-local PAD = 3
+-- A rank bar is drawn the way a unit frame is: a rounded card, a row of
+-- text across its top (name left, numbers right, Wick font, soft shadow),
+-- and a flat class-coloured fill inset below it. Blizzard's own label is
+-- hidden and read for the numbers.
+local PAD, ROW = 3, 15
 local function flatRankBar(bar)
     rankBars[bar] = true
     local fill = bar.Fill
@@ -1041,11 +1041,11 @@ local function flatRankBar(bar)
         done[bar] = true
         local bd = backdrop(bar, "Default", false, 0)
         bd:ClearAllPoints()
-        bd:SetPoint("LEFT", fill, "LEFT", -PAD, 0)
+        bd:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", -PAD, -PAD)
         e.track = bd
         local t = bar:CreateTexture(nil, "ARTWORK", nil, 3)
         t:SetTexture(ns.Media:Statusbar())
-        t:SetPoint("TOPLEFT", bd, "TOPLEFT", PAD, -PAD)
+        t:SetPoint("TOPLEFT", bd, "TOPLEFT", PAD, -PAD - ROW)
         t:SetPoint("BOTTOMLEFT", bd, "BOTTOMLEFT", PAD, PAD)
         e.bar = t
         local tf = CreateFrame("Frame", nil, bar)
@@ -1053,17 +1053,19 @@ local function flatRankBar(bar)
         tf:SetFrameLevel(bar:GetFrameLevel() + 3)
         e.text = tf
         e.name = ns:CreateText(tf, 12, "LEFT", "NONE")
-        e.name:SetPoint("LEFT", PAD + 5, 0)
+        e.name:SetPoint("TOPLEFT", PAD + 3, -PAD - 1)
         e.name:SetShadowOffset(1, -1)
         e.value = ns:CreateText(tf, 12, "RIGHT", "NONE")
-        e.value:SetPoint("RIGHT", -PAD - 5, 0)
+        e.value:SetPoint("TOPRIGHT", -PAD - 3, -PAD - 1)
         e.value:SetShadowOffset(1, -1)
     end
     local width
     local l, r = fill:GetLeft(), bar:GetRight()
     if l and r and r > l then
         width = r - l + PAD * 2
-        e.track:SetSize(width, (fill:GetHeight() or 18) + PAD * 2)
+        -- The fill keeps Blizzard's height less a little, the text row
+        -- rises above it.
+        e.track:SetSize(width, math.min(fill:GetHeight() or 18, 12) + PAD * 2 + ROW)
     end
     width = width or e.track:GetWidth() or 0
     local cur, max, label, fs = barText(bar)
@@ -1153,7 +1155,7 @@ local function stripArt(frame, root)
                 local card = CreateFrame("Frame", nil, frame)
                 card:SetAllPoints(r)
                 card:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
-                ns:SetTemplate(card, "Default", { alpha = 0.55 })
+                ns:SetTemplate(card, "Shadow")
                 cards[r] = card
             end
         end
@@ -1178,6 +1180,17 @@ local function walkProfessions(frame, depth, root)
             elseif fill and fill.GetObjectType and fill:GetObjectType() == "Texture"
                 and (child.Border or child.Background or child.Mask) then
                 flatRankBar(child)
+            elseif kind == "Button" and (child.LeftPiece or child.CenterPiece) then
+                -- A recipe list category heading: its brown bar goes, a card
+                -- takes it; the collapse mark stays.
+                fade(child.LeftPiece); fade(child.RightPiece); fade(child.CenterPiece)
+                if not done[child] then
+                    done[child] = true
+                    local bd = backdrop(child, "Shadow", false, 0)
+                    bd:ClearAllPoints()
+                    bd:SetPoint("TOPLEFT", 0, -1)
+                    bd:SetPoint("BOTTOMRIGHT", 0, 1)
+                end
             elseif (kind == "Button" or kind == "CheckButton") and child:GetWidth() <= 64 and child:GetHeight() <= 64 then
                 local name = child.GetName and child:GetName()
                 local icon = child.Icon or child.icon or child.IconTexture or (name and _G[name .. "IconTexture"])
