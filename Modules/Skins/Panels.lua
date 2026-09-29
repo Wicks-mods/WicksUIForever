@@ -2189,8 +2189,8 @@ local function styleMenu(m, depth)
 end
 
 -- The open menu and every menu opened from it. Blizzard keeps submenus as
--- frames of their own; they are found beside the root (same parent) or
--- under it, by the dropdown backing they carry.
+-- frames of their own on UIParent; they are found there (or under the
+-- root) by the dropdown backing they carry.
 local menuScan = {}
 local function openMenus()
     local mgr = Menu and Menu.GetManager and Menu.GetManager()
@@ -2203,10 +2203,16 @@ local function openMenus()
     local now = GetTime()
     if (menuScan.last or 0) > now - 0.08 then return end
     menuScan.last = now
-    local parent = m:GetParent()
-    if parent and parent.GetChildren then
-        for _, f in ipairs({ parent:GetChildren() }) do
-            if f ~= m and f:IsShown() and isMenu(f) then styleMenu(f) end
+    -- Submenus sit on UIParent even when the root menu belongs to a window;
+    -- only frames on the menu's own layer are looked at.
+    local strata = m:GetFrameStrata()
+    local seen = {}
+    for _, host in ipairs({ m:GetParent(), UIParent }) do
+        if host and host.GetChildren and not seen[host] then
+            seen[host] = true
+            for _, f in ipairs({ host:GetChildren() }) do
+                if f ~= m and f:IsShown() and f:GetFrameStrata() == strata and isMenu(f) then styleMenu(f) end
+            end
         end
     end
 end
