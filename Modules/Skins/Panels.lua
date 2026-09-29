@@ -1682,6 +1682,7 @@ PS.SPECIAL.PlayerSpellsFrame = function(frame)
             if acc < 0.5 then return end
             acc = 0
             styleTalents(tf)
+            styleBugButton(frame.TabSetBugButton)
         end)
         poll:SetScript("OnHide", function()
             local win = extras[frame] and extras[frame].backdrop
