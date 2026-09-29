@@ -102,6 +102,26 @@ end
 -- ============================================================
 -- Damage meter
 -- ============================================================
+-- The small buttons in a meter window's header: Blizzard's yellow and red
+-- squares greyed, each on a black tile of ours.
+local tiled = setmetatable({}, { __mode = "k" })
+local function tileButton(b, fadeKey)
+    if not b or tiled[b] then return end
+    tiled[b] = true
+    if fadeKey and b[fadeKey] then b[fadeKey]:SetAlpha(0) end
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r:GetDrawLayer() ~= "HIGHLIGHT" and r ~= b[fadeKey or ""] and r.SetDesaturated then
+            r:SetDesaturated(true)
+            r:SetVertexColor(0.85, 0.85, 0.85)
+        end
+    end
+    local t = CreateFrame("Frame", nil, b)
+    t:SetPoint("TOPLEFT", -1, 1)
+    t:SetPoint("BOTTOMRIGHT", 1, -1)
+    t:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
+    ns:SetTemplate(t, "Default", { alpha = 0.9, shadow = false })
+end
+
 function SK:DamageMeter()
     if not db().damageMeter then return end
     local dm = rawget(_G, "DamageMeter")
@@ -114,6 +134,13 @@ function SK:DamageMeter()
         if win.Header then strip(win.Header) end
         if win.NineSlice then win.NineSlice:SetAlpha(0) end
         if win:IsShown() then panelBehind(win, "Transparent") end
+        tileButton(win.MinimizeButton)
+        tileButton(win.SettingsDropdown)
+        tileButton(win.SessionDropdown, "Background")
+        tileButton(win.DamageMeterTypeDropdown)
+        if win.SessionDropdown and win.SessionDropdown.SessionName then
+            win.SessionDropdown.SessionName:SetTextColor(C.text[1], C.text[2], C.text[3])
+        end
     end
 end
 
