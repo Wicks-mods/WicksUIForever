@@ -144,8 +144,11 @@ local function styleButton(b)
 end
 
 -- The small X in the corner, redrawn as ours.
+-- Its own guard: the scanner may already have greyed it as an arrow.
+local closed = setmetatable({}, { __mode = "k" })
 local function styleClose(b)
-    if not b or done[b] then return end
+    if not b or closed[b] then return end
+    closed[b] = true
     -- A close button with a word on it ("Close") is an ordinary button;
     -- our X on top of it would sit on the word.
     local fs = b.Text or (b.GetFontString and b:GetFontString())
@@ -1462,7 +1465,10 @@ local function walkProfessions(frame, depth, root)
         if child:IsShown() then
             local kind = child:GetObjectType()
             local fill = child.Fill
-            if kind == "StatusBar" then
+            if kind == "Button" and frame.CloseButton == child then
+                -- A close button inside the window (a popup's): our x.
+                styleClose(child)
+            elseif kind == "StatusBar" then
                 flatBar(child)
             elseif fill and fill.GetObjectType and fill:GetObjectType() == "Texture"
                 and (child.Border or child.Background or child.Mask) then
