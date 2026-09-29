@@ -285,7 +285,8 @@ end
 
 -- The aura container turns the countdown numbers back on as it redraws a
 -- button (the time then shows twice: ours and the client's), so every
--- button quieted here is quieted again a few times a second while shown.
+-- button quieted here is quieted again every frame while shown; a slower
+-- pass let the second time flash as a buff refreshed.
 local quieted = setmetatable({}, { __mode = "k" })
 local function hush(cd)
     if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
@@ -293,11 +294,7 @@ local function hush(cd)
     if fs and fs:GetAlpha() > 0 then fs:SetAlpha(0) end
 end
 local hushTicker = CreateFrame("Frame")
-local hushAcc = 0
-hushTicker:SetScript("OnUpdate", function(_, e)
-    hushAcc = hushAcc + e
-    if hushAcc < 0.1 then return end
-    hushAcc = 0
+hushTicker:SetScript("OnUpdate", function()
     for cd in pairs(quieted) do
         if cd:IsVisible() then hush(cd) end
     end
