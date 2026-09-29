@@ -169,9 +169,37 @@ local function styleClose(b)
     ns:Glyph(b, "close", { tile = false, size = 12 })
 end
 
+-- Bottom tabs: Blizzard drops a chosen tab's text 3 px and lifts the
+-- others' 2 px, which on our flat tiles reads as misaligned, and spaces the
+-- tabs for its own wide art. Each tab we skin has its text held centred
+-- and sits a few pixels from the one before it, checked every frame (the
+-- text moves as tabs are chosen).
+local skinnedTabs = setmetatable({}, { __mode = "k" })
+local TAB_GAP = -8   -- tiles are inset 6 each side; this leaves a 4 px gap
+local function holdTab(tab)
+    local t = tab.Text
+    if t then
+        local p, rel, rp, x, y = t:GetPoint(1)
+        if p ~= "CENTER" or rel ~= tab or math.abs(x or 0) > 0.1 or math.abs(y or 0) > 0.1 then
+            t:ClearAllPoints()
+            t:SetPoint("CENTER", tab, "CENTER", 0, 0)
+        end
+    end
+    -- The next tab along, anchored to this one by Blizzard: closer.
+    local p, rel, rp, x, y = tab:GetPoint(1)
+    if rel and skinnedTabs[rel] and (p == "TOPLEFT" or p == "LEFT") and (rp == "TOPRIGHT" or rp == "RIGHT")
+        and math.abs((x or 0) - TAB_GAP) > 0.5 and not InCombatLockdown() then
+        tab:ClearAllPoints()
+        tab:SetPoint(p, rel, rp, TAB_GAP, y or 0)
+    end
+end
+PS.holdTab = holdTab
+PS.skinnedTabs = skinnedTabs
+
 local function styleTab(tab)
     if not tab or done[tab] or not db().tabs then return end
     done[tab] = true
+    skinnedTabs[tab] = true
     for _, k in ipairs({ "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive",
         "LeftHighlight", "MiddleHighlight", "RightHighlight", "Background", "Border", "SelectedTexture" }) do fade(tab[k]) end
     local hl = tab.GetHighlightTexture and tab:GetHighlightTexture()
@@ -1868,6 +1896,15 @@ local function walkProfessions(frame, depth, root)
                     local bd = backdrop(child, "Default", false, 0)
                     ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
                 end
+            elseif kind == "Button" and child.Icon and child.Icon.GetAtlas and child.Icon:GetAtlas()
+                and child:GetWidth() <= 64 and not child.Left then
+                -- A button drawn from Blizzard's icon art (repair, sell junk):
+                -- the square slot behind it goes; the icon stays on our tile.
+                for _, r in ipairs({ child:GetRegions() }) do
+                    if r:GetObjectType() == "Texture" and r ~= child.Icon and r:GetDrawLayer() == "BACKGROUND" and r:GetAlpha() > 0 then
+                        r:SetAlpha(0)
+                    end
+                end
             elseif (kind == "Button" or kind == "CheckButton") and child:GetWidth() <= 64 and child:GetHeight() <= 64 then
                 local name = child.GetName and child:GetName()
                 local icon = child.Icon or child.icon or child.IconTexture
@@ -2205,6 +2242,18 @@ end
 -- a column ran together into one long block, so they are kept out of it.
 PS.SPECIAL.MerchantFrame = function(frame)
     fullSkin(frame, function()
+        -- Two columns of items, centred: Blizzard sets them 11 px from the
+        -- left and 7 from the right.
+        local first, second = rawget(_G, "MerchantItem1"), rawget(_G, "MerchantItem2")
+        if first and second and not InCombatLockdown() then
+            local gap = 12
+            local x = math.floor((frame:GetWidth() - first:GetWidth() * 2 - gap) / 2 + 0.5)
+            local p, rel, rp, px, py = first:GetPoint(1)
+            if p == "TOPLEFT" and rel == frame and math.abs((px or 0) - x) > 0.5 then
+                first:ClearAllPoints()
+                first:SetPoint("TOPLEFT", frame, "TOPLEFT", x, py or -69)
+            end
+        end
         for i = 1, 12 do
             local item = rawget(_G, "MerchantItem" .. i)
             if not item then break end
@@ -2745,6 +2794,9 @@ function PS:Initialize()
     local shown, fresh = {}, {}
     tick:SetScript("OnUpdate", function(_, e)
         if not db().enable then return end
+        for tab in pairs(skinnedTabs) do
+            if tab:IsVisible() then holdTab(tab) end
+        end
         pcall(openMenus)
         acc = acc + e
         local full = acc >= 1
