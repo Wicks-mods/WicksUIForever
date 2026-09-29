@@ -2580,11 +2580,17 @@ PS.SPECIAL.DressUpFrame = function(frame)
                 if r:GetObjectType() == "Texture" and r:GetAlpha() > 0 then r:SetAlpha(0) end
             end
             fade(od.NineSlice)
-            local bb = od.BlackBackground
-            if bb then
-                card(od, "wuiCard", "TOPLEFT", bb, "BOTTOMRIGHT", bb, 0, 0, 0, 0)
-            else
-                card(od, "wuiCard", "TOPLEFT", od, "BOTTOMRIGHT", od, 6, -19, -6, 9)
+            -- Lined up with the window: its top and bottom, 4 px off its
+            -- right edge, as wide as the list. Blizzard's backing starts
+            -- lower and runs longer, for its own side frame art.
+            local c = card(od, "wuiCard", "TOPLEFT", od, "BOTTOMRIGHT", od, 0, 0, 0, 0)
+            if not c.wuiPlaced then
+                c.wuiPlaced = true
+                local bb = od.BlackBackground
+                c:ClearAllPoints()
+                c:SetPoint("TOPLEFT", f, "TOPRIGHT", 4, 0)
+                c:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", 4, 0)
+                c:SetWidth((bb and bb:GetWidth() and bb:GetWidth() > 0) and bb:GetWidth() or 301)
             end
         end
     end)
