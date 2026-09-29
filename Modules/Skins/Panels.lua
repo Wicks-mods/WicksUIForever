@@ -351,7 +351,8 @@ local function recolorText(frame)
             styleFont(r)
             local cr, cg, cb = r:GetTextColor()
             local darkInk = cr and (cr * 0.3 + cg * 0.59 + cb * 0.11) < 0.35 and not inPalette(cr, cg, cb)
-            if isGold(r) or darkInk then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+            local gold = isGold(r) and not (cr and inPalette(cr, cg, cb))
+            if gold or darkInk then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
             lightenInline(r)
         end
     end
