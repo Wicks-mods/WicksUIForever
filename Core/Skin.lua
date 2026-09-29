@@ -283,9 +283,30 @@ local function invisibleFont()
     return noCountdown
 end
 
+-- The aura container turns the countdown numbers back on as it redraws a
+-- button (the time then shows twice: ours and the client's), so every
+-- button quieted here is quieted again a few times a second while shown.
+local quieted = setmetatable({}, { __mode = "k" })
+local function hush(cd)
+    if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
+    local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
+    if fs and fs:GetAlpha() > 0 then fs:SetAlpha(0) end
+end
+local hushTicker = CreateFrame("Frame")
+local hushAcc = 0
+hushTicker:SetScript("OnUpdate", function(_, e)
+    hushAcc = hushAcc + e
+    if hushAcc < 0.1 then return end
+    hushAcc = 0
+    for cd in pairs(quieted) do
+        if cd:IsVisible() then hush(cd) end
+    end
+end)
+
 function ns:QuietAuraCooldown(button)
     local cd = button and button.Cooldown
     if not cd then return end
+    quieted[cd] = true
     if cd.SetCountdownFont then pcall(cd.SetCountdownFont, cd, invisibleFont():GetName()) end
     -- The aura container turns the numbers back on when it redraws the
     -- button, so the switch alone does not hold. The countdown's own text
