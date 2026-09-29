@@ -204,7 +204,12 @@ end
 local function styleEditBox(eb)
     if done[eb] then return end
     done[eb] = true
-    for _, k in ipairs({ "Left", "Middle", "Right", "Mid", "Center" }) do fade(eb[k]) end
+    for _, k in ipairs({ "Left", "Middle", "Right", "Mid", "Center", "left", "right", "middle" }) do fade(eb[k]) end
+    -- Text boxes framed with a NineSlice (popups), and money boxes whose
+    -- middle piece is only reachable by its global name.
+    fade(eb.NineSlice)
+    local name = eb:GetName()
+    if name then fade(_G[name .. "Middle"]); fade(_G[name .. "Left"]); fade(_G[name .. "Right"]) end
     backdrop(eb, "Shadow", false, 0)
 end
 
@@ -476,7 +481,7 @@ local function scanButtons(frame, depth)
             styleIconButton(child)
         elseif kind == "Button" and child.Left and child.Right and (child.Middle or child.Center) then
             styleButton(child)
-        elseif kind == "EditBox" and child.Left and child.Right then
+        elseif kind == "EditBox" and ((child.Left and child.Right) or (child.left and child.right) or child.NineSlice) then
             styleEditBox(child)
         elseif child.Track and child.Track.Thumb and child.Back and child.Forward then
             styleScrollBar(child)
@@ -1050,6 +1055,7 @@ function PS:Skin(frame)
 
     fade(frame.NineSlice)
     fade(frame.Bg)
+    fade(frame.BG)            -- popups keep their dialog art on a BG child
     fade(frame.Background)
     fade(frame.TopTileStreaks)
     fade(frame.Border)
