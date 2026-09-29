@@ -317,13 +317,25 @@ end
 -- in gossip is "|cff000000Name|r"): a colour code beats SetTextColor, so a
 -- dark code at the front is swapped for our text colour.
 local function lum(r, g, b) return r * 0.3 + g * 0.59 + b * 0.11 end
+
+-- A colour that is one of the theme's own (a heading in the accent, a
+-- muted note) is never parchment ink, however dark a custom theme makes
+-- it: lightening it fought whatever paints it, and the text flickered.
+local PALETTE = { "fel", "text", "muted", "border", "shadow", "void" }
+local function inPalette(r, g, b)
+    for _, k in ipairs(PALETTE) do
+        local c = C[k]
+        if c and math.abs(r - c[1]) < 0.02 and math.abs(g - c[2]) < 0.02 and math.abs(b - c[3]) < 0.02 then return true end
+    end
+    return false
+end
 local function lightenInline(fs)
     local t = fs:GetText()
     if type(t) ~= "string" or (issecretvalue and issecretvalue(t)) or t:sub(1, 2) ~= "|c" then return end
     local hex = t:match("^|c%x%x(%x%x%x%x%x%x)")
     if not hex then return end
     local r, g, b = tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
-    if lum(r, g, b) >= 0.35 then return end
+    if lum(r, g, b) >= 0.35 or inPalette(r, g, b) then return end
     local c = C.text
     local ours = ("|cff%02x%02x%02x"):format(math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
     fs:SetText(ours .. t:sub(11))
@@ -338,7 +350,7 @@ local function recolorText(frame)
         elseif r:GetObjectType() == "FontString" then
             styleFont(r)
             local cr, cg, cb = r:GetTextColor()
-            local darkInk = cr and (cr * 0.3 + cg * 0.59 + cb * 0.11) < 0.35
+            local darkInk = cr and (cr * 0.3 + cg * 0.59 + cb * 0.11) < 0.35 and not inPalette(cr, cg, cb)
             if isGold(r) or darkInk then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
             lightenInline(r)
         end
