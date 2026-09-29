@@ -45,19 +45,17 @@ local PAGES = {
     },
     {
         title = "Colours",
-        text = "The palette, also shared by every Wick addon.\n\nThe look's own: the colours the style was made in (Wick Modern and Wick OG use Fel).\nYour class: the accent in your class colour, a new one on each character.\nFel: Wick's own green on violet-black.\nCustom: your own main and accent colours, picked under General, Appearance.",
+        text = "The palette, also shared by every Wick addon.\n\nThe look's own: the colours the style was made in. Wick Modern and Wick OG take your class colour, a new one on each character.\nFel: Wick's own green on violet-black.\nCustom: your own main and accent colours, picked under General, Appearance.",
         choices = {
             { label = "The look's own",
               on = function()
                   local st = Chrome.StyleByID and Chrome.StyleByID[currentStyle()]
-                  return Chrome:ThemeSetting() == ((st and st.palette) or "fel")
+                  return Chrome:ThemeSetting() == ((st and st.palette) or "auto")
               end,
               pick = function()
                   local st = Chrome.StyleByID and Chrome.StyleByID[currentStyle()]
-                  Chrome:SetTheme((st and st.palette) or "fel")
+                  Chrome:SetTheme((st and st.palette) or "auto")
               end },
-            { label = "My class", on = function() return Chrome:ThemeSetting() == "auto" end,
-              pick = function() Chrome:SetTheme("auto") end },
             { label = "Fel", on = function() return Chrome:ThemeSetting() == "fel" end,
               pick = function() Chrome:SetTheme("fel") end },
             { label = "Custom", on = function() return Chrome:ThemeSetting() == "custom" end,

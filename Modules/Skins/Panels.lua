@@ -118,7 +118,15 @@ local function styleText(fs, size, color)
     local _, cur = fs:GetFont()
     fs:SetFont(ns.Media:Font(), size or cur or 12, "")
     fs:SetShadowOffset(1, -1)
-    if color then fs:SetTextColor(color[1], color[2], color[3]) end
+    if color then
+        fs:SetTextColor(color[1], color[2], color[3])
+        -- A palette colour (a window title in the accent) follows the
+        -- theme; it is set once, so without this a theme change left it
+        -- in the old accent.
+        for _, c in pairs(C) do
+            if c == color then Chrome:Register(fs, color, "text"); break end
+        end
+    end
 end
 
 local textButtons = setmetatable({}, { __mode = "k" })
@@ -845,7 +853,10 @@ local function styleQuestHeaders(root, depth)
                     backdrop(child, "Shadow", false, 0)
                 end
                 local text = child.ButtonText or child.Text or (child.GetFontString and child:GetFontString())
-                if text then text:SetTextColor(C.fel[1], C.fel[2], C.fel[3]) end
+                if text then
+                    text:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+                    Chrome:Register(text, C.fel, "text")
+                end
             else
                 styleQuestHeaders(child, depth + 1)
             end
@@ -1494,6 +1505,7 @@ local function styleStats()
                 e.rule = rule
             end
             row.Title:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+            Chrome:Register(row.Title, C.fel, "text")
         elseif row.Label and row.Value and row.Background then
             -- Stat rows: Blizzard's brown stripe becomes a faint one of
             -- ours; Blizzard still decides which rows are striped.

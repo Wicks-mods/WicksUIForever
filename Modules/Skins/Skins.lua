@@ -74,6 +74,7 @@ function SK:Tracker()
             if text then
                 text:SetFont(font, size + 2, "OUTLINE")
                 text:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+                Chrome:Register(text, C.fel, "text")
             end
             -- A thin fel rule under each header in place of the gold bar.
             local p = panels[h]
