@@ -1191,7 +1191,7 @@ local function stripArt(frame, root)
                 local card = CreateFrame("Frame", nil, frame)
                 card:SetAllPoints(r)
                 card:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
-                ns:SetTemplate(card, "Shadow")
+                ns:SetTemplate(card, "Default", { alpha = 0.9, shadow = false })
                 cards[r] = card
             end
         end
@@ -1199,6 +1199,52 @@ local function stripArt(frame, root)
     for r, card in pairs(cards) do
         if r:GetParent() == frame then card:SetShown(r:IsShown()) end
     end
+end
+
+-- The quantity box: its white-edged frame (unnamed atlas pieces as well as
+-- the named ones) goes for a black field, and the stepper arrows become
+-- small grey tiles with our own marks.
+-- Their own guard: the scanner has usually been through these already.
+local spun = setmetatable({}, { __mode = "k" })
+local function styleStepper(b, mark)
+    if not b or spun[b] then return end
+    spun[b] = true
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
+        local t = b[get] and b[get](b)
+        if t then t:SetAlpha(0) end
+    end
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then r:SetAlpha(0) end
+    end
+    backdrop(b, "Shadow", false, 1)
+    local fs = ns:CreateText(b, 12, "CENTER", "NONE")
+    fs:SetPoint("CENTER", 0, 0)
+    fs:SetText(mark)
+    local h = b:CreateTexture(nil, "HIGHLIGHT")
+    h:SetPoint("TOPLEFT", 2, -2)
+    h:SetPoint("BOTTOMRIGHT", -2, 2)
+    ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
+end
+
+local function styleNumberBox(eb)
+    for _, r in ipairs({ eb:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r:GetAlpha() > 0 and r:GetDrawLayer() == "BACKGROUND" then r:SetAlpha(0) end
+    end
+    if not spun[eb] then
+        spun[eb] = true
+        local bd = backdrop(eb, "Default", false, 0)
+        bd:ClearAllPoints()
+        bd:SetPoint("TOPLEFT", -6, 2)
+        bd:SetPoint("BOTTOMRIGHT", 2, -2)
+        ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+    end
+end
+
+local function styleSpinner(f)
+    local eb = f:GetObjectType() == "EditBox" and f or f.EditBox or f
+    if eb and eb.GetRegions then styleNumberBox(eb) end
+    styleStepper(f.DecrementButton, "<")
+    styleStepper(f.IncrementButton, ">")
 end
 
 local function walkProfessions(frame, depth, root)
@@ -1216,6 +1262,8 @@ local function walkProfessions(frame, depth, root)
             elseif fill and fill.GetObjectType and fill:GetObjectType() == "Texture"
                 and (child.Border or child.Background or child.Mask) then
                 flatRankBar(child)
+            elseif child.IncrementButton or child.DecrementButton or (kind == "EditBox" and (child.IncrementButton or frame.IncrementButton)) then
+                styleSpinner(child)
             elseif kind == "Button" and child.ButtonText and child.CollapseButton then
                 -- A recipe list category heading: its brown bar (one unnamed
                 -- atlas, drawn again on the highlight layer) goes, a card
@@ -1226,10 +1274,6 @@ local function walkProfessions(frame, depth, root)
                 child.ButtonText:SetTextColor(C.text[1], C.text[2], C.text[3])
                 if not done[child] then
                     done[child] = true
-                    local bd = backdrop(child, "Shadow", false, 0)
-                    bd:ClearAllPoints()
-                    bd:SetPoint("TOPLEFT", 0, -1)
-                    bd:SetPoint("BOTTOMRIGHT", 0, 1)
                     local h = child:CreateTexture(nil, "HIGHLIGHT")
                     h:SetPoint("TOPLEFT", 2, -2)
                     h:SetPoint("BOTTOMRIGHT", -2, 2)
@@ -1239,14 +1283,14 @@ local function walkProfessions(frame, depth, root)
                 -- A recipe row: the chosen one gets a fel wash in place of
                 -- Blizzard's gold, which the row scanner faded.
                 local sel = child.SelectedOverlay
-                if not done[sel] then
+                if not done[sel] or sel:GetAtlas() then
                     done[sel] = true
                     sel:ClearAllPoints()
                     sel:SetPoint("TOPLEFT", 2, -1)
                     sel:SetPoint("BOTTOMRIGHT", -2, 1)
-                    ns:Fill(sel, C.fel[1], C.fel[2], C.fel[3], 0.22)
+                    ns:Fill(sel, C.fel[1], C.fel[2], C.fel[3], 1)
                 end
-                if sel:GetAlpha() < 1 then sel:SetAlpha(1) end
+                if math.abs(sel:GetAlpha() - 0.2) > 0.01 then sel:SetAlpha(0.2) end
                 if child.HighlightOverlay then child.HighlightOverlay:SetAlpha(0) end
             elseif (kind == "Button" or kind == "CheckButton") and child:GetWidth() <= 64 and child:GetHeight() <= 64 then
                 local name = child.GetName and child:GetName()
@@ -1261,8 +1305,10 @@ local function walkProfessions(frame, depth, root)
 end
 
 -- The side tabs down the right edge are plain frames, not buttons, so the
--- scanner passes them by: their gold tab shape goes, the icon loses the tab
--- mask and gets our corners, and the open one wears the fel ring.
+-- scanner passes them by. Each becomes a grey tile the colour of the
+-- window with a smaller icon in it. At rest the icon is greyed and dimmed,
+-- so the column reads as part of the window; the open tab and the one
+-- under the pointer show their colour, and the open one wears the ring.
 local function styleSideTab(tab)
     fade(tab.Background); fade(tab.TabGlow); fade(tab.HighlightTexture)
     local e = extras[tab] or {}
@@ -1270,32 +1316,33 @@ local function styleSideTab(tab)
     local icon = tab.Icon
     if not done[tab] then
         done[tab] = true
+        local bd = backdrop(tab, "Shadow", false, 0)
+        bd:ClearAllPoints()
+        bd:SetPoint("LEFT", tab, "LEFT", 1, 0)
+        bd:SetSize(38, 38)
         if icon then
             if tab.Mask and icon.RemoveMaskTexture then icon:RemoveMaskTexture(tab.Mask) end
             icon:ClearAllPoints()
-            icon:SetPoint("CENTER", -4, 0)
-            icon:SetSize(40, 40)
+            icon:SetPoint("CENTER", bd, "CENTER", 0, 0)
+            icon:SetSize(28, 28)
             ns:CropIcon(icon)
         end
-        local bd = backdrop(tab, "Default", false, 0)
-        bd:ClearAllPoints()
-        bd:SetPoint("TOPLEFT", icon or tab, "TOPLEFT", -2, 2)
-        bd:SetPoint("BOTTOMRIGHT", icon or tab, "BOTTOMRIGHT", 2, -2)
         local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
         ring:SetTexture(ns.Media.ring)
         if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(8, 8, 8, 8) end
         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
-        ring:SetPoint("TOPLEFT", icon or tab, "TOPLEFT", -2, 2)
-        ring:SetPoint("BOTTOMRIGHT", icon or tab, "BOTTOMRIGHT", 2, -2)
+        ring:SetAllPoints(bd)
         e.ring = ring
-        local h = tab:CreateTexture(nil, "HIGHLIGHT")
-        h:SetAllPoints(icon or tab)
-        ns:Fill(h, 1, 1, 1, 0.12)
-        e.hover = h
     end
     local sel = tab.SelectedTexture
     if sel then sel:SetAlpha(0) end
-    e.ring:SetShown(sel and sel:IsShown() or false)
+    local open = sel and sel:IsShown() or false
+    e.ring:SetShown(open)
+    if icon then
+        local awake = open or tab:IsMouseOver()
+        icon:SetDesaturated(not awake)
+        icon:SetAlpha(awake and 1 or 0.55)
+    end
 end
 
 local function styleProfTabs(frame)
@@ -1316,6 +1363,10 @@ PS.SPECIAL.ProfessionsFrame = function(frame)
     local poll = CreateFrame("Frame", nil, frame)
     local acc, last = 0.5, nil
     poll:SetScript("OnUpdate", function(_, e)
+        -- Flipped from the other windows: the window is the grey panel and
+        -- its cards are black, which gives the lists and bars their depth.
+        local win = extras[frame] and extras[frame].backdrop
+        if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
         for bar in pairs(rankBars) do
             if bar:IsVisible() then flatRankBar(bar) end
         end
