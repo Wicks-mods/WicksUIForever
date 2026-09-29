@@ -1170,6 +1170,8 @@ end
 -- recipe list, the recipe detail) a rounded card takes its place, so the
 -- window reads as cards on glass, like the unit frames.
 local cards = setmetatable({}, { __mode = "k" })
+-- Art a window's special gives a card of its own shape; the walk leaves it.
+local noCard = setmetatable({}, { __mode = "k" })
 local ICON_KEYS = { Icon = true, icon = true, IconTexture = true }
 
 local function isOwn(frame, r)
@@ -1195,7 +1197,7 @@ local function stripArt(frame, root)
             and not (n and n:find("BlackFilter$")) then
             r:SetAlpha(0)
             local w, h = r:GetSize()
-            if frame ~= root and w and h and w >= 120 and h >= 60 and not (w >= rw * 0.9 and h >= rh * 0.85) and not cards[r] then
+            if frame ~= root and w and h and w >= 120 and h >= 60 and not (w >= rw * 0.9 and h >= rh * 0.85) and not cards[r] and not noCard[r] then
                 local card = CreateFrame("Frame", nil, frame)
                 card:SetAllPoints(r)
                 card:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
@@ -1456,6 +1458,12 @@ PS.SPECIAL.MailFrame = function(frame)
         end
         styleStepper(inbox and inbox.PrevPageButton, "<")
         styleStepper(inbox and inbox.NextPageButton, ">")
+        local sf = _G.SendMailScrollFrame
+        if sf then
+            noCard[_G.SendStationeryBackgroundLeft or sf] = true
+            noCard[_G.SendStationeryBackgroundRight or sf] = true
+            card(sf, "wuiLetter", "TOPLEFT", sf, "BOTTOMRIGHT", sf, -6, 6, 6, -6)
+        end
         local money = _G.SendMailMoneyBg
         if money then card(money, "wuiMoney", "TOPLEFT", money, "BOTTOMRIGHT", money, 0, 0, 0, 0) end
     end)
@@ -1468,6 +1476,12 @@ PS.SPECIAL.OpenMailFrame = function(frame)
     -- The letter is written in parchment ink; Blizzard sets it as each
     -- letter opens, so it is put back to our text colour every frame.
     fullSkin(frame, function()
+        local sf = _G.OpenMailScrollFrame
+        if sf then
+            noCard[_G.OpenStationeryBackgroundLeft or sf] = true
+            noCard[_G.OpenStationeryBackgroundRight or sf] = true
+            card(sf, "wuiLetter", "TOPLEFT", sf, "BOTTOMRIGHT", sf, -6, 6, 6, -6)
+        end
         local body = _G.OpenMailBodyText
         if not body or not body:IsVisible() then return end
         local c = C.text
