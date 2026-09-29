@@ -962,76 +962,46 @@ PS.SPECIAL.CharacterFrame = function(frame)
 end
 
 -- Professions: the illustrations behind each profession stay (Wick likes
--- them); the frames around them go. Each profession keeps a colour of its
--- own on its skill bar, read from the fill art Blizzard picks for it (or
--- the bar's text), so Mining still reads as Mining once the art is flat.
--- All of it is redone on every pass: Blizzard redraws bars on each skill-up
--- and swaps pages as tabs change.
-local PROF_COLORS = {
-    alchemy = { 0.35, 0.75, 0.55 }, blacksmithing = { 0.66, 0.66, 0.72 },
-    enchanting = { 0.66, 0.46, 0.92 }, engineering = { 0.92, 0.70, 0.28 },
-    herbalism = { 0.70, 0.82, 0.30 }, inscription = { 0.42, 0.60, 0.92 },
-    jewelcrafting = { 0.32, 0.82, 0.86 }, leatherworking = { 0.72, 0.52, 0.32 },
-    mining = { 0.56, 0.64, 0.78 }, skinning = { 0.80, 0.58, 0.42 },
-    tailoring = { 0.86, 0.42, 0.50 }, cooking = { 0.92, 0.52, 0.26 },
-    fishing = { 0.32, 0.64, 0.88 }, firstaid = { 0.45, 0.80, 0.30 },
-    archaeology = { 0.78, 0.62, 0.42 },
-}
-
-local function textOf(frame)
-    for _, r in ipairs({ frame:GetRegions() }) do
-        if r:GetObjectType() == "FontString" then
-            local t = r:GetText()
-            if t and not (issecretvalue and issecretvalue(t)) and t ~= "" then return t end
-        end
-    end
-end
-
-local function profColor(bar, fill)
-    local keys = {}
-    local atlas = fill and fill.GetAtlas and fill:GetAtlas()
-    if atlas then keys[#keys + 1] = atlas end
-    local t = textOf(bar)
-    if t then keys[#keys + 1] = t end
-    for _, k in ipairs(keys) do
-        k = k:lower():gsub("[%s_%-]", "")
-        for prof, c in pairs(PROF_COLORS) do
-            if k:find(prof, 1, true) then return c end
-        end
-    end
-    return C.fel
-end
+-- them); the frames around them go. Every skill bar is the same fel bar on
+-- a glass track, like the rest of the UI. All of it is redone on every
+-- pass: Blizzard redraws bars on each skill-up and swaps pages as tabs
+-- change.
 
 -- The rank bars are frames, not status bars: a textured Fill seen through
--- a Mask whose right edge Blizzard slides to the current skill. Ours is a
--- flat bar pinned to that same edge, so it follows without being told.
+-- a Mask whose right edge Blizzard slides to the current skill. The Fill is
+-- drawn wider than the bar and clipped, so the bar frame, not the Fill,
+-- says where the bar ends. Ours is a flat bar pinned to the mask's edge, so
+-- it follows the skill without being told.
 local function flatRankBar(bar)
     local fill, mask = bar.Fill, bar.Mask
     local e = extras[bar] or {}
     extras[bar] = e
-    local c = profColor(bar, fill)
     fade(bar.Background); fade(bar.Border); fade(bar.Flare)
-    if mask then
-        if fill:GetAlpha() > 0 then fill:SetAlpha(0) end
-        if not e.bar then
-            local t = bar:CreateTexture(nil, "ARTWORK", nil, 3)
-            t:SetTexture(ns.Media:Statusbar())
-            t:SetPoint("LEFT", fill, "LEFT", 0, 0)
-            t:SetPoint("RIGHT", mask, "RIGHT", 0, 0)
-            e.bar = t
-        end
-        e.bar:SetHeight(math.max(1, (fill:GetHeight() or 12) - 2))
-        e.bar:SetVertexColor(c[1], c[2], c[3], 1)
-    else
-        fill:SetTexture(ns.Media:Statusbar())
-        fill:SetVertexColor(c[1], c[2], c[3], 1)
-    end
     if not done[bar] then
         done[bar] = true
         local bd = backdrop(bar, "Shadow", false, 0)
         bd:ClearAllPoints()
         bd:SetPoint("TOPLEFT", fill, "TOPLEFT", -1, 1)
-        bd:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", 1, -1)
+        bd:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", -1, -1)
+        e.track = bd
+        if mask then
+            local t = bar:CreateTexture(nil, "ARTWORK", nil, 3)
+            t:SetTexture(ns.Media:Statusbar())
+            t:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+            -- Top from the fill, right edge (and so the middle) from the mask,
+            -- which sits level with the fill: a bar 2 px shorter than it.
+            t:SetPoint("TOPLEFT", fill, "TOPLEFT", 1, -1)
+            t:SetPoint("RIGHT", mask, "RIGHT", 0, 0)
+            e.bar = t
+        end
+    end
+    local l, r = fill:GetLeft(), bar:GetRight()
+    if l and r and r > l then e.track:SetWidth(r - l + 2) end
+    if mask then
+        if fill:GetAlpha() > 0 then fill:SetAlpha(0) end
+    else
+        fill:SetTexture(ns.Media:Statusbar())
+        fill:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
     end
 end
 
@@ -1043,10 +1013,9 @@ local function flatBar(sb)
     for _, child in ipairs({ sb:GetChildren() }) do
         if child:GetObjectType() == "Frame" and not child.wuiBG then fadeRegions(child) end
     end
-    local c = profColor(sb, fill)
     local path = ns.Media:Statusbar()
     if fill and fill:GetTexture() ~= path then sb:SetStatusBarTexture(path) end
-    sb:SetStatusBarColor(c[1], c[2], c[3])
+    sb:SetStatusBarColor(C.fel[1], C.fel[2], C.fel[3])
     if not done[sb] then
         done[sb] = true
         backdrop(sb, "Shadow", false, 1)
