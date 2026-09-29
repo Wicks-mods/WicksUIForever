@@ -1506,6 +1506,22 @@ local function styleSpinner(f)
     styleStepper(f.IncrementButton, ">")
 end
 
+-- Settings headings carry Blizzard's Options_CategoryHeader bars; fading
+-- them each pass (they are redrawn as the list scrolls) and saying so.
+local function optionsHeader(f)
+    local found = false
+    for _, r in ipairs({ f:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local a = r:GetAtlas()
+            if a and a:find("^Options_CategoryHeader") then
+                if r:GetAlpha() > 0 then r:SetAlpha(0) end
+                found = true
+            end
+        end
+    end
+    return found
+end
+
 local function walkProfessions(frame, depth, root)
     if depth > 8 or not frame.GetChildren then return end
     root = root or frame
@@ -1531,6 +1547,14 @@ local function walkProfessions(frame, depth, root)
                 flatRankBar(child)
             elseif child.IncrementButton or child.DecrementButton or (kind == "EditBox" and (child.IncrementButton or frame.IncrementButton)) then
                 styleSpinner(child)
+            elseif (kind == "Button" or kind == "Frame") and child.GetRegions and optionsHeader(child) then
+                -- A heading in the Settings category list: its brown bar
+                -- goes for a grey pill.
+                if not done[child] then
+                    done[child] = true
+                    local bd = backdrop(child, "Shadow", false, 1)
+                    bd:SetFrameLevel(math.max(0, child:GetFrameLevel() - 1))
+                end
             elseif kind == "Button" and child.ButtonText and child.CollapseButton then
                 -- A recipe list category heading: its brown bar (one unnamed
                 -- atlas, drawn again on the highlight layer) goes, a card
@@ -1847,6 +1871,17 @@ PS.SPECIAL.CollectionsJournal = function(frame)
     return "generic"
 end
 PS.SPECIAL.WardrobeFrame = PS.SPECIAL.CollectionsJournal
+
+-- Settings: the full skin. The category list and the settings beside it
+-- are black cards on the grey window.
+PS.SPECIAL.SettingsPanel = function(frame)
+    styleClose(frame.ClosePanelButton)
+    fullSkin(frame, function(f)
+        if f.CategoryList then card(f.CategoryList, "wuiCard", "TOPLEFT", f.CategoryList, "BOTTOMRIGHT", f.CategoryList, -6, 6, 6, -6) end
+        if f.Container then card(f.Container, "wuiCard", "TOPLEFT", f.Container, "BOTTOMRIGHT", f.Container, -6, 6, 6, -6) end
+    end)
+    return "generic"
+end
 
 -- The talents tab. The painting behind the trees (ClassBackground) stays,
 -- as Wick wants; the brown frame around it (BackgroundBorder, with the gold
