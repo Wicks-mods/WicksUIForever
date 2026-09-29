@@ -35,6 +35,8 @@ ns.defaults.profile.panelskins = {
     mapWindowed = true,     -- the map opens at its windowed size, not fullscreen
     mapScale = 1,           -- the windowed map's size, set with its corner grip
     mapPos = false,         -- where the windowed map was dragged: { left, top } on screen
+    moveWindows = true,     -- drag a window by its title bar
+    windowPos = {},         -- window name -> { left, top } on screen, where it was dragged
 }
 
 local function db() return PS:db() end
@@ -921,6 +923,100 @@ local function mapMover(frame)
     end)
     e.mover = m
     return m
+end
+
+-- Any other window: dragged by its title bar and kept where it was left,
+-- each by name. Blizzard places its windows again every time one opens, so
+-- the saved spot is put back straight after it does, and held each frame
+-- while the window shows. Never in combat. The map has its own mover; the
+-- bags have their own layout.
+local NOT_MOVED = { WorldMapFrame = true, ContainerFrameCombinedBags = true }
+local function movable(n)
+    return not NOT_MOVED[n] and not n:find("^ContainerFrame%d")
+end
+
+local function windowPos(n)
+    local all = db().windowPos
+    return type(all) == "table" and all[n] or nil
+end
+
+local function applyWindowPos(n, frame)
+    local pos = windowPos(n)
+    if not pos or InCombatLockdown() then return end
+    local s = frame:GetEffectiveScale()
+    if not (s and s > 0) then return end
+    local x, y = pos[1] / s, pos[2] / s
+    local p, rel, rp, px, py = frame:GetPoint(1)
+    if p ~= "TOPLEFT" or rel ~= UIParent or rp ~= "BOTTOMLEFT" or math.abs((px or 0) - x) > 0.5
+        or math.abs((py or 0) - y) > 0.5 or frame:GetNumPoints() ~= 1 then
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
+    end
+end
+
+local function windowMover(n, frame)
+    local e = extras[frame] or {}
+    extras[frame] = e
+    if e.mover then return e.mover end
+    local bf = frame.BorderFrame or frame
+    local title = bf.TitleContainer
+    -- Our own strip over the title bar, clear of the close and size
+    -- buttons in the corner; nothing is written to Blizzard's frame.
+    local m = CreateFrame("Frame", nil, frame)
+    if title then
+        m:SetPoint("TOPLEFT", title, "TOPLEFT", 0, 0)
+        m:SetPoint("BOTTOMRIGHT", title, "BOTTOMRIGHT", -40, 0)
+    else
+        m:SetPoint("TOPLEFT", frame, "TOPLEFT", 40, 0)
+        m:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -60, 0)
+        m:SetHeight(20)
+    end
+    m:SetFrameLevel(frame:GetFrameLevel() + 600)
+    m:EnableMouse(true)
+    m:SetScript("OnMouseDown", function(_, button)
+        if button ~= "LeftButton" or InCombatLockdown() or not db().moveWindows then return end
+        frame:SetMovable(true)
+        frame:SetClampedToScreen(true)
+        frame:StartMoving()
+        m.moving = true
+    end)
+    m:SetScript("OnMouseUp", function()
+        if not m.moving then return end
+        m.moving = false
+        frame:StopMovingOrSizing()
+        -- Ours to remember, not the client's layout cache.
+        if frame.SetUserPlaced then pcall(frame.SetUserPlaced, frame, false) end
+        local left, top = frame:GetLeft(), frame:GetTop()
+        if not (left and top) then return end
+        local s = frame:GetEffectiveScale()
+        if type(db().windowPos) ~= "table" then db().windowPos = {} end
+        db().windowPos[n] = { left * s, top * s }
+    end)
+    e.mover = m
+    return m
+end
+
+-- Called for each skinned window that shows, every frame.
+function PS.holdWindow(n, frame)
+    if not movable(n) then return end
+    local m = windowMover(n, frame)
+    local on = db().moveWindows and true or false
+    if m:IsShown() ~= on then m:SetShown(on) end
+    if on and not m.moving then applyWindowPos(n, frame) end
+end
+
+-- Straight after Blizzard lays its windows out, before they are drawn.
+function PS.restoreWindows()
+    if not db().moveWindows or InCombatLockdown() then return end
+    local all = db().windowPos
+    if type(all) ~= "table" then return end
+    for n in pairs(all) do
+        local f = rawget(_G, n)
+        local e = f and extras[f]
+        if f and f.IsShown and f:IsShown() and not (e and e.mover and e.mover.moving) and movable(n) then
+            applyWindowPos(n, f)
+        end
+    end
 end
 
 local function mapGrip(frame)
@@ -2959,6 +3055,7 @@ function PS:Initialize()
             shown[n] = on
             if on and done[f] then
                 centreTitle(f)
+                PS.holdWindow(n, f)
                 if full or fresh[n] or not boxes[f] then boxes[f] = findBoxes(f, 1, {}) end
                 local sig = signature(n, f)
                 local changed = sig ~= sigs[n]
@@ -2968,6 +3065,11 @@ function PS:Initialize()
             if fresh[n] then fresh[n] = fresh[n] > 1 and fresh[n] - 1 or nil end
         end
     end)
+    if UpdateUIPanelPositions then
+        hooksecurefunc("UpdateUIPanelPositions", function()
+            if db().enable then pcall(PS.restoreWindows) end
+        end)
+    end
     -- Load-on-demand windows appear with their addon.
     ns:On("ADDON_LOADED", function(_, addon)
         if type(addon) == "string" and addon:find("^Blizzard_") then
@@ -3006,6 +3108,11 @@ ns.Config:AddPage("panelskins", "Windows", function(L)
     L:Toggle("Fel corners", "brackets", { tooltip = "Takes effect after a reload." })
     L:Toggle("Buttons", "buttons")
     L:Toggle("Tabs", "tabs")
+    L:Toggle("Drag windows by their title", "moveWindows", { tooltip = "Character, quest log, talents, vendors and the rest stay where you leave them." })
+    L:Button("Put windows back", function()
+        db().windowPos = {}
+        print("|cff4FC778Wick's UI|r: windows go back to their places the next time they open.")
+    end)
     L:Note("Found a window still in the game's own look? Point at it and type |cff4FC778/wui skin|r. It is skinned on the spot and every time after.")
     L:Input("Skinned with /wui skin", "include", { width = 520, span = 2,
         tooltip = "Windows added with /wui skin. Remove a name to stop skinning it; takes effect after a reload." })
