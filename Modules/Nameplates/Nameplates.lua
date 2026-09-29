@@ -163,13 +163,14 @@ local function style(self, unit)
         -- Our own time text (the client's countdown is hidden: ns:AuraCountdown).
         a.showDuration = true
         a.disableMouse = true
-        a:AddGroup("HARMFUL|PLAYER", { maxFrameCount = d.debuffCount })
-        a:SetSize(d.debuffCount * (d.debuffSize + 2), d.debuffSize)
+        -- Before AddGroup, so the buttons it makes get it.
         a.PostCreateButton = function(_, button)
             ns:AuraCountdown(button, d.debuffSize, true)
             if button.Icon then ns:CropIcon(button.Icon) end
             ns:CreateBackdrop(button, "Default", ns.mult)
         end
+        a:AddGroup("HARMFUL|PLAYER", { maxFrameCount = d.debuffCount })
+        a:SetSize(d.debuffCount * (d.debuffSize + 2), d.debuffSize)
         self.wuiDebuffs = a
 
         -- Buffs worth knowing about on an enemy: stealable or purgeable.
@@ -179,13 +180,14 @@ local function style(self, unit)
         b.elementSpacing = 2
         b.showStealableBorder = true
         b.disableMouse = true
-        b:AddGroup("HELPFUL|RAID", { maxFrameCount = 4 })
-        b:SetSize(4 * (d.buffSize + 2), d.buffSize)
+        -- Before AddGroup, so the buttons it makes get it.
         b.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, nil, false)
             if button.Icon then ns:CropIcon(button.Icon) end
             ns:CreateBackdrop(button, "Default", ns.mult)
         end
+        b:AddGroup("HELPFUL|RAID", { maxFrameCount = 4 })
+        b:SetSize(4 * (d.buffSize + 2), d.buffSize)
         self.wuiBuffs = b
     end
 

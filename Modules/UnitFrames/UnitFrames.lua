@@ -331,8 +331,8 @@ local function buildAuras(self, which, d)
     a.tooltipAnchor = "ANCHOR_BOTTOMRIGHT"
     local filter = d.filter or (which == "buffs" and "HELPFUL" or "HARMFUL")
     if d.onlyMine and not filter:find("PLAYER") then filter = filter .. "|PLAYER" end
-    a:AddGroup(filter, { maxFrameCount = d.perRow * math.max(1, d.rows) })
-    a:SetSize(d.perRow * (d.size + d.spacing), math.max(1, d.rows) * (d.size + d.spacing))
+    -- Before AddGroup: the client makes the group's buttons as it is added,
+    -- and a hook set afterwards never runs on them.
     a.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, d.size, d.showDuration)
         -- Our border on the client's button: a backdrop child a level down.
@@ -340,6 +340,8 @@ local function buildAuras(self, which, d)
         ns:CreateBackdrop(button, "Default", ns.mult)
         if button.Count then ns.Media:SetFont(button.Count, math.max(9, math.floor(d.size * 0.42)), "OUTLINE") end
     end
+    a:AddGroup(filter, { maxFrameCount = d.perRow * math.max(1, d.rows) })
+    a:SetSize(d.perRow * (d.size + d.spacing), math.max(1, d.rows) * (d.size + d.spacing))
     self["wui" .. which] = a
     return a
 end

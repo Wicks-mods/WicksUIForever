@@ -87,14 +87,15 @@ local function addHealerPieces(self, d)
         a.showDebuffBorder = true
         a.showDebuffIndicator = true
         a.disableMouse = true
-        a:AddSlot("HARMFUL|RAID")
-        a:SetSize(d.centerSize, d.centerSize)
-        a:SetPoint("CENTER", self, "CENTER", 0, 0)
+        -- Before the slot or group is added, so the buttons it makes get it.
         a.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, nil, false)
             if button.Icon then ns:CropIcon(button.Icon) end
             ns:CreateBackdrop(button, "Default", ns.mult)
         end
+        a:AddSlot("HARMFUL|RAID")
+        a:SetSize(d.centerSize, d.centerSize)
+        a:SetPoint("CENTER", self, "CENTER", 0, 0)
         self.wuiCenter = a
     end
     -- Your own buffs on them: heals over time, shields. Three, top right.
@@ -105,14 +106,15 @@ local function addHealerPieces(self, d)
         a.showCount = false
         a.showDuration = false
         a.disableMouse = true
-        a:AddGroup("HELPFUL|PLAYER|RAID", { maxFrameCount = 3 })
-        a:SetSize(d.hotSize * 3 + 2, d.hotSize)
-        a:SetPoint("TOPRIGHT", self, "TOPRIGHT", -2, -2)
+        -- Before the slot or group is added, so the buttons it makes get it.
         a.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, nil, false)
             if button.Icon then ns:CropIcon(button.Icon, 0.15) end
             ns:CreateBackdrop(button, "None", ns.mult)
         end
+        a:AddGroup("HELPFUL|PLAYER|RAID", { maxFrameCount = 3 })
+        a:SetSize(d.hotSize * 3 + 2, d.hotSize)
+        a:SetPoint("TOPRIGHT", self, "TOPRIGHT", -2, -2)
         self.wuiHots = a
     end
 end
