@@ -191,6 +191,11 @@ poll:SetScript("OnUpdate", function(_, e)
     acc = acc + e
     if acc < 0.1 then return end
     acc = 0
+    -- The bag bar's fold arrow turns as it is clicked.
+    local toggle = rawget(_G, "BagBarExpandToggle")
+    if toggle and ns.glyphs and ns.glyphs[toggle] and toggle:IsVisible() then
+        ns:Glyph(toggle, ns:ArrowDirection(toggle) or "left", { tile = false, size = 12 })
+    end
     for f in pairs(faders) do
         local over = f:IsVisible() and f:IsMouseOver(4, -4, -4, 4)
         local target = over and 1 or 0
@@ -199,8 +204,79 @@ poll:SetScript("OnUpdate", function(_, e)
     end
 end)
 
+-- The micro menu's buttons: Blizzard's button backing and gold hover go;
+-- each icon (their normal art, which is the picture) sits on a black tile
+-- with a fel hover. The pieces are named on most builds and looked for by
+-- name; whatever this build lacks is simply skipped.
+local skinnedMenu = setmetatable({}, { __mode = "k" })
+local MICRO_FADE = { "Background", "PushedBackground", "FlashBorder", "FlashContent", "Flash" }
+local function styleMicro(b)
+    if skinnedMenu[b] then return end
+    skinnedMenu[b] = true
+    for _, k in ipairs(MICRO_FADE) do
+        local t = b[k]
+        if t and t.SetAlpha then t:SetAlpha(0) end
+    end
+    local hl = b.GetHighlightTexture and b:GetHighlightTexture()
+    if hl then hl:SetAlpha(0) end
+    local t = CreateFrame("Frame", nil, b)
+    t:SetPoint("TOPLEFT", 1, -1)
+    t:SetPoint("BOTTOMRIGHT", -1, 1)
+    t:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
+    ns:SetTemplate(t, "Default", { alpha = 0.9, shadow = false })
+    local h = b:CreateTexture(nil, "HIGHLIGHT")
+    h:SetAllPoints(t)
+    ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.18)
+end
+
+-- The bag bar's slots: like the character sheet's gear slots, a cropped
+-- icon on a black tile, Blizzard's slot frame gone; the arrow that folds
+-- the bags away wears our chevron.
+local function styleBagSlot(b)
+    if skinnedMenu[b] then return end
+    skinnedMenu[b] = true
+    local icon = b.icon or b.Icon or (b.GetName and b:GetName() and _G[b:GetName() .. "IconTexture"])
+    local nt = b.GetNormalTexture and b:GetNormalTexture()
+    if nt then nt:SetAlpha(0) end
+    if b.SlotHighlightTexture then b.SlotHighlightTexture:SetAlpha(0) end
+    for _, k in ipairs({ "Background", "CircleMask" }) do
+        local x = b[k]
+        if x and x.GetObjectType and x:GetObjectType() == "Texture" then x:SetAlpha(0) end
+    end
+    if icon then
+        if b.CircleMask and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, b.CircleMask) end
+        ns:CropIcon(icon)
+    end
+    local t = CreateFrame("Frame", nil, b)
+    t:SetPoint("TOPLEFT", -1, 1)
+    t:SetPoint("BOTTOMRIGHT", 1, -1)
+    t:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
+    ns:SetTemplate(t, "Default", { alpha = 0.9, shadow = false })
+end
+
+function SK:SkinMenus()
+    local mm = rawget(_G, "MicroMenu") or rawget(_G, "MicroMenuContainer")
+    if mm then
+        for _, b in ipairs({ mm:GetChildren() }) do
+            if b:GetObjectType() == "Button" then styleMicro(b) end
+        end
+    end
+    local bags = rawget(_G, "BagsBar")
+    if bags then
+        for _, b in ipairs({ bags:GetChildren() }) do
+            local kind = b:GetObjectType()
+            if (kind == "ItemButton" or kind == "Button" or kind == "CheckButton") and (b.icon or b.Icon) then
+                styleBagSlot(b)
+            end
+        end
+    end
+    local toggle = rawget(_G, "BagBarExpandToggle")
+    if toggle then ns:Glyph(toggle, ns:ArrowDirection(toggle) or "left", { tile = false, size = 12 }) end
+end
+
 function SK:Menus()
     local d = db()
+    if d.microMenu ~= "hide" or d.bagsBar ~= "hide" then pcall(SK.SkinMenus, SK) end
     fade(rawget(_G, "MicroMenuContainer") or rawget(_G, "MicroMenu"), d.microMenu)
     fade(rawget(_G, "BagsBar"), d.bagsBar)
 end
