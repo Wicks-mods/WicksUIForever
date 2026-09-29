@@ -2171,6 +2171,14 @@ local function styleMenu(m, depth)
         done[m] = true
         backdrop(m, "Default", false, 0)
     end
+    -- Blizzard reuses menus and raises each one as it opens; our card is
+    -- kept just under it, or it ends up above the rows and greys them.
+    local bd = extras[m] and extras[m].backdrop
+    if bd then
+        if bd:GetFrameStrata() ~= m:GetFrameStrata() then bd:SetFrameStrata(m:GetFrameStrata()) end
+        local want = math.max(0, m:GetFrameLevel() - 1)
+        if bd:GetFrameLevel() ~= want then bd:SetFrameLevel(want) end
+    end
     for _, child in ipairs({ m:GetChildren() }) do
         if child:IsShown() then
             -- A menu opened from a row of this one.
@@ -2234,7 +2242,7 @@ local function openMenus()
         while f and n < 20000 do
             n = n + 1
             if f ~= m and not seenMenus[f] and not (f.IsForbidden and f:IsForbidden())
-                and f:IsShown() and f:GetFrameStrata() == strata and isMenu(f) then
+                and f:IsShown() and isMenu(f) then
                 styleMenu(f)
             end
             f = EnumerateFrames(f)
