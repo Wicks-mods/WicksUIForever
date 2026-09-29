@@ -43,7 +43,11 @@ local function describeUnsafe(obj, parent, indent)
     if obj.GetSize then w, h = obj:GetSize() end
     local p, rel, rp, x, y
     if obj.GetPoint then p, rel, rp, x, y = obj:GetPoint(1) end
-    local relName = rel and (rel.GetName and rel:GetName() or keyOn(parent, rel) or "(parent)") or ""
+    if secret(p) then p = "secret" end
+    if secret(rp) then rp = "secret" end
+    local relName
+    if secret(rel) then relName = "secret"
+    else relName = rel and (rel.GetName and rel:GetName() or keyOn(parent, rel) or "(parent)") or "" end
     local parts = {
         indent .. kind,
         key and ("." .. key) or "",
@@ -68,7 +72,13 @@ local function describeUnsafe(obj, parent, indent)
     else
         if obj.GetFrameLevel then parts[#parts + 1] = " lvl=" .. obj:GetFrameLevel() end
     end
-    if p then parts[#parts + 1] = (" @%s %s %s %s,%s"):format(p, relName, rp or "", fmt(x), fmt(y)) end
+    if p then
+        parts[#parts + 1] = (" @%s %s %s %s,%s"):format(safeText(p), safeText(relName), safeText(rp or ""), fmt(x), fmt(y))
+    end
+    -- Any piece that came back secret (a place, a name) is shown as the word.
+    for i, v in ipairs(parts) do
+        if secret(v) then parts[i] = " secret" end
+    end
     return table.concat(parts)
 end
 
