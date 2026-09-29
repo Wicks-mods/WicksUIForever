@@ -99,9 +99,11 @@ local function styleText(fs, size, color)
     if color then fs:SetTextColor(color[1], color[2], color[3]) end
 end
 
+local textButtons = setmetatable({}, { __mode = "k" })
 local function styleButton(b)
     if not b or done[b] or not db().buttons then return end
     done[b] = true
+    textButtons[b] = true
     -- The newer three-slice buttons use Left, Center and Right and swap
     -- their atlases on press, the old ones Left, Middle and Right. Their
     -- atlas swaps leave alpha alone, so fading them holds.
@@ -304,7 +306,9 @@ local function recolorText(frame)
     for _, r in ipairs({ frame:GetRegions() }) do
         if r:GetObjectType() == "FontString" then
             styleFont(r)
-            if isGold(r) then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+            local cr, cg, cb = r:GetTextColor()
+            local darkInk = cr and (cr * 0.3 + cg * 0.59 + cb * 0.11) < 0.35
+            if isGold(r) or darkInk then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
         end
     end
 end
@@ -1256,6 +1260,10 @@ local function walkProfessions(frame, depth, root)
     root = root or frame
     local fk = frame:GetObjectType()
     if fk == "Frame" or fk == "ScrollFrame" then stripArt(frame, root) end
+    if textButtons[frame] then
+        local bd = extras[frame] and extras[frame].backdrop
+        if bd and bd.wuiTemplate ~= "Default" then ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false }) end
+    end
     fade(frame.NineSlice)
     recolorText(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
@@ -1457,7 +1465,18 @@ end
 -- An opened letter: the same full skin. Its stationery (a large texture on
 -- the scroll frame) is stripped by the walk and becomes a black card.
 PS.SPECIAL.OpenMailFrame = function(frame)
-    fullSkin(frame)
+    -- The letter is written in parchment ink; Blizzard sets it as each
+    -- letter opens, so it is put back to our text colour every frame.
+    fullSkin(frame, function()
+        local body = _G.OpenMailBodyText
+        if not body or not body:IsVisible() then return end
+        local c = C.text
+        if body:GetObjectType() == "SimpleHTML" then
+            for _, tag in ipairs({ "P", "H1", "H2", "H3" }) do body:SetTextColor(tag, c[1], c[2], c[3]) end
+        else
+            body:SetTextColor(c[1], c[2], c[3])
+        end
+    end)
     return "generic"
 end
 
