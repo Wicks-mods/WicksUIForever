@@ -2145,7 +2145,22 @@ local function styleMenuRow(b)
     end
 end
 
-local function styleMenu(m)
+local function isMenu(f)
+    if not f.GetRegions then return false end
+    for _, r in ipairs({ f:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local a = r:GetAtlas()
+            if a and a:find("dropdown%-bg") then return true end
+        end
+    end
+    return false
+end
+
+local seenMenus = setmetatable({}, { __mode = "k" })
+local function styleMenu(m, depth)
+    depth = depth or 0
+    if depth > 6 then return end
+    seenMenus[m] = true
     for _, r in ipairs({ m:GetRegions() }) do
         if r:GetObjectType() == "Texture" then
             local a = r:GetAtlas()
@@ -2158,24 +2173,41 @@ local function styleMenu(m)
     end
     for _, child in ipairs({ m:GetChildren() }) do
         if child:IsShown() then
-            styleMenuRow(child)
-            for _, g in ipairs({ child:GetChildren() }) do
-                if g:IsShown() and g.GetRegions then styleMenuRow(g) end
+            -- A menu opened from a row of this one.
+            if isMenu(child) then
+                styleMenu(child, depth + 1)
+            else
+                styleMenuRow(child)
+                for _, g in ipairs({ child:GetChildren() }) do
+                    if g:IsShown() and g.GetRegions then
+                        if isMenu(g) then styleMenu(g, depth + 1) else styleMenuRow(g) end
+                    end
+                end
             end
         end
     end
 end
 
+-- The open menu and every menu opened from it. Blizzard keeps submenus as
+-- frames of their own; they are found beside the root (same parent) or
+-- under it, by the dropdown backing they carry.
+local menuScan = {}
 local function openMenus()
     local mgr = Menu and Menu.GetManager and Menu.GetManager()
     if not mgr or not mgr.GetOpenMenu then return end
     local m = mgr:GetOpenMenu()
-    local n = 0
-    -- A menu and the submenus opened from it.
-    while m and n < 6 do
-        if m.IsShown and m:IsShown() then styleMenu(m) end
-        n = n + 1
-        m = m.childMenu or m.submenu
+    if not (m and m.IsShown and m:IsShown()) then return end
+    styleMenu(m)
+    -- The search beside it can run over every frame on the screen, so a
+    -- few times a second is enough; a submenu shows for longer than that.
+    local now = GetTime()
+    if (menuScan.last or 0) > now - 0.08 then return end
+    menuScan.last = now
+    local parent = m:GetParent()
+    if parent and parent.GetChildren then
+        for _, f in ipairs({ parent:GetChildren() }) do
+            if f ~= m and f:IsShown() and isMenu(f) then styleMenu(f) end
+        end
     end
 end
 
