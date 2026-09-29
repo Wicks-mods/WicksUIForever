@@ -169,6 +169,49 @@ function SK:MatchChat(p)
     if p and p.wuiBG then p.wuiBG:SetAlpha(a / 0.65) end
 end
 
+-- The meter's text in the Wick font (the style's own, where it has one),
+-- a size up as in the skinned windows. The bars are recycled as the list
+-- changes, so a light pass goes over every string once a second, out of
+-- combat only: in a fight the client may lock the bars away, and a font is
+-- never worth an error. Setting a font never reads the bar's numbers,
+-- which the client keeps secret. A string already in our font is left.
+local meterFonts = setmetatable({}, { __mode = "k" })
+local function meterFont(fs)
+    local ok, path, size, flags = pcall(fs.GetFont, fs)
+    if not ok or not path or not size or size < 1 or size > 64 then return end
+    local want = ns.Media:Font()
+    if path:lower():gsub("/", "\\") == want:lower():gsub("/", "\\") then return end
+    local target = meterFonts[fs] or math.floor(size + 1.5)
+    if pcall(fs.SetFont, fs, want, target, flags or "") then
+        pcall(fs.SetShadowOffset, fs, 1, -1)
+        pcall(fs.SetShadowColor, fs, 0, 0, 0, 0.8)
+        meterFonts[fs] = target
+    end
+end
+local function walkMeter(f, depth)
+    if depth > 9 or (f.IsForbidden and f:IsForbidden()) then return end
+    for _, r in ipairs({ f:GetRegions() }) do
+        if r.GetObjectType and r:GetObjectType() == "FontString" then meterFont(r) end
+    end
+    for _, c in ipairs({ f:GetChildren() }) do walkMeter(c, depth + 1) end
+end
+function SK:MeterFonts()
+    if not db().damageMeter or InCombatLockdown() then return end
+    local dm = rawget(_G, "DamageMeter")
+    if dm then pcall(walkMeter, dm, 1) end
+end
+do
+    local acc = 0
+    local t = CreateFrame("Frame")
+    t:SetScript("OnUpdate", function(_, e)
+        acc = acc + e
+        if acc < 1 then return end
+        acc = 0
+        SK:MeterFonts()
+    end)
+end
+ns:On("PLAYER_REGEN_ENABLED", function() SK:MeterFonts() end)
+
 function SK:DamageMeter()
     if not db().damageMeter then return end
     local dm = rawget(_G, "DamageMeter")
@@ -391,7 +434,7 @@ ns.Config:AddPage("skins", "Blizzard frames", function(L)
     L:Note("Frames the game keeps and Edit Mode places, restyled in the Wick look. Switching a skin off fully takes a reload.")
     L:Toggle("Objective tracker", "tracker")
     L:Slider("Tracker text size", "trackerFontSize", 8, 18, 1)
-    L:Toggle("Damage meter window", "damageMeter", { tooltip = "The window only. The bars show combat numbers the client keeps secret, and are left exactly as the game draws them." })
+    L:Toggle("Damage meter window", "damageMeter", { tooltip = "The window, and its text in the Wick font. The bars show combat numbers the client keeps secret; those are never read, and nothing on the meter is touched in combat." })
     L:Toggle("Line the meter up with the info panel", "meterAlign", { tooltip = "The meter's window is made as wide as the right info panel and sits just above it. Off leaves it to Edit Mode (after a reload)." })
     L:Dropdown("Micro menu", "microMenu", { { "show", "Always" }, { "mouseover", "When moused over" }, { "hide", "Hidden" } })
     L:Dropdown("Bag bar", "bagsBar", { { "show", "Always" }, { "mouseover", "When moused over" }, { "hide", "Hidden" } })
