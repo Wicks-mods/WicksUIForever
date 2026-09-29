@@ -167,6 +167,30 @@ end
 
 function MM:BuildText()
     local chrome = self.chrome
+    -- Soft dark bands behind the text at the top and bottom, so it reads
+    -- over sand and snow as well as over water.
+    local top = chrome:CreateTexture(nil, "ARTWORK", nil, -1)
+    top:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 0, 0)
+    top:SetPoint("TOPRIGHT", Minimap, "TOPRIGHT", 0, 0)
+    top:SetHeight(22)
+    top:SetTexture(SQUARE)
+    top:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.6))
+    self.topBand = top
+    local bottom = chrome:CreateTexture(nil, "ARTWORK", nil, -1)
+    bottom:SetPoint("BOTTOMLEFT", Minimap, "BOTTOMLEFT", 0, 0)
+    bottom:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", 0, 0)
+    bottom:SetHeight(36)
+    bottom:SetTexture(SQUARE)
+    bottom:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.6), CreateColor(0, 0, 0, 0))
+    self.bottomBand = bottom
+    -- In the modern style the map's corners are rounded; the bands follow.
+    if ns:Modern() and chrome.CreateMaskTexture then
+        local m = chrome:CreateMaskTexture()
+        m:SetTexture(ns.Media.roundmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        m:SetAllPoints(Minimap)
+        top:AddMaskTexture(m)
+        bottom:AddMaskTexture(m)
+    end
     self.zone = ns:CreateText(chrome, 12, "CENTER")
     self.zone:SetWordWrap(false)
     self.clock = ns:CreateText(chrome, 12, "CENTER")
@@ -196,6 +220,12 @@ function MM:LayoutText()
     end
     ns.Media:SetFont(self.zone, d.zoneSize)
     self.zone:SetShown(d.zone)
+    for _, fs in ipairs({ self.zone, self.clock, self.coords }) do
+        fs:SetShadowOffset(1, -1)
+        fs:SetShadowColor(0, 0, 0, 1)
+    end
+    self.topBand:SetShown(d.zone and d.zoneInside)
+    self.bottomBand:SetShown(d.clock or d.coords)
     ns.Media:SetFont(self.clock, d.clockSize)
     self.clock:ClearAllPoints()
     self.clock:SetPoint("BOTTOM", Minimap, "BOTTOM", 0, 4)
@@ -253,6 +283,13 @@ end
 -- ============================================================
 -- Lifecycle
 -- ============================================================
+-- Addons that place buttons around the minimap (LibDBIcon and most others)
+-- ask this to know whether to follow a circle or the square's edge.
+function GetMinimapShape()
+    local p = MM.db and MM:db()
+    return (p and p.square) and "SQUARE" or "ROUND"
+end
+
 function MM:Initialize()
     if not Minimap then return end
     local chrome = CreateFrame("Frame", "WicksUI_MinimapChrome", Minimap)
