@@ -997,7 +997,10 @@ local function barText(bar)
     if parent then return rankIn(parent) end
 end
 
+local rankBars = setmetatable({}, { __mode = "k" })
+
 local function flatRankBar(bar)
+    rankBars[bar] = true
     local fill = bar.Fill
     local e = extras[bar] or {}
     extras[bar] = e
@@ -1172,14 +1175,26 @@ local function styleProfTabs(frame)
 end
 
 PS.SPECIAL.ProfessionsFrame = function(frame)
+    -- Bars already found follow their label every frame, so a tab or page
+    -- change shows the right fill at once. The full walk, which finds new
+    -- bars and art, runs twice a second, and at once whenever the set of
+    -- open pages changes.
     local poll = CreateFrame("Frame", nil, frame)
-    local acc = 0.5
+    local acc, last = 0.5, nil
     poll:SetScript("OnUpdate", function(_, e)
-        acc = acc + e
-        if acc < 0.5 then return end
-        acc = 0
+        for bar in pairs(rankBars) do
+            if bar:IsVisible() then flatRankBar(bar) end
+        end
         styleProfTabs(frame)
-        walkProfessions(frame, 1)
+        local sig = ""
+        for _, child in ipairs({ frame:GetChildren() }) do
+            sig = sig .. (child:IsShown() and "1" or "0")
+        end
+        acc = acc + e
+        if sig ~= last or acc >= 0.5 then
+            last, acc = sig, 0
+            walkProfessions(frame, 1)
+        end
     end)
     return "generic"
 end
