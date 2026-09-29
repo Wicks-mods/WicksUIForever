@@ -288,16 +288,17 @@ end
 -- button quieted here is quieted again every frame while shown; a slower
 -- pass let the second time flash as a buff refreshed.
 local quieted = setmetatable({}, { __mode = "k" })
+-- No test of what the cooldown reports (whether it shows, its alpha): in
+-- combat those come back as secrets, which cannot be tested. Setting the
+-- same values again is harmless, so it is simply done.
 local function hush(cd)
     if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
     local fs = cd.GetCountdownFontString and cd:GetCountdownFontString()
-    if fs and fs:GetAlpha() > 0 then fs:SetAlpha(0) end
+    if fs then fs:SetAlpha(0) end
 end
 local hushTicker = CreateFrame("Frame")
 hushTicker:SetScript("OnUpdate", function()
-    for cd in pairs(quieted) do
-        if cd:IsVisible() then hush(cd) end
-    end
+    for cd in pairs(quieted) do hush(cd) end
 end)
 
 function ns:QuietAuraCooldown(button)
