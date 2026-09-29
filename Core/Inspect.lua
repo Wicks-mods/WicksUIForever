@@ -151,6 +151,12 @@ function I:Run(path)
     end
     local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
     f = f or (foci and foci[1])
+    -- What the pointer is on can be one of Blizzard's protected frames (an
+    -- aura's tooltip region is), which nothing may read.
+    if f and f.IsForbidden and f:IsForbidden() then
+        ns.A:Print("that is one of Blizzard's protected frames; nothing can read it. For auras, use /wui inspect auras.")
+        return
+    end
     -- Things that let the mouse through (aura icons, most text) never
     -- become the focus. Then take the smallest of our skinned frames and
     -- aura containers that the pointer is over.
