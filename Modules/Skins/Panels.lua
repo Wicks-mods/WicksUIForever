@@ -279,10 +279,32 @@ local function isGold(fs)
     local r, g, b = fs:GetTextColor()
     return r and r > 0.85 and g > 0.6 and g < 0.9 and b < 0.3
 end
+-- Every window's text in the Wick font, a size up (PT Sans Narrow runs
+-- small next to Friz), with the soft shadow the unit frames use. Blizzard
+-- swaps font objects back on some state changes, so this runs on every
+-- pass; it only touches strings not already in our font.
+local ourFont
+local function isOurs(path)
+    if not ourFont then ourFont = ns.Media:Font():lower():gsub("/", "\\") end
+    return path and path:lower():gsub("/", "\\") == ourFont
+end
+local fontSet = setmetatable({}, { __mode = "k" })
+local function styleFont(fs)
+    local path, size, flags = fs:GetFont()
+    if not size or isOurs(path) then return end
+    local want = fontSet[fs] and fontSet[fs] or math.floor(size + 1.5)
+    fs:SetFont(ns.Media:Font(), want, flags or "")
+    fs:SetShadowOffset(1, -1)
+    fs:SetShadowColor(0, 0, 0, 0.8)
+    fontSet[fs] = want
+end
 local function recolorText(frame)
     if not frame.GetRegions then return end
     for _, r in ipairs({ frame:GetRegions() }) do
-        if r:GetObjectType() == "FontString" and isGold(r) then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+        if r:GetObjectType() == "FontString" then
+            styleFont(r)
+            if isGold(r) then r:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+        end
     end
 end
 
@@ -978,7 +1000,7 @@ local function rankIn(frame)
             local t = r:GetText()
             if t and not (issecretvalue and issecretvalue(t)) then
                 local cur, max = t:match("(%d+)%s*/%s*(%d+)")
-                if cur then return tonumber(cur), tonumber(max) end
+                if cur then return tonumber(cur), tonumber(max), t, r end
             end
         end
     end
@@ -987,11 +1009,11 @@ end
 -- The label may sit on the bar, on a child of it, or beside it on the
 -- panel; look in that order.
 local function barText(bar)
-    local cur, max = rankIn(bar)
-    if cur then return cur, max end
+    local cur, max, t, fs = rankIn(bar)
+    if cur then return cur, max, t, fs end
     for _, child in ipairs({ bar:GetChildren() }) do
-        cur, max = rankIn(child)
-        if cur then return cur, max end
+        cur, max, t, fs = rankIn(child)
+        if cur then return cur, max, t, fs end
     end
     local parent = bar:GetParent()
     if parent then return rankIn(parent) end
@@ -999,52 +1021,68 @@ end
 
 local rankBars = setmetatable({}, { __mode = "k" })
 
+-- A rank bar is drawn the way a unit frame is: a rounded card, a flat
+-- class-coloured fill inset in it, the name on the left and the numbers
+-- on the right in the Wick font with a soft shadow. Blizzard's own label
+-- is hidden and read for the numbers.
+local PAD = 3
 local function flatRankBar(bar)
     rankBars[bar] = true
     local fill = bar.Fill
     local e = extras[bar] or {}
     extras[bar] = e
-    -- Every piece of Blizzard's bar art, named or not (the flare and its
-    -- glow ride along on unnamed textures and child frames), but ours.
     for _, r in ipairs({ bar:GetRegions() }) do
         if r:GetObjectType() == "Texture" and r ~= e.bar and r:GetAlpha() > 0 then r:SetAlpha(0) end
     end
     for _, child in ipairs({ bar:GetChildren() }) do
-        if child ~= e.track and child:GetObjectType() == "Frame" then fadeRegions(child) end
+        if child ~= e.track and child ~= e.text and child:GetObjectType() == "Frame" then fadeRegions(child) end
     end
     if not done[bar] then
         done[bar] = true
-        local bd = backdrop(bar, "Shadow", false, 0)
+        local bd = backdrop(bar, "Default", false, 0)
         bd:ClearAllPoints()
-        bd:SetPoint("TOPLEFT", fill, "TOPLEFT", -1, 1)
-        bd:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", -1, -1)
+        bd:SetPoint("LEFT", fill, "LEFT", -PAD, 0)
         e.track = bd
         local t = bar:CreateTexture(nil, "ARTWORK", nil, 3)
         t:SetTexture(ns.Media:Statusbar())
-        t:SetPoint("TOPLEFT", bd, "TOPLEFT", 1, -1)
-        t:SetPoint("BOTTOMLEFT", bd, "BOTTOMLEFT", 1, 1)
+        t:SetPoint("TOPLEFT", bd, "TOPLEFT", PAD, -PAD)
+        t:SetPoint("BOTTOMLEFT", bd, "BOTTOMLEFT", PAD, PAD)
         e.bar = t
+        local tf = CreateFrame("Frame", nil, bar)
+        tf:SetAllPoints(bd)
+        tf:SetFrameLevel(bar:GetFrameLevel() + 3)
+        e.text = tf
+        e.name = ns:CreateText(tf, 12, "LEFT", "NONE")
+        e.name:SetPoint("LEFT", PAD + 5, 0)
+        e.name:SetShadowOffset(1, -1)
+        e.value = ns:CreateText(tf, 12, "RIGHT", "NONE")
+        e.value:SetPoint("RIGHT", -PAD - 5, 0)
+        e.value:SetShadowOffset(1, -1)
     end
     local width
     local l, r = fill:GetLeft(), bar:GetRight()
     if l and r and r > l then
-        width = r - l + 2
-        e.track:SetWidth(width)
+        width = r - l + PAD * 2
+        e.track:SetSize(width, (fill:GetHeight() or 18) + PAD * 2)
     end
     width = width or e.track:GetWidth() or 0
-    local cur, max = barText(bar)
+    local cur, max, label, fs = barText(bar)
+    if fs and fs:GetAlpha() > 0 then fs:SetAlpha(0) end
     local frac
     if cur and max and max > 0 then
         frac = math.min(1, cur / max)
-    elseif bar.Mask and bar.Mask:GetRight() and l and width then
+        e.name:SetText((label:gsub("%s*%d+%s*/%s*%d+.*$", "")))
+        e.value:SetText(("%d | %d"):format(cur, max))
+    elseif bar.Mask and bar.Mask:GetRight() and l and width > 0 then
         -- No label to read: fall back to where Blizzard slid the mask.
         frac = math.max(0, math.min(1, (bar.Mask:GetRight() - l) / width))
     else
         frac = 0
     end
     e.bar:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
-    if frac > 0 and width > 2 then
-        e.bar:SetWidth((width - 2) * frac)
+    local inner = width - PAD * 2
+    if frac > 0 and inner > 0 then
+        e.bar:SetWidth(inner * frac)
         e.bar:Show()
     else
         e.bar:Hide()
@@ -1082,30 +1120,55 @@ local function flatIcon(b, icon)
     end
 end
 
--- The bronze frames around each profession's panel, the dividers, the
--- boxes around the gear slots: known by the words in their atlas names.
--- The illustrations and backgrounds are named otherwise and stay.
-local FRAME_WORDS = { "border", "frame", "divider", "edge", "corner", "trim" }
-local KEEP_WORDS = { "illustration", "background", "bg", "icon", "mask", "fill", "sidetab" }
-local function isFrameArt(atlas)
-    local a = atlas:lower()
-    for _, w in ipairs(KEEP_WORDS) do if a:find(w, 1, true) then return false end end
-    for _, w in ipairs(FRAME_WORDS) do if a:find(w, 1, true) then return true end end
+-- Nothing of Blizzard's art is kept: every texture on a plain frame goes
+-- (buttons, bars and boxes are the scanner's), except icons and our own.
+-- Where a large piece of art sat (a profession's illustrated panel, the
+-- recipe list, the recipe detail) a rounded card takes its place, so the
+-- window reads as cards on glass, like the unit frames.
+local cards = setmetatable({}, { __mode = "k" })
+local ICON_KEYS = { Icon = true, icon = true, IconTexture = true }
+
+local function isOwn(frame, r)
+    local e = extras[frame]
+    if e then for _, v in pairs(e) do if v == r then return true end end end
     return false
 end
-local function fadeFrameArt(frame)
+
+local function isIcon(frame, r)
+    for k, v in pairs(frame) do
+        if v == r and ICON_KEYS[k] then return true end
+    end
+    local n = r:GetName()
+    return n and (n:find("Icon$") or n:find("IconTexture$")) and true or false
+end
+
+local function stripArt(frame, root)
+    if frame.wuiBG or rankBars[frame] then return end
+    local rw, rh = root:GetSize()
     for _, r in ipairs({ frame:GetRegions() }) do
-        if r:GetObjectType() == "Texture" then
-            local atlas = r:GetAtlas()
-            if atlas and r:GetAlpha() > 0 and isFrameArt(atlas) then r:SetAlpha(0) end
+        if r:GetObjectType() == "Texture" and r:GetAlpha() > 0 and not isOwn(frame, r) and not isIcon(frame, r) then
+            r:SetAlpha(0)
+            local w, h = r:GetSize()
+            if frame ~= root and w and h and w >= 120 and h >= 60 and not (w >= rw * 0.9 and h >= rh * 0.85) and not cards[r] then
+                local card = CreateFrame("Frame", nil, frame)
+                card:SetAllPoints(r)
+                card:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
+                ns:SetTemplate(card, "Default", { alpha = 0.55 })
+                cards[r] = card
+            end
         end
+    end
+    for r, card in pairs(cards) do
+        if r:GetParent() == frame then card:SetShown(r:IsShown()) end
     end
 end
 
-local function walkProfessions(frame, depth)
+local function walkProfessions(frame, depth, root)
     if depth > 8 or not frame.GetChildren then return end
-    fadeFrameArt(frame)
+    root = root or frame
+    if frame:GetObjectType() == "Frame" then stripArt(frame, root) end
     fade(frame.NineSlice)
+    recolorText(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
         if child:IsShown() then
             local kind = child:GetObjectType()
@@ -1122,7 +1185,7 @@ local function walkProfessions(frame, depth)
                     flatIcon(child, icon)
                 end
             end
-            walkProfessions(child, depth + 1)
+            walkProfessions(child, depth + 1, root)
         end
     end
 end
@@ -1158,6 +1221,7 @@ local function styleSideTab(tab)
         local h = tab:CreateTexture(nil, "HIGHLIGHT")
         h:SetAllPoints(icon or tab)
         ns:Fill(h, 1, 1, 1, 0.12)
+        e.hover = h
     end
     local sel = tab.SelectedTexture
     if sel then sel:SetAlpha(0) end
