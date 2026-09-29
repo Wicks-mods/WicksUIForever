@@ -41,6 +41,7 @@ end
 M.statusbars = {
     ["Wick Flat"]    = "Interface\\Buttons\\WHITE8X8",
     ["Wick Shaded"]  = "Interface\\TargetingFrame\\UI-StatusBar",
+    ["Wick Glass"]   = "Interface\\AddOns\\WickCore\\Media\\Textures\\bar-glass.png",
     ["Blizzard"]     = "Interface\\TargetingFrame\\UI-StatusBar",
     ["Raid"]         = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill",
 }
@@ -102,6 +103,13 @@ function M:Font(name)
 end
 
 function M:Statusbar(name)
+    -- A look with a bar texture of its own (Frost's glass) draws in it
+    -- while the player's choice is still the default flat one.
+    if not name and (ns:G().statusbar or "Wick Flat") == "Wick Flat" then
+        local Chrome = ns.Core and ns.Core.Chrome
+        local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+        if st and st.statusbar then return st.statusbar end
+    end
     name = name or ns:G().statusbar
     local all = merged(self.statusbars, "statusbar")
     return all[name] or self.statusbars["Wick Flat"]

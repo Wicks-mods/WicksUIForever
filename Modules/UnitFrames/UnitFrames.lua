@@ -190,7 +190,7 @@ end
 
 local issecretUF = rawget(_G, "issecretvalue")
 
--- The look's own health colours (Rebel, Arena): one for you and your
+-- The look's own health colours (Rebel, Arena, Frost): one for you and your
 -- friends, one for anything you can attack.
 local function lookHealth(health, unit)
     local st = Chrome.StyleDef and Chrome:StyleDef()
@@ -198,7 +198,12 @@ local function lookHealth(health, unit)
     if not h then return nil end
     local hostile = unit and UnitCanAttack and UnitCanAttack("player", unit)
     if issecretUF and issecretUF(hostile) then hostile = false end
-    local c = C[hostile and h.enemy or h.friend] or C.text
+    local want = hostile and h.enemy or h.friend
+    local c = C[want]
+    if not c and type(want) == "string" and #want == 6 then
+        c = { tonumber(want:sub(1, 2), 16) / 255, tonumber(want:sub(3, 4), 16) / 255, tonumber(want:sub(5, 6), 16) / 255 }
+    end
+    c = c or C.text
     health:SetStatusBarColor(c[1], c[2], c[3])
     return c
 end
