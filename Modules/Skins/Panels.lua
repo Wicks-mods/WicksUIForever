@@ -36,6 +36,7 @@ ns.defaults.profile.panelskins = {
     mapScale = 1,           -- the windowed map's size, set with its corner grip
     mapPos = false,         -- where the windowed map was dragged: { left, top } on screen
     moveWindows = true,     -- drag a window by its title bar
+    bagsClearMeter = true,  -- the game's bags sit above the damage meter, not over it
     windowPos = {},         -- window name -> { left, top } on screen, where it was dragged
 }
 
@@ -2552,6 +2553,65 @@ for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "L
     end
 end
 
+-- The game's bags stack up from the bottom right of the screen, and Blizzard
+-- lays them out again whenever one opens or closes. Straight after it
+-- does, a bag window that would cover the damage meter is lifted to sit
+-- just above the meter's top; the ones stacked on it follow. Only while
+-- the meter shows and is under the bags, and only ever up: Blizzard's own
+-- place stands otherwise. Checked again while bags are open, as the meter
+-- can move.
+local BAG_WINDOWS = { "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3",
+    "ContainerFrame4", "ContainerFrame5", "ContainerFrame6" }
+local function meterTopUnder(f)
+    local fl, fr = f:GetLeft(), f:GetRight()
+    if not (fl and fr) then return end
+    local fs = f:GetEffectiveScale()
+    local best
+    for i = 1, 3 do
+        local win = rawget(_G, "DamageMeterSessionWindow" .. i)
+        if win and win:IsVisible() then
+            local l, r, t = win:GetLeft(), win:GetRight(), win:GetTop()
+            if l and r and t then
+                local ms = win:GetEffectiveScale()
+                if not (r * ms < fl * fs or l * ms > fr * fs) then
+                    best = math.max(best or 0, t * ms)
+                end
+            end
+        end
+    end
+    return best
+end
+function PS:ClearMeter()
+    if not (db().enable and db().bagsClearMeter) then return end
+    local us = UIParent:GetEffectiveScale()
+    for _, name in ipairs(BAG_WINDOWS) do
+        local f = rawget(_G, name)
+        if f and f:IsShown() and f:GetNumPoints() >= 1 then
+            local p, rel, rp, x, y = f:GetPoint(1)
+            if rel == UIParent and p and p:find("BOTTOM") and y then
+                local top = meterTopUnder(f)
+                if top then
+                    local want = (top + 6 * us) / f:GetEffectiveScale()
+                    if y < want - 0.5 then f:SetPoint(p, rel, rp, x, want) end
+                end
+            end
+        end
+    end
+end
+if UpdateContainerFrameAnchors then
+    hooksecurefunc("UpdateContainerFrameAnchors", function() pcall(PS.ClearMeter, PS) end)
+end
+do
+    local acc = 0
+    local t = CreateFrame("Frame")
+    t:SetScript("OnUpdate", function(_, e)
+        acc = acc + e
+        if acc < 0.5 then return end
+        acc = 0
+        pcall(PS.ClearMeter, PS)
+    end)
+end
+
 -- The flight map: the map itself is the window's InsetBg texture, which
 -- the fade every window gets would put away with the frame art. It is
 -- kept drawn, and held so (Blizzard redraws it as the map opens).
@@ -3166,6 +3226,7 @@ ns.Config:AddPage("panelskins", "Windows", function(L)
     L:Toggle("Buttons", "buttons")
     L:Toggle("Tabs", "tabs")
     L:Toggle("Drag windows by their title", "moveWindows", { tooltip = "Character, quest log, talents, vendors and the rest stay where you leave them." })
+    L:Toggle("Keep the game's bags above the damage meter", "bagsClearMeter", { tooltip = "The game's bag windows stack up from the bottom right corner. With this on, they start just above the damage meter instead of covering it." })
     L:Button("Put windows back", function()
         db().windowPos = {}
         print("|cff4FC778Wick's UI|r: windows go back to their places the next time they open.")
