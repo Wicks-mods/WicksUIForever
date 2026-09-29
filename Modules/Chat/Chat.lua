@@ -150,6 +150,18 @@ end
 -- few times a second) rather than set once; turning it off hands the chat
 -- back to Edit Mode after a reload.
 local GAP = 4
+
+-- Blizzard's Edit Mode box for the chat (its Selection frame) is larger
+-- than the chat's text area, padded on every side. The panel fills that
+-- box, so a box pushed into the corner puts the panel there too, as the
+-- minimap does. Where this build has no Selection frame the panel keeps
+-- to the text area with our own margins.
+local function box(cf)
+    local sel = cf and cf.Selection
+    if sel and sel.GetLeft and sel:GetLeft() and cf:GetLeft() then return sel end
+end
+CH.ChatBox = box
+
 function CH:Align()
     local d = db()
     if not d.alignToInfo or InCombatLockdown() then return end
@@ -158,14 +170,22 @@ function CH:Align()
     if not (cf and info and info:IsShown()) then return end
     local w = info:GetWidth()
     if not (w and w > 20) then return end
-    -- The panel is the chat frame widened by 6 each side, 8 below it.
-    local want = w - 12
-    if math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
+    -- How far the box reaches past the text area on each side (our own
+    -- margins where there is no box).
+    local l, r, bt = 6, 6, 8
+    local sel = box(cf)
+    if sel then
+        l = cf:GetLeft() - sel:GetLeft()
+        r = sel:GetRight() - cf:GetRight()
+        bt = cf:GetBottom() - sel:GetBottom()
+    end
+    local want = w - l - r
+    if want > 50 and math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
     local p, rel, rp, x, y = cf:GetPoint(1)
-    if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - 6) > 0.5
-        or math.abs((y or 0) - (GAP + 8)) > 0.5 or cf:GetNumPoints() ~= 1 then
+    if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - l) > 0.5
+        or math.abs((y or 0) - (GAP + bt)) > 0.5 or cf:GetNumPoints() ~= 1 then
         cf:ClearAllPoints()
-        cf:SetPoint("BOTTOMLEFT", info, "TOPLEFT", 6, GAP + 8)
+        cf:SetPoint("BOTTOMLEFT", info, "TOPLEFT", l, GAP + bt)
     end
 end
 
@@ -194,8 +214,13 @@ function CH:Panel()
     local cf = _G.ChatFrame1
     self:Align()
     p:ClearAllPoints()
-    p:SetPoint("TOPLEFT", cf, "TOPLEFT", -6, 30)
-    p:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", 6, -8)
+    local sel = self.ChatBox(cf)
+    if sel then
+        p:SetAllPoints(sel)
+    else
+        p:SetPoint("TOPLEFT", cf, "TOPLEFT", -6, 30)
+        p:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", 6, -8)
+    end
     local d = db()
     p.wuiBG:SetAlpha(d.panelAlpha / 0.65)
     -- The damage meter's panel follows this one.
