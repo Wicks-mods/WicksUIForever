@@ -36,7 +36,7 @@ ns.defaults.profile.datatexts = {
         right = { enable = true, width = 420, height = 20, slots = "gold,friends,time", point = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-4,4" },
         top   = { enable = false, width = 420, height = 20, slots = "coords,zone,xp", point = "TOP,UIParent,TOP,0,-4" },
     },
-    fontSize = 12,
+    fontSize = 18,
     backdrop = true,
 }
 
