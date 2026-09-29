@@ -115,10 +115,7 @@ function M:SetFont(fs, size, outline, face)
     local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
     if st and st.uiBump and (face or g.font) == "Wick" then size = size + st.uiBump end
     fs:SetFont(self:Font(face), size, outline)
-    if outline == "" and st and st.light then
-        -- Dark text on light panels takes no black shadow.
-        fs:SetShadowOffset(0, 0)
-    elseif outline == "" then
+    if outline == "" then
         fs:SetShadowOffset(1, -1)
         fs:SetShadowColor(0, 0, 0, 1)
     else
