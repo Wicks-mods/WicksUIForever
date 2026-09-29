@@ -1997,11 +1997,36 @@ end
 -- with the tick in the accent, the hover bar a fel wash, the text our
 -- font. The menu's rows are pooled and rebuilt as it opens, so the open
 -- menu is looked over every frame; pieces already ours are skipped.
+-- Menu text refuses SetFont (the menu's compositor forbids it, and reports
+-- every attempt), so it gets a font object of ours instead, one per size.
+local menuFonts = {}
+local menuDone = setmetatable({}, { __mode = "k" })
+local function menuFont(fs)
+    local obj = fs:GetFontObject()
+    if menuDone[fs] and obj and menuDone[fs] == obj then return end
+    local _, size = fs:GetFont()
+    size = math.floor((size and size > 0 and size < 64 and size or 12) + 0.5)
+    local f = menuFonts[size]
+    if not f then
+        f = CreateFont("WicksUI_MenuFont" .. size)
+        f:SetFont(ns.Media:Font(), size + 1, "")
+        f:SetShadowOffset(1, -1)
+        f:SetShadowColor(0, 0, 0, 0.8)
+        menuFonts[size] = f
+    end
+    if obj ~= f then
+        local r, g, b, a = fs:GetTextColor()
+        fs:SetFontObject(f)
+        if r then fs:SetTextColor(r, g, b, a) end
+    end
+    menuDone[fs] = f
+end
+
 local function styleMenuRow(b)
     for _, r in ipairs({ b:GetRegions() }) do
         local kind = r:GetObjectType()
         if kind == "FontString" then
-            styleFont(r)
+            menuFont(r)
         elseif kind == "Texture" then
             local a = r:GetAtlas()
             if a then
@@ -2028,7 +2053,7 @@ local function styleMenu(m)
             local a = r:GetAtlas()
             if a and a:find("dropdown%-bg") and r:GetAlpha() > 0 then r:SetAlpha(0) end
         elseif r:GetObjectType() == "FontString" then
-            styleFont(r)
+            menuFont(r)
         end
     end
     if not done[m] then
