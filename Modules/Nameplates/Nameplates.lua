@@ -28,7 +28,9 @@ local function plain(v) if issecret and issecret(v) then return nil end return v
 ns.defaults.profile.nameplates = {
     enable = true,
     width = 150, height = 12,
-    healthColor = "class",            -- class (players) and reaction (NPCs), or dark
+    healthColor = "look",             -- look: the look's own pair where it has one, else class
+                                      -- and reaction; class; or dark
+    lookMigrated = false,
     threat = false,                   -- colour by threat, for tanks
     nameSize = 11, levelShown = true,
     percent = true, percentSize = 10,
@@ -54,6 +56,29 @@ ns.defaults.profile.nameplates = {
 }
 
 local function db() return NP:db() end
+
+-- The bar's border sits wholly outside it at the look's thickness. Rebel
+-- draws two pixels; with the backdrop one pixel out, the bar covered half.
+local function edge()
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    if st and st.family == "og" then return ns.mult * (st.borderPx or 1) end
+    return ns.mult
+end
+
+-- The look's own health colours, where it has them: one for friends, one
+-- for anything you can attack, the pair the unit frames use.
+local function lookColor(unit)
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    local h = st and st.health
+    if not h then return nil end
+    local want = plain(UnitCanAttack("player", unit)) and h.enemy or h.friend
+    local c = C[want]
+    if not c and type(want) == "string" and #want == 6 then
+        c = { tonumber(want:sub(1, 2), 16) / 255, tonumber(want:sub(3, 4), 16) / 255, tonumber(want:sub(5, 6), 16) / 255 }
+    end
+    return c or C.text
+end
+NP.LookColor = lookColor
 
 -- The elite diamond's colour: gold for elites and bosses, silver for rares.
 local CLASSMARK = {
@@ -109,13 +134,23 @@ local function style(self, unit)
 
     local health = newBar(self)
     health:SetPoint("CENTER")
-    ns:CreateBackdrop(health, "Default", ns.mult)
+    ns:CreateBackdrop(health, "Default", edge())
     local bg = health:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
     bg:SetColorTexture(C.void[1], C.void[2], C.void[3], 0.9)
     health.colorTapping = true
     health.colorDisconnected = true
     health.PostUpdate = function(h) updateExecute(h) end
+    -- In the look's colours, after oUF has picked; a tapped mob and a
+    -- tank's threat colour keep what oUF gave them.
+    health.PostUpdateColor = function(h, unit)
+        if db().healthColor ~= "look" or not unit then return end
+        local controlled = plain(UnitPlayerControlled(unit))
+        if h.colorTapping and not controlled and plain(UnitIsTapDenied(unit)) then return end
+        if h.colorThreat and not controlled and plain(UnitThreatSituation("player", unit)) then return end
+        local c = lookColor(unit)
+        if c then h:SetStatusBarColor(c[1], c[2], c[3]) end
+    end
     self.Health = health
 
     -- Over the fill only, so the health that is left turns the colour and
@@ -140,7 +175,7 @@ local function style(self, unit)
     local cb = newBar(self)
     cb:SetPoint("TOPLEFT", health, "BOTTOMLEFT", 0, -3)
     cb:SetPoint("TOPRIGHT", health, "BOTTOMRIGHT", 0, -3)
-    ns:CreateBackdrop(cb, "Default", ns.mult)
+    ns:CreateBackdrop(cb, "Default", edge())
     local cbg = cb:CreateTexture(nil, "BACKGROUND")
     cbg:SetAllPoints()
     cbg:SetColorTexture(C.void[1], C.void[2], C.void[3], 0.9)
@@ -204,7 +239,7 @@ local function style(self, unit)
         a.PostCreateButton = function(_, button)
             ns:AuraCountdown(button, d.debuffSize, true)
             if button.Icon then ns:CropIcon(button.Icon) end
-            ns:CreateBackdrop(button, "Default", ns.mult)
+            ns:CreateBackdrop(button, "Default", edge())
         end
         a:AddGroup("HARMFUL|PLAYER", { maxFrameCount = d.debuffCount })
         a:SetSize(d.debuffCount * (d.debuffSize + 2), d.debuffSize)
@@ -221,7 +256,7 @@ local function style(self, unit)
         b.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, nil, false)
             if button.Icon then ns:CropIcon(button.Icon) end
-            ns:CreateBackdrop(button, "Default", ns.mult)
+            ns:CreateBackdrop(button, "Default", edge())
         end
         b:AddGroup("HELPFUL|RAID", { maxFrameCount = 4 })
         b:SetSize(4 * (d.buffSize + 2), d.buffSize)
@@ -286,7 +321,9 @@ function NP:Configure(self)
     local h = self.Health
     h:SetSize(d.width, d.height)
 
-    h.colorClass, h.colorReaction, h.colorHealth = d.healthColor == "class", d.healthColor == "class", d.healthColor ~= "class"
+    -- The look's colours start from class and reaction, repainted after.
+    local byUnit = d.healthColor ~= "dark"
+    h.colorClass, h.colorReaction, h.colorHealth = byUnit, byUnit, not byUnit
     -- Threat colours are for tanks, as the setting says: while you tank, a
     -- mob that is not on you stands out. Anyone else keeps class and
     -- reaction, where a mob your pet or the tank holds would otherwise go
@@ -353,8 +390,14 @@ function NP:Configure(self)
     cb:SetStatusBarColor(cc[1], cc[2], cc[3], 1)
     cb.wuiLocked:SetVertexColor(lc[1], lc[2], lc[3], 1)
 
-    ns.Media:SetFont(self.wuiName, d.nameSize)
-    ns.Media:SetFont(self.wuiPercent, d.percentSize)
+    -- The unit frames' face and outline, so a look's lettering (Rebel's
+    -- heavy outline) reaches the plates too.
+    local ufd = ns.UnitFrames and ns.UnitFrames.db and ns.UnitFrames:db()
+    local face, outline = ufd and ufd.font, ufd and ufd.fontOutline
+    ns.Media:SetFont(self.wuiName, d.nameSize, outline, face)
+    ns.Media:SetFont(self.wuiPercent, d.percentSize, outline, face)
+    ns.Media:SetFont(cb.Text, 9, outline, face)
+    ns.Media:SetFont(cb.Time, 9, outline, face)
     self.wuiName:SetWidth(d.width + 40)
 
     if self.wuiNameTag then self:Untag(self.wuiName) end
@@ -496,6 +539,13 @@ end
 -- ============================================================
 function NP:Initialize()
     local d = db()
+    -- Profiles made before the look's colours were offered had "class"
+    -- saved; that becomes the look's, which is class and reaction anyway
+    -- in a look without a pair of its own.
+    if not d.lookMigrated then
+        if d.healthColor == "class" then d.healthColor = "look" end
+        d.lookMigrated = true
+    end
     self.curve = (d.execute or 0) > 0 and executeCurve(d.execute) or nil
     oUF:RegisterStyle("WicksUI_Nameplate", style)
     oUF:SetActiveStyle("WicksUI_Nameplate")
@@ -547,7 +597,8 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Toggle("Enable", "enable", { tooltip = "Takes effect after a reload." })
     L:Slider("Width", "width", 60, 300, 1)
     L:Slider("Height", "height", 4, 40, 1)
-    L:Dropdown("Health colour", "healthColor", { { "class", "Class and reaction" }, { "dark", "Dark" } })
+    L:Dropdown("Health colour", "healthColor", { { "look", "The look's colours" }, { "class", "Class and reaction" }, { "dark", "Dark" } },
+        { tooltip = "The look's colours are the pair the unit frames use in that look, one for friends and one for enemies. A look without its own uses class and reaction." })
     L:Toggle("Colour by threat while you tank", "threat", { tooltip = "In a tank role or spec, the bar shows whether you hold the mob. In any other role plates keep their class and reaction colours; the threat glow and meter warn you instead." })
 
     L:Heading("Execute")

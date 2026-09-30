@@ -557,7 +557,7 @@ local LAYOUT = {
         debuffCount = 5,
         debuffSize = 22,
         debuffs = true,
-        enable = false,
+        enable = true,
         execute = 0,
         executeColor = {
             [1] = 0.95,
@@ -566,7 +566,7 @@ local LAYOUT = {
             [4] = 1,
         },
         friendlyNameOnly = true,
-        healthColor = "class",
+        healthColor = "look",
         height = 14,
         levelShown = true,
         maxDistance = 41,
