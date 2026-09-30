@@ -57,6 +57,26 @@ local function clear(tex)
     if tex and tex.SetAtlas then pcall(tex.SetAtlas, tex, nil) end
 end
 
+-- Tab labels in the look's colours: the chosen tab in the accent, the
+-- rest in the text colour. Blizzard paints them gold and marks the chosen
+-- one with art we clear, so they all read alike. A tab Blizzard gives a
+-- colour of its own (a whisper window's) keeps it. Set after Blizzard's
+-- own colouring, from a post-hook: a method call on the label, nothing
+-- written into the tab.
+local function tabColour(tab, selected)
+    if not tab or tab.selectedColorTable then return end
+    local fs = tab.GetFontString and tab:GetFontString()
+    if not fs then return end
+    local c = selected and C.fel or C.text
+    fs:SetTextColor(c[1], c[2], c[3])
+end
+CH.TabColour = tabColour
+
+local function isSelected(tab)
+    local sel = rawget(_G, "SELECTED_CHAT_FRAME")
+    return sel ~= nil and tab.GetID and _G["ChatFrame" .. tab:GetID()] == sel
+end
+
 local function styleTab(tab)
     if not tab then return end
     local name = tab:GetName()
@@ -66,6 +86,7 @@ local function styleTab(tab)
     end
     local text = tab.Text or (name and _G[name .. "Text"])
     if text then ns.Media:SetFont(text, db().tabFontSize, "OUTLINE", db().font) end
+    tabColour(tab, isSelected(tab))
 end
 
 local function styleEditBox(frame)
@@ -368,6 +389,18 @@ function CH:Initialize()
     -- Whisper windows are made on the fly.
     if FCF_OpenTemporaryWindow then
         hooksecurefunc("FCF_OpenTemporaryWindow", function() C_Timer.After(0, function() CH:StyleAll() end) end)
+    end
+    -- Blizzard colours a tab each time the chosen one changes.
+    if rawget(_G, "FCFTab_UpdateColors") then
+        hooksecurefunc("FCFTab_UpdateColors", function(tab, selected) tabColour(tab, selected) end)
+    end
+    if Chrome.OnThemeChanged then
+        Chrome:OnThemeChanged(function()
+            for i = 1, (NUM_CHAT_WINDOWS or 10) do
+                local tab = _G["ChatFrame" .. i .. "Tab"]
+                if tab then tabColour(tab, isSelected(tab)) end
+            end
+        end)
     end
 end
 
