@@ -439,11 +439,12 @@ ns.Config:AddPage("profiles", "Profiles", function(L)
         setter = function(v) db:SetProfile(v) end,
     })
     L:Dropdown("One profile per", "keyMode", {
-        { "char", "Character" }, { "spec", "Specialization" }, { "class", "Class" }, { "mode", "Game mode" },
+        { "char", "Character" }, { "account", "Account (every character)" }, { "spec", "Specialization" },
+        { "class", "Class" }, { "mode", "Game mode" },
     }, {
         get = function() return db:GetKeyMode() end,
         setter = function(v) db:SetKeyMode(v) end,
-        tooltip = "Specialization switches profile when you change spec, so a healing layout and a damage layout can live side by side.",
+        tooltip = "Account shares one profile between every character, starting from the one you are on now. Specialization switches profile when you change spec, so a healing layout and a damage layout can live side by side.",
     })
     L:Input("New profile", "new", {
         get = function() return "" end,
