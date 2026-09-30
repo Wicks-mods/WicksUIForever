@@ -229,10 +229,12 @@ local function placeMeter()
 end
 TH.PlaceMeter = function() if meter then placeMeter() end end
 
-local function layoutMeter()
+local function layoutMeter(shown)
     local d = db()
     placeMeter()
-    local h = 24 + d.meterRows * (d.rowHeight + 2)
+    -- As tall as the rows it shows (at least one), up to the setting.
+    local n = math.max(1, math.min(d.meterRows, shown or d.meterRows))
+    local h = 24 + n * (d.rowHeight + 2) + 2
     if meter.wuiOn then meter:SetHeight(h) else meter:SetSize(d.meterWidth, h) end
     for i, r in ipairs(meter.rows) do
         r:ClearAllPoints()
@@ -290,7 +292,10 @@ local function drawMeter(list)
             r:Hide()
         end
     end
-    layoutMeter()
+    layoutMeter(#list)
+    -- As see-through as the damage meter and the chat, which both follow
+    -- the chat's panel alpha.
+    if ns.Skins and ns.Skins.MatchChat then ns.Skins:MatchChat(meter) end
 end
 
 -- ============================================================

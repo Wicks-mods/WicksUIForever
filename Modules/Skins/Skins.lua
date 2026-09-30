@@ -23,6 +23,7 @@ ns.defaults.profile.skins = {
     tracker = true, trackerFontSize = 14,
     damageMeter = true,
     meterAlign = true,           -- the meter as wide as the right info panel, sat on it
+    meterHeight = 150,           -- its height while lined up (0 leaves it to Edit Mode)
     microMenu = "mouseover",     -- show, mouseover, hide
     bagsBar = "mouseover",
 }
@@ -161,6 +162,8 @@ function SK:AlignMeter()
     local w = info:GetWidth()
     if not (w and w > 20) then return end
     if math.abs((win:GetWidth() or 0) - w) > 0.5 then win:SetWidth(w) end
+    local h = db().meterHeight or 0
+    if h > 0 and math.abs((win:GetHeight() or 0) - h) > 0.5 then win:SetHeight(h) end
     local p, rel, rp, x, y = win:GetPoint(1)
     if p ~= "BOTTOMRIGHT" or rel ~= info or rp ~= "TOPRIGHT" or math.abs(x or 0) > 0.5
         or math.abs((y or 0) - 4) > 0.5 or win:GetNumPoints() ~= 1 then
@@ -444,6 +447,8 @@ ns.Config:AddPage("skins", "Blizzard frames", function(L)
     L:Slider("Tracker text size", "trackerFontSize", 8, 18, 1)
     L:Toggle("Damage meter window", "damageMeter", { tooltip = "The window, and its text in the Wick font. The bars show combat numbers the client keeps secret; those are never read, and nothing on the meter is touched in combat." })
     L:Toggle("Line the meter up with the info panel", "meterAlign", { tooltip = "The meter's window is made as wide as the right info panel and sits just above it. Off leaves it to Edit Mode (after a reload)." })
+    L:Slider("Damage meter height", "meterHeight", 0, 400, 5, { disabled = function() return not db().meterAlign end,
+        tooltip = "Its height while it is lined up with the info panel. 0 leaves the height to Edit Mode." })
     L:Dropdown("Micro menu", "microMenu", { { "show", "Always" }, { "mouseover", "When moused over" }, { "hide", "Hidden" } })
     L:Dropdown("Bag bar", "bagsBar", { { "show", "Always" }, { "mouseover", "When moused over" }, { "hide", "Hidden" } })
 end, { onChange = function() SK:Update() end, order = 95 })
