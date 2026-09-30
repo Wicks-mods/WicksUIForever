@@ -59,7 +59,7 @@ PS.WINDOWS = {
     "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4", "LFGDungeonReadyDialog",
     "LFDRoleCheckPopup", "RolePollPopup", "GuildInviteFrame", "PVPReadyDialog", "LFGInvitePopup",
     "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4",
-    "ContainerFrame5", "ContainerFrame6",
+    "ContainerFrame5", "ContainerFrame6", "CompactRaidFrameManager",
 }
 
 local done = setmetatable({}, { __mode = "k" })
@@ -2530,6 +2530,140 @@ PS.SPECIAL.MerchantFrame = function(frame)
         if bb then noCard[bb] = true; bb:SetAlpha(0) end
     end)
     return "generic"
+end
+
+-- The party and raid manager on the left edge. Its panel art goes for
+-- ours; the marker grid sits on a card, a tile per marker. Blizzard shows
+-- a marker's state (applied, selected, disabled) with the button's
+-- background art, which is faded here and followed with a post-hook, so
+-- the tile's border carries the state instead. The Unit and Ground tabs,
+-- the arrow that folds the panel and the leave buttons are ours; the
+-- marker icons and the icon buttons stay as they are.
+local MARKER_STATE = {
+    ["GM-button-marker-applied"] = "fel", ["GM-button-marker-appliedSelected"] = "fel",
+    ["GM-button-marker-selected"] = "text", ["GM-button-marker-pressed"] = "text",
+}
+local function markerState(b)
+    local e = extras[b]
+    if not (e and e.backdrop) then return end
+    local bg = b.backgroundTexture
+    local atlas = bg and bg.GetAtlas and bg:GetAtlas() or ""
+    ns:SetBorderColor(e.backdrop, MARKER_STATE[atlas] or "border")
+    local off = atlas == "GM-button-marker-disabled"
+    e.backdrop:SetAlpha(off and 0.45 or 1)
+    if b.markerTexture then b.markerTexture:SetAlpha(off and 0.45 or 1) end
+end
+
+local function styleMarker(b)
+    if done[b] then return end
+    done[b] = true
+    fade(b.backgroundTexture)
+    backdrop(b, "Shadow", false, 2)
+    local e = extras[b]
+    if not e.hover then
+        local h = b:CreateTexture(nil, "HIGHLIGHT")
+        h:SetPoint("TOPLEFT", 3, -3)
+        h:SetPoint("BOTTOMRIGHT", -3, 3)
+        ns:Fill(h, 1, 1, 1, 0.12)
+        e.hover = h
+    end
+    if b.backgroundTexture then hooksecurefunc(b.backgroundTexture, "SetAtlas", function() markerState(b) end) end
+    markerState(b)
+end
+
+-- The tabs change font object on hover and on being chosen, which would
+-- undo a colour set on their text, so they are given font objects of ours.
+local tabFonts = {}
+local function tabFont(which)
+    local f = tabFonts[which]
+    if not f then
+        f = CreateFont and CreateFont("WicksUI_MarkerTab_" .. which)
+        if not f then return nil end
+        tabFonts[which] = f
+    end
+    f:SetFont(ns.Media:Font(), 11, "")
+    f:SetShadowOffset(1, -1)
+    f:SetShadowColor(0, 0, 0, 1)
+    local c = (which == "on" and C.fel) or (which == "hover" and C.text) or C.muted
+    f:SetTextColor(c[1], c[2], c[3])
+    return f
+end
+
+local function tabState(tab)
+    local nt = tab.GetNormalTexture and tab:GetNormalTexture()
+    local on = nt and nt.GetAtlas and nt:GetAtlas() == "GM-tab-selected"
+    local e = extras[tab]
+    if e and e.backdrop then ns:SetBorderColor(e.backdrop, on and "fel" or "border") end
+    local normal, hover = tabFont(on and "on" or "off"), tabFont(on and "on" or "hover")
+    if normal then tab:SetNormalFontObject(normal) end
+    if hover then tab:SetHighlightFontObject(hover) end
+end
+
+local function styleMarkerTab(tab)
+    if not tab or done[tab] then return end
+    done[tab] = true
+    local nt = tab:GetNormalTexture()
+    if nt then
+        nt:SetAlpha(0)
+        hooksecurefunc(nt, "SetAtlas", function() tabState(tab) end)
+    end
+    backdrop(tab, "Shadow", false, 0)
+    tabState(tab)
+end
+
+local function styleFold(b, dir)
+    if not b or done[b] then return end
+    done[b] = true
+    fadeRegions(b)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
+        local t = b[get] and b[get](b)
+        if t then t:SetAlpha(0) end
+    end
+    ns:Glyph(b, dir)
+end
+
+PS.SPECIAL.CompactRaidFrameManager = function(frame)
+    fade(frame.Background)
+    backdrop(frame, "Default", db().brackets)
+    styleFold(frame.toggleButtonBack, "left")
+    styleFold(frame.toggleButtonForward, "right")
+    local dfr = frame.displayFrame
+    if dfr then
+        styleText(dfr.label, 14, C.fel)
+        styleText(dfr.memberCountLabel, 14, C.text)
+        styleText(dfr.RestrictPingsLabel, 12)
+        for _, dd in ipairs({ dfr.RestrictPingsDropdown, dfr.ModeControlDropdown }) do
+            if dd then pcall(styleDropdown, dd) end
+        end
+        local rm = dfr.raidMarkers
+        if rm then
+            fade(rm.BG)
+            if rm.BG then card(rm, "wuiGrid", "TOPLEFT", rm.BG, "BOTTOMRIGHT", rm.BG, 0, 0, 0, 0) end
+            for _, tab in ipairs(rm.Tabs or {}) do styleMarkerTab(tab) end
+            for _, child in ipairs({ rm:GetChildren() }) do
+                if child.markerTexture and child.backgroundTexture then styleMarker(child) end
+            end
+        end
+    end
+    local bb = frame.BottomButtons
+    if bb then
+        for _, b in ipairs({ bb:GetChildren() }) do
+            if b:GetObjectType() == "Button" then styleButton(b) end
+        end
+    end
+    -- The dividers between the icon buttons come from a pool, drawn again
+    -- as the group changes.
+    local function dividers()
+        for _, pool in ipairs({ frame.dividerVerticalPool, frame.dividerHorizontalPool }) do
+            if pool and pool.EnumerateActive then
+                for t in pool:EnumerateActive() do t:SetAlpha(0) end
+            end
+        end
+    end
+    dividers()
+    if rawget(_G, "CompactRaidFrameManager_UpdateOptionsFlowContainer") then
+        hooksecurefunc("CompactRaidFrameManager_UpdateOptionsFlowContainer", dividers)
+    end
 end
 
 -- The talking windows: one black card over the content (the Inset), the
