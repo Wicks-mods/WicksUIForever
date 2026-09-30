@@ -2838,6 +2838,92 @@ PS.SPECIAL.PetStableFrame = function(frame)
     return "generic"
 end
 
+-- The group finder's listing page (Looking For Group). Its category buttons
+-- lose their painted banners and gold frames for our tiles; in the looks
+-- the painted art sat apart from everything round it. The role picker
+-- loses its coloured glow rings: tank, healer and damage take the plain
+-- role icons on a tile, the "new player friendly" flag keeps its own
+-- picture on one. A chosen role wears the accent ring in colour; one not
+-- chosen is greyed and dimmed, and dimmer still where the class cannot
+-- take it. Looked at on every pass: the choices change as you click.
+local ROLE_ICON = { TANK = "groupfinder-icon-role-large-tank", HEALER = "groupfinder-icon-role-large-heal",
+    DAMAGER = "groupfinder-icon-role-large-dps" }
+
+local function styleCategoryButton(b)
+    for _, r in ipairs({ b:GetRegions() }) do
+        local a = r:GetObjectType() == "Texture" and r.GetAtlas and r:GetAtlas()
+        if a and a:find("^groupfinder%-button") and r:GetAlpha() > 0 then r:SetAlpha(0) end
+    end
+    local e = extras[b] or {}
+    extras[b] = e
+    if not e.category then
+        e.category = true
+        local bd = backdrop(b, "Shadow", false, 4)
+        if not e.hover then
+            local h = b:CreateTexture(nil, "HIGHLIGHT")
+            h:SetAllPoints(bd)
+            ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.12)
+            e.hover = h
+        end
+    end
+    if b.Label then b.Label:SetTextColor(C.text[1], C.text[2], C.text[3]) end
+end
+
+local function styleRoleButton(b, atlas)
+    local e = extras[b] or {}
+    extras[b] = e
+    if not e.role then
+        e.role = true
+        if b.Background then b.Background:SetAlpha(0) end
+        if b.cover then b.cover:SetAlpha(0) end
+        local nt = b.GetNormalTexture and b:GetNormalTexture()
+        if nt and atlas then
+            nt:SetAtlas(atlas)
+            nt:ClearAllPoints()
+            nt:SetPoint("CENTER", b, "CENTER", 0, 0)
+            nt:SetSize(34, 34)
+        end
+        e.icon = nt
+        local w = b:GetWidth() or 64
+        local bd = backdrop(b, "Shadow", false, math.max(0, math.floor((w - 48) / 2)))
+        local ring = b:CreateTexture(nil, "OVERLAY", nil, 2)
+        ring:SetTexture(ns.Media.ring)
+        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+        ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(ring, "fel", "vertex", 1)
+        ring:SetAllPoints(bd)
+        e.ring = ring
+    end
+    local cb = b.CheckButton
+    local on = cb and cb:GetChecked() and true or false
+    e.ring:SetShown(on)
+    if e.icon then
+        e.icon:SetDesaturated(not on)
+        local able = not (b.IsEnabled and not b:IsEnabled())
+        e.icon:SetAlpha(on and 1 or (able and 0.55 or 0.25))
+    end
+end
+
+PS.styleRoleButton = styleRoleButton
+
+PS.SPECIAL.LFGListingFrame = function(frame)
+    fullSkin(frame, function(f)
+        if f.RolesSection then fadeRegions(f.RolesSection) end
+        local cv = f.CategoryView
+        if cv and cv.GetChildren then
+            for _, b in ipairs({ cv:GetChildren() }) do
+                if b.Icon and b.Cover and b.Label then styleCategoryButton(b) end
+            end
+        end
+        local srb = f.SoloRoleButtons
+        if srb and srb.RoleButtons then
+            for _, b in ipairs(srb.RoleButtons) do styleRoleButton(b, ROLE_ICON[b.roleID or ""]) end
+        end
+        if f.NewPlayerFriendlyButton then styleRoleButton(f.NewPlayerFriendlyButton, nil) end
+    end)
+    return "generic"
+end
+
 -- The talking windows: one black card over the content (the Inset), the
 -- parchment's pieces stripped without cards of their own.
 for _, name in ipairs({ "GossipFrame", "QuestFrame", "QuestLogPopupDetailFrame", "ItemTextFrame" }) do
