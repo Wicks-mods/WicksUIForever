@@ -40,6 +40,7 @@ end
 
 local function keysFor(target)
     local out = {}
+    if not target then return out end
     for _, k in ipairs({ GetBindingKey(target) }) do
         if k and k ~= "" then out[#out + 1] = GetBindingText and GetBindingText(k, 1) or k end
     end
@@ -47,7 +48,8 @@ local function keysFor(target)
 end
 
 local function showTip(b)
-    local target = targetOf(b)
+    local target = b and targetOf(b)
+    if not target then return end
     GameTooltip:SetOwner(b, "ANCHOR_TOP")
     GameTooltip:AddLine(target, C.fel[1], C.fel[2], C.fel[3])
     local keys = keysFor(target)
@@ -120,7 +122,8 @@ function K:Hover(b)
     catcher:ClearAllPoints()
     catcher:SetAllPoints(b)
     catcher:Show()
-    showTip(catcher)
+    -- The button's own tip: the catcher over it has nothing to bind.
+    showTip(b)
 end
 
 local hooked = setmetatable({}, { __mode = "k" })
