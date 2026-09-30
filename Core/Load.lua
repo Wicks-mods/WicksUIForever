@@ -247,6 +247,14 @@ function A:OnEnable()
     -- the default again, with colour strength taking the glare off, so
     -- that move is undone once.
     local g = ns:G()
+    -- The unit frames' outline was a hard outline for every look; the old
+    -- default becomes the look's own (an outline only in Rebel), once. A
+    -- profile set to None keeps it.
+    local ufp = ns.A.db.profile.unitframes
+    if ufp and not g.outlineLook then
+        if ufp.fontOutline == "OUTLINE" then ufp.fontOutline = "look" end
+        g.outlineLook = true
+    end
     if g.shadedDefault and not g.flatRestored then
         if g.statusbar == "Wick Shaded" then g.statusbar = "Wick Flat" end
         g.flatRestored = true
@@ -426,7 +434,7 @@ ns.Config:AddPage("general", "General", function(L)
         for _, name in ipairs(ns.Media:List("font")) do out[#out + 1] = { name, name, name } end
         return out
     end)
-    L:Dropdown("Outline", "fontOutline", W.Values(ns.Media.outlines))
+    L:Dropdown("Outline", "fontOutline", W.Values(ns.Media.outlines, ns.Media.outlineLabels))
     L:Slider("Font size", "fontSize", 8, 20, 1)
     L:Dropdown("Bar texture", "statusbar", function() return W.Values(ns.Media:List("statusbar")) end,
         { set = function() ns:RefreshStatusbars() end })

@@ -85,7 +85,7 @@ local function styleTab(tab)
         if name then clear(_G[name .. part]) end
     end
     local text = tab.Text or (name and _G[name .. "Text"])
-    if text then ns.Media:SetFont(text, db().tabFontSize, "OUTLINE", db().font) end
+    if text then ns.Media:SetFont(text, db().tabFontSize, "look", db().font) end
     tabColour(tab, isSelected(tab))
 end
 
@@ -160,7 +160,9 @@ function CH:StyleFrame(frame)
     if bf and d.hideButtons then bf:SetAlpha(0); bf:EnableMouse(false) end
 
     local _, size = frame:GetFont()
-    frame:SetFont(ns.Media:Font(d.font), d.fontSize or size or 13, d.fontOutline == "NONE" and "" or d.fontOutline)
+    local outline = d.fontOutline
+    if outline == "look" then outline = Chrome:StyleDef().textOutline or "NONE" end
+    frame:SetFont(ns.Media:Font(d.font), d.fontSize or size or 13, outline == "NONE" and "" or outline)
     if frame.SetShadowOffset then frame:SetShadowOffset(1, -1) end
     if frame.SetFading then frame:SetFading(d.fade) end
     if frame.SetTimeVisible then frame:SetTimeVisible(d.fadeAfter) end
@@ -424,7 +426,7 @@ ns.Config:AddPage("chat", "Chat", function(L)
         return out
     end)
     L:Slider("Size", "fontSize", 8, 24, 1)
-    L:Dropdown("Outline", "fontOutline", W.Values(ns.Media.outlines))
+    L:Dropdown("Outline", "fontOutline", W.Values(ns.Media.outlines, ns.Media.outlineLabels))
     L:Slider("Tab text size", "tabFontSize", 8, 20, 1)
     L:Heading("Behaviour")
     L:Toggle("Fade old lines", "fade")

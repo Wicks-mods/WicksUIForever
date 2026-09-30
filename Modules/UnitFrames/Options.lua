@@ -39,7 +39,7 @@ ns.Config:AddPage("unitframes", "Unit Frames", function(L)
         for _, name in ipairs(ns.Media:List("font")) do out[#out + 1] = { name, name, name } end
         return out
     end, { tooltip = "For the text on every unit frame. The rest of the interface keeps the font under General." })
-    L:Dropdown("Outline", "fontOutline", ns.Widgets.Values(ns.Media.outlines))
+    L:Dropdown("Outline", "fontOutline", ns.Widgets.Values(ns.Media.outlines, ns.Media.outlineLabels))
     -- One size for every text on every frame. It writes each text's own
     -- size, so a frame's page can still fine-tune one afterwards.
     L:Slider("Text size", "textSize", 6, 24, 1, {

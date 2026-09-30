@@ -656,7 +656,7 @@ local LAYOUT = {
         },
         enable = true,
         font = "Wick",
-        fontOutline = "OUTLINE",
+        fontOutline = "look",
         healthColor = "class",
         rangeAlpha = 0.45,
         smooth = true,

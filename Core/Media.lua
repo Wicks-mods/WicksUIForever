@@ -67,7 +67,11 @@ end })
 -- Flat white marks for small buttons, tinted as they are drawn.
 function M:Glyph(name) return TEX .. "glyph-" .. name .. ".png" end
 
-M.outlines = { "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROMEOUTLINE" }
+M.outlines = { "look", "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROMEOUTLINE" }
+-- "look": the look's own, a hard outline in a look that has one (Rebel),
+-- else none and a soft shadow, the way WickCore's windows draw text.
+M.outlineLabels = { look = "The look's own", NONE = "None, soft shadow", OUTLINE = "Outline",
+    THICKOUTLINE = "Thick outline", MONOCHROMEOUTLINE = "Monochrome outline" }
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 if LSM then
@@ -130,11 +134,12 @@ end
 -- condensed capitals) apart from the rest of the UI.
 function M:SetFont(fs, size, outline, face, unit)
     local g = ns:G()
-    outline = outline or g.fontOutline
-    if outline == "NONE" then outline = "" end
-    size = size or g.fontSize
     local Chrome = ns.Core and ns.Core.Chrome
     local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    outline = outline or g.fontOutline
+    if outline == "look" then outline = st and st.textOutline or "NONE" end
+    if outline == "NONE" then outline = "" end
+    size = size or g.fontSize
     local path
     if st and (face or g.font) == "Wick" then
         if unit and st.unitFont then
