@@ -2717,6 +2717,50 @@ PS.SPECIAL.InspectFrame = function(frame)
     return "generic"
 end
 
+-- Tabs on Blizzard's newer tab system (the friends window's Friends and
+-- Recent Allies): the chosen tab's font object is set from a field on the
+-- tab each time one is chosen, which would undo a font set on its text.
+-- After Blizzard's own choice (a post-hook), ours: the accent for the
+-- chosen tab, the muted colour for the rest.
+local sysTabs = setmetatable({}, { __mode = "k" })
+local function systemTabFonts(tab, selected)
+    if selected == nil then selected = tab.IsEnabled and not tab:IsEnabled() end
+    local normal, hover = tabFont(selected and "on" or "off"), tabFont(selected and "on" or "hover")
+    if normal then
+        tab:SetNormalFontObject(normal)
+        if tab.SetDisabledFontObject then tab:SetDisabledFontObject(normal) end
+    end
+    if hover then tab:SetHighlightFontObject(hover) end
+end
+local function styleSystemTab(tab)
+    if not tab or sysTabs[tab] or not tab.SetTabSelected then return end
+    sysTabs[tab] = true
+    hooksecurefunc(tab, "SetTabSelected", function(t, sel) systemTabFonts(t, sel) end)
+    systemTabFonts(tab)
+end
+PS.styleSystemTab = styleSystemTab
+
+-- The friends window: the full skin, its tabs as above, and the friend rows
+-- in the look's font. The rows are drawn from shared font families, so
+-- setting those restyles every row, the ones made later too; their sizes
+-- stay.
+PS.SPECIAL.FriendsFrame = function(frame)
+    for _, name in ipairs({ "FriendsFont_Normal", "FriendsFont_Small", "FriendsFont_Large", "FriendsFont_UserText", "FriendsFont_11" }) do
+        local fo = rawget(_G, name)
+        if fo and fo.GetFont and fo.SetFont then
+            local _, size, flags = fo:GetFont()
+            if size and size > 0 then fo:SetFont(ns.Media:Font(), size, flags or "") end
+        end
+    end
+    fullSkin(frame, function(f)
+        local ts = f.FriendsTabHeader and f.FriendsTabHeader.TabSystem
+        if ts and ts.GetChildren then
+            for _, tab in ipairs({ ts:GetChildren() }) do styleSystemTab(tab) end
+        end
+    end)
+    return "generic"
+end
+
 -- (The flight map is not here: its map is Blizzard art, and the full skin
 -- would strip it. It keeps the lighter skin every window gets.)
 for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame", "ClassTrainerFrame",
