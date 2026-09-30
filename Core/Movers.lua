@@ -397,7 +397,7 @@ function Movers:ShowPanel()
 
         local title = ns:CreateText(p, 13, "CENTER")
         title:SetPoint("TOP", 0, -8)
-        title:SetText(Chrome:TitleMarkup("Wick's UI") .. "  |cff8f8770frames unlocked|r")
+        title:SetText(Chrome:TitleMarkup("Wick's UI") .. "  " .. Chrome:Esc("muted") .. "frames unlocked|r")
 
         local W = ns.Widgets
         local lock = W:Button(p, "Lock", 80, function() Movers:Lock() end)
@@ -505,7 +505,7 @@ function Movers:ShowNudge(m)
             local m2 = selected
             if not m2 then return end
             local point, _, _, x, y = ns:StringToPoint(profileMovers()[m2.name] or m2.default)
-            self.title:SetText(m2.label .. "  |cff8f8770" .. (point or "") .. "|r")
+            self.title:SetText(m2.label .. "  " .. Chrome:Esc("muted") .. (point or "") .. "|r")
             self.x:SetText(tostring(x or 0))
             self.y:SetText(tostring(y or 0))
         end

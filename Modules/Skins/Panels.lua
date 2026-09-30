@@ -3457,7 +3457,7 @@ ns.Config:AddPage("panelskins", "Windows", function(L)
         db().windowPos = {}
         print("|cff4FC778Wick's UI|r: windows go back to their places the next time they open.")
     end)
-    L:Note("Found a window still in the game's own look? Point at it and type |cff4FC778/wui skin|r. It is skinned on the spot and every time after.")
+    L:Note("Found a window still in the game's own look? Point at it and type " .. Chrome:Esc("fel") .. "/wui skin|r. It is skinned on the spot and every time after.")
     L:Input("Skinned with /wui skin", "include", { width = 520, span = 2,
         tooltip = "Windows added with /wui skin. Remove a name to stop skinning it; takes effect after a reload." })
     L:Input("Leave these alone", "exclude", { width = 520, span = 2,

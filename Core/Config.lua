@@ -550,7 +550,7 @@ local function build()
 
     local title = ns:CreateText(header, 14, "LEFT", "NONE")
     title:SetPoint("LEFT", 12, 0)
-    title:SetText(Chrome:TitleMarkup("Wick's UI") .. "  |cff8f8770" .. tostring(ns.version) .. "|r")
+    title:SetText(Chrome:TitleMarkup("Wick's UI") .. "  " .. Chrome:Esc("muted") .. tostring(ns.version) .. "|r")
 
     local close = W:Button(header, "x", 22, function() frame:Hide() end)
     close:SetPoint("RIGHT", -4, 0)

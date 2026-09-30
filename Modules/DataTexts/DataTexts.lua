@@ -20,8 +20,9 @@ ns.DataTexts = DT
 DT.registry = {}
 DT.keys = {}
 
-local HEX = "|cff4FC778"
-local function hl(s) return HEX .. tostring(s) .. "|r" end
+-- Values in the look's accent, read as they are drawn so every look and
+-- theme has its own; the labels are in the look's text colour.
+local function hl(s) return Chrome:Esc("fel") .. tostring(s) .. "|r" end
 
 function DT:Register(key, def)
     def.key = key
@@ -60,7 +61,7 @@ DT:Register("time", {
     label = "Time", interval = 1,
     text = function()
         local t = date("*t")
-        return ("%s%02d:%02d|r"):format(HEX, t.hour, t.min)
+        return ("%s%02d:%02d|r"):format(Chrome:Esc("fel"), t.hour, t.min)
     end,
     tooltip = function(tt)
         local h, m = GetGameTime()
@@ -94,7 +95,7 @@ DT:Register("durability", {
             local cur, max = GetInventoryItemDurability(s)
             if cur and max and max > 0 then low = math.min(low, cur / max * 100) end
         end
-        local color = low < 25 and "|cffff4040" or low < 50 and "|cffffcc40" or HEX
+        local color = low < 25 and "|cffff4040" or low < 50 and "|cffffcc40" or Chrome:Esc("fel")
         return ("Armour %s%d%%|r"):format(color, low)
     end,
     tooltip = function(tt)
@@ -187,7 +188,7 @@ DT:Register("coords", {
     text = function()
         local map = C_Map.GetBestMapForUnit("player")
         local pos = map and C_Map.GetPlayerMapPosition(map, "player")
-        if not pos then return "|cff8f8770--|r" end
+        if not pos then return Chrome:Esc("muted") .. "--|r" end
         local x, y = pos:GetXY()
         return ("%s, %s"):format(hl(("%.1f"):format(x * 100)), hl(("%.1f"):format(y * 100)))
     end,
@@ -233,6 +234,8 @@ local function makeSlot(panel)
     s.text = ns:CreateText(s, db().fontSize, "CENTER")
     s.text:SetAllPoints()
     s.text:SetJustifyH("CENTER")
+    s.text:SetTextColor(C.text[1], C.text[2], C.text[3])
+    Chrome:Register(s.text, C.text, "text")
     s:RegisterForClicks("AnyUp")
     s:SetScript("OnClick", function(self, button) if self.def and self.def.click then pcall(self.def.click, button) end end)
     s:SetScript("OnEnter", function(self)
@@ -318,6 +321,10 @@ function DT:Initialize()
         end
     end
     ns:On("PLAYER_ENTERING_WORLD", function() for _, s in ipairs(DT.slots) do slotUpdate(s) end end)
+    -- The values carry their colour in the text: drawn again for a new theme.
+    if Chrome.OnThemeChanged then
+        Chrome:OnThemeChanged(function() for _, s in ipairs(DT.slots) do slotUpdate(s) end end)
+    end
     if C_FriendList and C_FriendList.ShowFriends then pcall(C_FriendList.ShowFriends) end
     self:Update()
 end

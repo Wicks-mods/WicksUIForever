@@ -259,7 +259,7 @@ local function openMenu(owner, values, current, onPick)
             local text = item[2]
             if item[3] then ns.Media:SetFont(b.text, 12, "NONE", item[3]) else ns.Media:SetFont(b.text, 12, "NONE") end
             if item[1] == current then
-                b.text:SetText("|cff4FC778" .. text .. "|r")
+                b.text:SetText(Chrome:Esc("fel") .. text .. "|r")
             else
                 b.text:SetText(text)
             end

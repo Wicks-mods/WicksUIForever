@@ -261,7 +261,7 @@ function CH:Panel()
         local copy = W:Button(p, "Copy", 44, function() CH:ShowCopy(SELECTED_CHAT_FRAME or ChatFrame1) end)
         copy:SetHeight(16)
         copy:SetPoint("TOPRIGHT", p, "TOPRIGHT", -4, -4)
-        copy.text:SetText("|cff8f8770copy|r")
+        copy.text:SetText(Chrome:Esc("muted") .. "copy|r")
         p.copy = copy
     end
     local cf = _G.ChatFrame1
@@ -308,7 +308,7 @@ function CH:ShowCopy(frame)
         win.eb = eb
         local title = ns:CreateText(win, 12, "LEFT", "NONE")
         title:SetPoint("TOPLEFT", 10, -9)
-        title:SetText(Chrome:TitleMarkup("Wick's UI") .. "  |cff8f8770copy chat. Select and press Ctrl-C.|r")
+        title:SetText(Chrome:TitleMarkup("Wick's UI") .. "  " .. Chrome:Esc("muted") .. "copy chat. Select and press Ctrl-C.|r")
         local close = W:Button(win, "x", 20, function() win:Hide() end)
         close:SetPoint("TOPRIGHT", -4, -4)
         Chrome:CloseOnEscape(win)
@@ -326,7 +326,7 @@ function CH:ShowCopy(frame)
         end
     end
     if skipped > 0 then
-        lines[#lines + 1] = ("|cff8f8770(%d line%s from an encounter left out: the client keeps them from addons.)|r"):format(skipped, skipped == 1 and "" or "s")
+        lines[#lines + 1] = (Chrome:Esc("muted") .. "(%d line%s from an encounter left out: the client keeps them from addons.)|r"):format(skipped, skipped == 1 and "" or "s")
     end
     win.eb:SetText(table.concat(lines, "\n"))
     win:Show()

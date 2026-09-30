@@ -172,7 +172,8 @@ function I:Show(page)
     local p = PAGES[page]
     f.step:SetText(("%d of %d"):format(page, #PAGES))
     f.title:SetText(p.title)
-    f.text:SetText(p.text)
+    -- Commands in the text are in the chosen look's accent.
+    f.text:SetText(type(p.text) == "string" and (p.text:gsub("|cff4FC778", Chrome:Esc("fel"))) or p.text)
     f.action:SetShown(p.button ~= nil and not p.reload)
     f.reloadAction:SetShown(p.reload and true or false)
     if p.button and p.reload then

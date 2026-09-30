@@ -131,7 +131,7 @@ function EX:AFKFrame()
         if self.acc < 1 then return end
         self.acc = 0
         local secs = math.floor(GetTime() - (self.since or GetTime()))
-        self.sub:SetText(("Away for %d:%02d   |cff8f8770move or type to come back|r"):format(math.floor(secs / 60), secs % 60))
+        self.sub:SetText(("Away for %d:%02d   " .. Chrome:Esc("muted") .. "move or type to come back|r"):format(math.floor(secs / 60), secs % 60))
     end)
     self.afkFrame = f
     return f
