@@ -31,8 +31,10 @@ local function db() return VX:db() end
 local OPTIONS = {
     -- showFog is not a variable on this client; this is its "full fog" distance.
     { key = "noFog",       cvars = { disableHorizonStart = "1" } },
-    -- The level as well: with it above 0 the client puts volumeFog back.
-    { key = "noVolumeFog", cvars = { volumeFog = "0", volumeFogLevel = "0", RAIDVolumeFog = "0", RAIDVolumeFogLevel = "0" } },
+    -- The level as well, and the separate switch for indoors: with volumeFog
+    -- alone at 0 the fog fades back in.
+    { key = "noVolumeFog", cvars = { volumeFog = "0", volumeFogLevel = "0", volumeFogInterior = "0",
+                                     RAIDVolumeFog = "0", RAIDVolumeFogLevel = "0" } },
     { key = "noGlow",      cvars = { ffxGlow = "0" } },
     { key = "noDeathGrey", cvars = { ffxDeath = "0" } },
     { key = "noNether",    cvars = { ffxNether = "0" } },
