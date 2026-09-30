@@ -166,6 +166,7 @@ local GAP = 4
 -- Edit Mode box would put it, closer to the panel's edge.
 local NUDGE = 8
 local SCROLL_ROOM = 12
+local RIGHT_PAD = 4
 
 -- Blizzard's Edit Mode box for the chat (its Selection frame) is larger
 -- than the chat's text area, padded on every side. The panel fills that
@@ -230,9 +231,10 @@ function CH:Align()
     -- The full nudge, even past the text area's own margin: the text itself
     -- carries a couple of pixels of inset inside the chat frame.
     local left = l - NUDGE
-    -- Room kept on the right for the chat's scroll bar, so the text stops
-    -- short of it.
-    local want = w - left - r - SCROLL_ROOM
+    -- The text runs to the panel's right edge, less a small margin and room
+    -- for the chat's scroll bar. The box's own padding on that side left a
+    -- wide empty strip down the right of the panel.
+    local want = w - left - RIGHT_PAD - SCROLL_ROOM
     if want > 50 and math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
     local p, rel, rp, x, y = cf:GetPoint(1)
     if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - left) > 0.5
