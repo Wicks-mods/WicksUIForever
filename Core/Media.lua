@@ -157,3 +157,24 @@ function M:SetFont(fs, size, outline, face, unit)
         fs:SetShadowOffset(0, 0)
     end
 end
+
+-- The names the game draws over units in the world (your pet's, players',
+-- creatures') in the look's font. The client takes that font from this
+-- global as the world loads, so it follows the look from the next loading
+-- screen or reload; Blizzard's own code only ever sets it. Latin alphabets
+-- only: the look fonts carry no Cyrillic, Chinese or Korean, so those
+-- clients keep the game's. The colour is the game's own and stays.
+local LATIN = { enUS = true, enGB = true, deDE = true, frFR = true, esES = true, esMX = true, itIT = true, ptBR = true }
+function M:UnitNameFont()
+    if not LATIN[(GetLocale and GetLocale()) or "enUS"] then return end
+    local Chrome = ns.Core and ns.Core.Chrome
+    local path = Chrome and Chrome.Font and Chrome:Font()
+    if path then UNIT_NAME_FONT = path end
+end
+M:UnitNameFont()
+-- Again at login, once the character (and so its look) is known.
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function() M:UnitNameFont() end)
+end
