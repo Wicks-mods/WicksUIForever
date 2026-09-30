@@ -197,13 +197,7 @@ local function style(self, unit)
     self.RaidTargetIndicator = raid
 
     -- Threat: a glow round the bar with your threat on this mob.
-    local glow = health:CreateTexture(nil, "BACKGROUND", nil, -8)
-    glow:SetTexture(ns.Media.shadow)
-    if glow.SetTextureSliceMargins then glow:SetTextureSliceMargins(28, 28, 28, 28) end
-    glow:SetPoint("TOPLEFT", health, "TOPLEFT", -9, 9)
-    glow:SetPoint("BOTTOMRIGHT", health, "BOTTOMRIGHT", 9, -9)
-    glow:SetAlpha(0.9)
-    glow:Hide()
+    local glow = ns:Glow(health, 12)
     glow.feedbackUnit = "player"
     self.wuiThreatGlow = glow
 

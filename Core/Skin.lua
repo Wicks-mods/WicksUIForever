@@ -397,6 +397,24 @@ function ns:QuietAuraCooldown(button)
     if fs then fs:SetAlpha(0) end
 end
 
+-- A glow round a frame for alerts (threat): a soft halo in whatever colour
+-- is given it, on a layer of its own above the frame so nothing it rings
+-- covers it, and clear in the middle so it covers nothing. Hidden until
+-- shown; oUF's threat element colours and shows it.
+function ns:Glow(frame, spread)
+    local layer = CreateFrame("Frame", nil, frame)
+    layer:SetAllPoints(frame)
+    layer:SetFrameLevel(frame:GetFrameLevel() + 8)
+    local g = layer:CreateTexture(nil, "OVERLAY", nil, 7)
+    g:SetTexture(ns.Media.glow)
+    if g.SetTextureSliceMargins then g:SetTextureSliceMargins(20, 20, 20, 20) end
+    local o = spread or 16
+    g:SetPoint("TOPLEFT", frame, "TOPLEFT", -o, o)
+    g:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", o, -o)
+    g:Hide()
+    return g
+end
+
 -- Headings in the style's heading face, where it has one (Runic).
 function ns:HeadingFont(fs, size)
     local st = Chrome.StyleDef and Chrome:StyleDef()

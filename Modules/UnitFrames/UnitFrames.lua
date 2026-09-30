@@ -488,16 +488,9 @@ local function style(self, unit)
         self.wuiTexts[slot] = ns:CreateText(overlay, 12, "LEFT")
     end
 
-    -- Threat: a soft glow round the frame in Blizzard's threat colours,
-    -- driven by oUF's threat element (see Modules/Threat).
-    local glow = self:CreateTexture(nil, "BACKGROUND", nil, -8)
-    glow:SetTexture(ns.Media.shadow)
-    if glow.SetTextureSliceMargins then glow:SetTextureSliceMargins(28, 28, 28, 28) end
-    glow:SetPoint("TOPLEFT", self, "TOPLEFT", -10, 10)
-    glow:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 10, -10)
-    glow:SetAlpha(0.9)
-    glow:Hide()
-    self.wuiThreatGlow = glow
+    -- Threat: a glow round the frame in Blizzard's threat colours, driven
+    -- by oUF's threat element (see Modules/Threat).
+    self.wuiThreatGlow = ns:Glow(self)
 
     -- Indicators
     local function icon(size)

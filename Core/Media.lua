@@ -56,7 +56,7 @@ local TEX = "Interface\\AddOns\\WicksUI\\Media\\Textures\\"
 -- These follow the suite's style (WickCore's Chrome.Media): each style has
 -- its own panel, ring and masks, and its own 9-slice margin. Read when a
 -- frame is drawn, so they are always the style in use.
-local STYLED = { rounded = true, ring = true, shadow = true, roundmask = true, iconmask = true, slice = true }
+local STYLED = { rounded = true, ring = true, shadow = true, roundmask = true, iconmask = true, slice = true, glow = true }
 setmetatable(M, { __index = function(_, k)
     if not STYLED[k] then return nil end
     local Chrome = ns.Core and ns.Core.Chrome
