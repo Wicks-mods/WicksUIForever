@@ -2465,6 +2465,18 @@ PS.SPECIAL.CommunitiesFrame = function(frame)
         if members and members:IsVisible() then
             if members.WatermarkFrame then fadeRegions(members.WatermarkFrame) end
             card(members, "wuiCard", "TOPLEFT", members, "BOTTOMRIGHT", members, -3, 3, 0, -3)
+            -- The column headers over the roster: the walk's card for their
+            -- backing is as wide as the backing, which runs on past the list
+            -- and its scroll bar nearly to the window's edge. It ends where
+            -- the list does.
+            local cd = members.ColumnDisplay
+            local cdc = cd and cd.Background and cards[cd.Background]
+            if cdc and not cdc.wuiTrimmed then
+                cdc:ClearAllPoints()
+                cdc:SetPoint("TOPLEFT", cd.Background, "TOPLEFT", 0, 0)
+                cdc:SetPoint("BOTTOMRIGHT", members, "TOPRIGHT", 0, 0)
+                cdc.wuiTrimmed = true
+            end
         end
         local chat = f.Chat
         if chat and chat:IsVisible() then
