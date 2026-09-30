@@ -158,23 +158,41 @@ function M:SetFont(fs, size, outline, face, unit)
     end
 end
 
--- The names the game draws over units in the world (your pet's, players',
--- creatures') in the look's font. The client takes that font from this
--- global as the world loads, so it follows the look from the next loading
--- screen or reload; Blizzard's own code only ever sets it. Latin alphabets
--- only: the look fonts carry no Cyrillic, Chinese or Korean, so those
--- clients keep the game's. The colour is the game's own and stays.
+-- The text the game draws over the world in the look's fonts:
+--   names over units and the damage numbers over enemies: two globals
+--     the client reads at login (a relog shows a change, a reload does
+--     not); Blizzard's own code only ever sets them.
+--   the zone name as you enter (in the look's heading face, it is a title),
+--     the subzone, the PvP line under them and your own scrolling combat
+--     text: shared font objects, so the text using them follows at once.
+--     Their sizes and thick outlines stay: they sit over the world.
+-- Latin alphabets only: the look fonts carry no Cyrillic, Chinese or
+-- Korean, so those clients keep the game's. Colours are the game's own.
 local LATIN = { enUS = true, enGB = true, deDE = true, frFR = true, esES = true, esMX = true, itIT = true, ptBR = true }
-function M:UnitNameFont()
+local function face(name, path)
+    local fo = rawget(_G, name)
+    if not (fo and fo.GetFont and fo.SetFont) then return end
+    local _, size, flags = fo:GetFont()
+    if size and size > 0 then fo:SetFont(path, size, flags or "") end
+end
+function M:WorldFonts()
     if not LATIN[(GetLocale and GetLocale()) or "enUS"] then return end
     local Chrome = ns.Core and ns.Core.Chrome
-    local path = Chrome and Chrome.Font and Chrome:Font()
-    if path then UNIT_NAME_FONT = path end
+    if not (Chrome and Chrome.Font) then return end
+    local body = Chrome:Font()
+    local head = Chrome.HeadingFont and Chrome:HeadingFont() or body
+    UNIT_NAME_FONT = body
+    DAMAGE_TEXT_FONT = body
+    face("ZoneTextFont", head)
+    face("SubZoneTextFont", head)
+    face("PVPInfoTextFont", body)
+    face("CombatTextFont", body)
 end
-M:UnitNameFont()
+M.UnitNameFont = M.WorldFonts
+M:WorldFonts()
 -- Again at login, once the character (and so its look) is known.
 do
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_LOGIN")
-    f:SetScript("OnEvent", function() M:UnitNameFont() end)
+    f:SetScript("OnEvent", function() M:WorldFonts() end)
 end
