@@ -77,6 +77,37 @@ local function isSelected(tab)
     return sel ~= nil and tab.GetID and _G["ChatFrame" .. tab:GetID()] == sel
 end
 
+-- Blizzard sizes a docked tab for its label in Blizzard's font, and a tab
+-- after the first two at a fixed width of at most 90: a look's wider face
+-- then cuts the label short ("Loot / Tra..."). A tab whose label does not
+-- fit is widened to fit it, after Blizzard has laid the tabs out. Method
+-- calls on the tab only. Left alone: a whisper tab, whose name can be a
+-- secret and which Blizzard holds at a fixed width for that reason, and a
+-- dock already full enough to show its overflow arrow.
+local TAB_SIDES = 20   -- Blizzard's padding either side of a tab's label
+local function fitTab(tab)
+    local fs = tab and tab.Text
+    if not (fs and fs.GetUnboundedStringWidth) then return end
+    local cf = tab.GetID and _G["ChatFrame" .. tab:GetID()]
+    if cf and cf.chatTarget and (cf.chatType == "WHISPER" or cf.chatType == "BN_WHISPER") then return end
+    local dock = rawget(_G, "GeneralDockManager")
+    if dock and dock.overflowButton and dock.overflowButton:IsShown() then return end
+    local tw = fs:GetUnboundedStringWidth()
+    if type(tw) ~= "number" or (issecretvalue and issecretvalue(tw)) then return end
+    local want = math.ceil(tw) + TAB_SIDES + (tab.sizePadding or 0)
+    if (tab:GetWidth() or 0) + 0.5 < want then
+        fs:SetWidth(math.ceil(tw) + 1)
+        tab:SetWidth(want)
+    end
+end
+
+local function fitTabs()
+    for i = 1, (NUM_CHAT_WINDOWS or 10) do
+        local tab = _G["ChatFrame" .. i .. "Tab"]
+        if tab and tab:IsShown() then fitTab(tab) end
+    end
+end
+
 local function styleTab(tab)
     if not tab then return end
     local name = tab:GetName()
@@ -87,6 +118,7 @@ local function styleTab(tab)
     local text = tab.Text or (name and _G[name .. "Text"])
     if text then ns.Media:SetFont(text, db().tabFontSize, "look", db().font) end
     tabColour(tab, isSelected(tab))
+    fitTab(tab)
 end
 
 local function styleEditBox(frame)
@@ -402,6 +434,10 @@ function CH:Initialize()
     -- Whisper windows are made on the fly.
     if FCF_OpenTemporaryWindow then
         hooksecurefunc("FCF_OpenTemporaryWindow", function() C_Timer.After(0, function() CH:StyleAll() end) end)
+    end
+    -- Blizzard lays the docked tabs out again as windows come and go.
+    if rawget(_G, "FCFDock_UpdateTabs") then
+        hooksecurefunc("FCFDock_UpdateTabs", function() fitTabs() end)
     end
     -- Blizzard colours a tab each time the chosen one changes.
     if rawget(_G, "FCFTab_UpdateColors") then
