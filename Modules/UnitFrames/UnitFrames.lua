@@ -489,8 +489,10 @@ local function style(self, unit)
     end
 
     -- Threat: a glow round the frame in Blizzard's threat colours, driven
-    -- by oUF's threat element (see Modules/Threat).
-    self.wuiThreatGlow = ns:Glow(self)
+    -- by oUF's threat element (see Modules/Threat). Under the frame's border
+    -- and bars, over its shadow: a soft halo outside the edge, with a
+    -- target border still showing on top.
+    self.wuiThreatGlow = ns:Glow(self, 16, { under = true, alpha = 0.7 })
 
     -- Indicators
     local function icon(size)
