@@ -147,3 +147,82 @@ ns.Config:AddPage("visuals", "Visuals", function(L)
     toggle(L, "sharpen", "Sharpen at full resolution", "The game only sharpens when the render scale is below 100%. This sharpens at 100% too; Sharpness in the game's Graphics settings sets how much.")
     toggle(L, "bestShots", "Best screenshot quality", "Screenshots are saved at the highest quality the game has.")
 end, { onChange = function() VX:Apply() end, order = 91 })
+
+-- ============================================================
+-- Combat text
+-- ============================================================
+-- The game's floating combat text: the numbers over what you hit, and the
+-- scrolling text around your own character. Most of it the game's own
+-- settings leave out. Every control here reads and writes the game's own
+-- setting, so the choices are account-wide and hold without Wick's UI; a
+-- setting this client locks shows greyed out.
+local function cvOn(name) return function() return get(name) == "1" end end
+local function cvSetOn(...)
+    local names = { ... }
+    return function(v)
+        for _, n in ipairs(names) do
+            if usable(n) then set(n, v and "1" or "0") end
+        end
+    end
+end
+local function cvNum(name) return function() return tonumber(get(name) or "") or 0 end end
+local function cvSetNum(name) return function(v) if usable(name) then set(name, tostring(v)) end end end
+local function locked(name) return function() return not usable(name) end end
+local SELF = "enableFloatingCombatText"
+local function selfOff(name) return function() return not usable(name) or get(SELF) ~= "1" end end
+
+local function cvToggle(L, label, name, tip, ...)
+    local extra = { ... }
+    L:Toggle(label, name, {
+        get = cvOn(name), setter = cvSetOn(name, unpack(extra)),
+        disabled = locked(name), tooltip = tip,
+    })
+end
+local function selfToggle(L, label, name, tip)
+    L:Toggle(label, name, {
+        get = cvOn(name), setter = cvSetOn(name),
+        disabled = selfOff(name), tooltip = tip,
+    })
+end
+
+ns.Config:AddPage("combattext", "Combat text", function(L)
+    L:Note("The game's floating combat text. These are the game's own settings, so they are account-wide and hold with Wick's UI switched off. The font follows the look.")
+    L:Heading("Numbers over what you hit")
+    cvToggle(L, "Damage", "floatingCombatTextCombatDamage_v2", "Your damage over the creatures and players you hit.")
+    cvToggle(L, "Damage over time", "floatingCombatTextCombatLogPeriodicSpells_v2", "The ticks of your periodic spells.")
+    cvToggle(L, "Your pet's damage", "floatingCombatTextPetMeleeDamage_v2", "Its melee and its spells.", "floatingCombatTextPetSpellDamage_v2")
+    cvToggle(L, "Every auto attack", "floatingCombatTextCombatDamageAllAutos_v2", "Off shows only the auto attacks worth noticing.")
+    cvToggle(L, "Healing", "floatingCombatTextCombatHealing_v2", "Your healing over the one you heal.")
+    cvToggle(L, "Shields you put up", "floatingCombatTextCombatHealingAbsorbTarget_v2")
+    L:Slider("Size", "WorldTextScale_v2", 0.5, 2.5, 0.05, {
+        get = cvNum("WorldTextScale_v2"), setter = cvSetNum("WorldTextScale_v2"), disabled = locked("WorldTextScale_v2"),
+        tooltip = "How big the numbers are.",
+    })
+    L:Slider("Numbers fly outward", "floatingCombatTextCombatDamageDirectionalScale_v2", 0, 3, 0.1, {
+        get = cvNum("floatingCombatTextCombatDamageDirectionalScale_v2"),
+        setter = cvSetNum("floatingCombatTextCombatDamageDirectionalScale_v2"),
+        disabled = locked("floatingCombatTextCombatDamageDirectionalScale_v2"),
+        tooltip = "How far the numbers travel away from where they land. 0 keeps them rising straight up.",
+    })
+    cvToggle(L, "Float the way Classic did", "classicStyleWorldText", "The older way the numbers rise and fade.")
+    cvToggle(L, "Threat changes", "threatWorldText", "The threat notes that float up in a fight.")
+
+    L:Heading("Your own combat text")
+    cvToggle(L, "Show it", SELF, "The text that scrolls round your character: what hits you, heals you and happens to you.")
+    L:Dropdown("Direction", "floatingCombatTextFloatMode_v2", { { 1, "Up" }, { 2, "Down" }, { 3, "Arc" } }, {
+        get = cvNum("floatingCombatTextFloatMode_v2"), setter = cvSetNum("floatingCombatTextFloatMode_v2"),
+        disabled = selfOff("floatingCombatTextFloatMode_v2"),
+    })
+    selfToggle(L, "Dodges, parries and misses", "floatingCombatTextDodgeParryMiss_v2")
+    selfToggle(L, "Damage reduction", "floatingCombatTextDamageReduction_v2", "Resists, blocks and absorbs of what hits you.")
+    selfToggle(L, "Auras gained and lost", "floatingCombatTextAuras_v2")
+    selfToggle(L, "Entering and leaving combat", "floatingCombatTextCombatState_v2")
+    selfToggle(L, "Low health and mana", "floatingCombatTextLowManaHealth_v2")
+    selfToggle(L, "Power gains", "floatingCombatTextEnergyGains_v2", "Mana, rage and energy you gain.")
+    selfToggle(L, "Spell alerts", "floatingCombatTextReactives_v2", "When an ability that needs a moment (Execute, Overpower) becomes usable.")
+    selfToggle(L, "Combo points", "floatingCombatTextComboPoints_v2")
+    selfToggle(L, "Heals from others", "floatingCombatTextFriendlyHealers_v2", "Who healed you, not only how much.")
+    selfToggle(L, "Shields put on you", "floatingCombatTextCombatHealingAbsorbSelf_v2")
+    selfToggle(L, "Reputation", "floatingCombatTextRepChanges_v2")
+    selfToggle(L, "Honor", "floatingCombatTextHonorGains_v2")
+end, { order = 92 })
