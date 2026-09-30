@@ -255,9 +255,15 @@ function CH:Align()
         r = sel:GetRight() - cf:GetRight()
         bt = cf:GetBottom() - sel:GetBottom()
     end
+    -- Edit Mode keeps the chat's box on screen by holding the chat as far
+    -- in from the screen's edges as the box is padded (its clamp insets).
+    -- Beside an info panel at the screen's edge that held the chat well in
+    -- from where it was put. The chat itself is still kept on screen.
+    if cf.GetClampRectInsets and cf.SetClampRectInsets then
+        local a, b, c, e = cf:GetClampRectInsets()
+        if (a or 0) ~= 0 or (b or 0) ~= 0 or (c or 0) ~= 0 or (e or 0) ~= 0 then cf:SetClampRectInsets(0, 0, 0, 0) end
+    end
     local left = LEFT_PAD
-    local want = w - left - RIGHT_PAD - SCROLL_ROOM
-    if want > 50 and math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
     local up = GAP + math.max(0, bt - DROP)
     local p, rel, rp, x, y = cf:GetPoint(1)
     if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - left) > 0.5
@@ -265,6 +271,11 @@ function CH:Align()
         cf:ClearAllPoints()
         cf:SetPoint("BOTTOMLEFT", info, "TOPLEFT", left, up)
     end
+    -- The width from where the chat really is, so whatever holds it in, its
+    -- text stops inside the panel rather than running past its right side.
+    local cl, ir = cf:GetLeft(), info:GetRight()
+    local want = (cl and ir) and (ir - RIGHT_PAD - SCROLL_ROOM - cl) or (w - left - RIGHT_PAD - SCROLL_ROOM)
+    if want > 50 and math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
 end
 
 local holder = CreateFrame("Frame")
