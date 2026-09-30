@@ -401,11 +401,22 @@ end
 -- is given it, on a layer of its own above the frame so nothing it rings
 -- covers it, and clear in the middle so it covers nothing. Hidden until
 -- shown; oUF's threat element colours and shows it.
-function ns:Glow(frame, spread)
-    local layer = CreateFrame("Frame", nil, frame)
-    layer:SetAllPoints(frame)
-    layer:SetFrameLevel(frame:GetFrameLevel() + 8)
-    local g = layer:CreateTexture(nil, "OVERLAY", nil, 7)
+--   opts.under: drawn on the frame itself instead, over its shadow and
+--     panel but under its border and anything above it, so only the halo
+--     outside the edge shows and a coloured border stays on top.
+--   opts.alpha: how strong it is (1 by default).
+function ns:Glow(frame, spread, opts)
+    opts = opts or {}
+    local g
+    if opts.under then
+        g = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
+    else
+        local layer = CreateFrame("Frame", nil, frame)
+        layer:SetAllPoints(frame)
+        layer:SetFrameLevel(frame:GetFrameLevel() + 8)
+        g = layer:CreateTexture(nil, "OVERLAY", nil, 7)
+    end
+    g.wuiUnder, g.wuiAlpha = opts.under and true or nil, opts.alpha
     g:SetTexture(ns.Media.glow)
     if g.SetTextureSliceMargins then g:SetTextureSliceMargins(20, 20, 20, 20) end
     local o = spread or 16
@@ -445,7 +456,7 @@ function ns.ThreatGlowUpdate(self, event, unit)
         local okC, cr, cg, cb = pcall(GetThreatStatusColor, status)
         if okC and cr then r, g, b = cr, cg, cb end
     end
-    element:SetVertexColor(r, g, b)
+    element:SetVertexColor(r, g, b, element.wuiAlpha or 1)
     element:Show()
 end
 

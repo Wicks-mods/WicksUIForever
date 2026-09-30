@@ -234,8 +234,11 @@ local function style(self, unit)
     raid.PostUpdate = function() NP:PlaceMarks(self) end
     self.RaidTargetIndicator = raid
 
-    -- Threat: a glow round the bar with your threat on this mob.
-    local glow = ns:Glow(health, 12)
+    -- Threat: a glow round the bar with your threat on this mob. Under the
+    -- bar's border, whose edge it starts from (the glow's own geometry
+    -- wants 16), so the target's border shows over it and only a soft
+    -- halo reaches outside.
+    local glow = ns:Glow(health.backdrop, 16, { under = true, alpha = 0.6 })
     glow.feedbackUnit = "player"
     self.wuiThreatGlow = glow
 
@@ -267,7 +270,7 @@ local function style(self, unit)
     cm:SetPoint("CENTER", cmBack, "CENTER", 0, 0)
     cm:Hide()
     self.wuiClassMark, self.wuiClassBack = cm, cmBack
-    local tglow = ns:Glow(health, 10)
+    local tglow = ns:Glow(health.backdrop, 16, { under = true, alpha = 0.75 })
     tglow.Override = nil
     self.wuiTargetGlow = tglow
 
@@ -456,7 +459,7 @@ function NP:Refresh(self)
     self.wuiMarkL:SetShown(arrows)
     self.wuiMarkR:SetShown(arrows)
     if self.wuiTargetGlow then
-        if glow then self.wuiTargetGlow:SetVertexColor(c[1], c[2], c[3], 0.9) end
+        if glow then self.wuiTargetGlow:SetVertexColor(c[1], c[2], c[3], self.wuiTargetGlow.wuiAlpha or 0.75) end
         self.wuiTargetGlow:SetShown(glow)
     end
 
