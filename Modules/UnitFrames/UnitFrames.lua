@@ -739,10 +739,13 @@ function UF:Configure(self)
     -- Threat glow. Your own frame, your pet's and the group's glow when a
     -- mob is on them; a target, focus or boss frame glows with your threat
     -- on that mob, which is the one worth watching there.
+    -- Not on a target of a target or a focus's target: the client keeps
+    -- threat there secret, and it is not something to act on anyway.
     local th = ns.A and ns.A.db and ns.A.db.profile.threat
-    if th and th.enable and th.frameGlow then
+    local noGlow = { targettarget = true, focustarget = true }
+    if th and th.enable and th.frameGlow and not noGlow[key] then
         self.ThreatIndicator = self.wuiThreatGlow
-        local mobKeys = { target = true, focus = true, boss = true, targettarget = true, focustarget = true }
+        local mobKeys = { target = true, focus = true, boss = true }
         self.wuiThreatGlow.feedbackUnit = mobKeys[key] and "player" or nil
         setElement(self, "ThreatIndicator", true)
     elseif self.ThreatIndicator then

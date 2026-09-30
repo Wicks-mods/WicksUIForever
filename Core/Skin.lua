@@ -412,7 +412,41 @@ function ns:Glow(frame, spread)
     g:SetPoint("TOPLEFT", frame, "TOPLEFT", -o, o)
     g:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", o, -o)
     g:Hide()
+    g.Override = ns.ThreatGlowUpdate
     return g
+end
+
+-- oUF's threat element, secret-safe. This client hands threat over as a
+-- secret for some units (a target of a target), and a secret cannot be
+-- compared; there the glow stays hidden rather than error every frame.
+function ns.ThreatGlowUpdate(self, event, unit)
+    local issecretGlow = rawget(_G, "issecretvalue")
+    local element = self.ThreatIndicator
+    if not element then return end
+    if unit and unit ~= self.unit and unit ~= self.__unit then return end
+    unit = self.unit or self.__unit
+    local fu = element.feedbackUnit
+    local status
+    if unit and UnitExists(unit) then
+        local ok, st
+        if fu and fu ~= unit and UnitExists(fu) then
+            ok, st = pcall(UnitThreatSituation, fu, unit)
+        else
+            ok, st = pcall(UnitThreatSituation, unit)
+        end
+        if ok then status = st end
+    end
+    if status == nil or (issecretGlow and issecretGlow(status)) or status <= 0 then
+        element:Hide()
+        return
+    end
+    local r, g, b = 1, 0, 0
+    if GetThreatStatusColor then
+        local okC, cr, cg, cb = pcall(GetThreatStatusColor, status)
+        if okC and cr then r, g, b = cr, cg, cb end
+    end
+    element:SetVertexColor(r, g, b)
+    element:Show()
 end
 
 -- Headings in the style's heading face, where it has one (Runic).
