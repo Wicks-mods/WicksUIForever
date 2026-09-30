@@ -197,6 +197,9 @@ function ns:AdoptStyle()
     local g = ns:G()
     local style = styleKey()
     g.presetFor = style
+    -- A copied profile brings the health colour of the style it was made
+    -- in; a look with colours of its own takes them again.
+    if g.lookHealth then g.lookHealth[style] = nil end
     lookHealth(g, style)
 end
 
