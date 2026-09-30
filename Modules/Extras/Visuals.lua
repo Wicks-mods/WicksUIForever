@@ -17,7 +17,7 @@ ns.Visuals = VX
 
 ns.defaults.profile.visuals = {
     enable = true,
-    noFog = false, noVolumeFog = false, noGlow = false, noDeathGrey = false,
+    noFog = false, noGlow = false, noDeathGrey = false,
     noNether = false, noWeather = false,
     moreGrass = false, sharpen = false, bestShots = false,
 }
@@ -31,10 +31,6 @@ local function db() return VX:db() end
 local OPTIONS = {
     -- showFog is not a variable on this client; this is its "full fog" distance.
     { key = "noFog",       cvars = { disableHorizonStart = "1" } },
-    -- The level as well, and the separate switch for indoors: with volumeFog
-    -- alone at 0 the fog fades back in.
-    { key = "noVolumeFog", cvars = { volumeFog = "0", volumeFogLevel = "0", volumeFogInterior = "0",
-                                     RAIDVolumeFog = "0", RAIDVolumeFogLevel = "0" } },
     { key = "noGlow",      cvars = { ffxGlow = "0" } },
     { key = "noDeathGrey", cvars = { ffxDeath = "0" } },
     { key = "noNether",    cvars = { ffxNether = "0" } },
@@ -44,6 +40,11 @@ local OPTIONS = {
     { key = "bestShots",   cvars = { screenshotQuality = "10" } },
 }
 VX.OPTIONS = OPTIONS
+
+-- Taken out: volumetric fog. With volumeFog, its level and the indoor
+-- switch all held at 0 the fog still fades back in; the client draws it
+-- whatever they say. What the option changed is put back once.
+local RETIRED = { volumeFog = "0", volumeFogLevel = "0", volumeFogInterior = "0", RAIDVolumeFog = "0", RAIDVolumeFogLevel = "0" }
 
 local CV = rawget(_G, "C_CVar")
 local function get(name)
@@ -87,6 +88,12 @@ function VX:Apply()
     local g = ns.A.db.global
     g.visualsWas = g.visualsWas or {}
     local was = g.visualsWas
+    for name, ours in pairs(RETIRED) do
+        if was[name] ~= nil then
+            if usable(name) and get(name) == ours then set(name, was[name]) end
+            was[name] = nil
+        end
+    end
     for _, o in ipairs(OPTIONS) do
         for name, on in pairs(o.cvars) do
             if usable(name) then
@@ -131,7 +138,6 @@ ns.Config:AddPage("visuals", "Visuals", function(L)
     L:Note("Picture settings the game has but leaves out of its options. Each one changes the game's own setting, so it holds with Wick's UI switched off. Switching it off here puts back what was there.")
     L:Heading("Screen effects")
     toggle(L, "noFog", "No distance fog", "Far land and sky stay clear instead of fading into haze.")
-    toggle(L, "noVolumeFog", "No volumetric fog", "The low fog that fills valleys, caves and some dungeons.")
     toggle(L, "noGlow", "No screen glow", "The soft bloom laid over the whole picture.")
     toggle(L, "noDeathGrey", "No grey screen when you die", "The world keeps its colour while you are dead.")
     toggle(L, "noNether", "No haze while invisible", "The shimmer laid over the screen by invisibility effects.")
