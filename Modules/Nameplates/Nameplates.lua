@@ -427,6 +427,11 @@ function NP:Refresh(self)
     local nameOnly = d.friendlyNameOnly and friendly
     self.Health:SetShown(not nameOnly)
     self.wuiCastbar:SetAlpha(nameOnly and 0 or 1)
+    -- The percent and the aura rows hang off the plate, not the bar, so
+    -- hiding the bar leaves them behind; a name-only plate is the name.
+    self.wuiPercent:SetShown(d.percent and not nameOnly)
+    if self.wuiDebuffs then self.wuiDebuffs:SetShown(d.debuffs and not nameOnly) end
+    if self.wuiBuffs then self.wuiBuffs:SetShown(d.buffs and not nameOnly) end
     local cls = d.classMarker and not nameOnly and CLASSMARK[plain(UnitClassification(unit)) or ""]
     if cls then self.wuiClassMark:SetVertexColor(cls[1], cls[2], cls[3], 1) end
     self.wuiClassMark:SetShown(cls and true or false)
