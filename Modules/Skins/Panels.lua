@@ -59,7 +59,7 @@ PS.WINDOWS = {
     "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4", "LFGDungeonReadyDialog",
     "LFDRoleCheckPopup", "RolePollPopup", "GuildInviteFrame", "PVPReadyDialog", "LFGInvitePopup",
     "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4",
-    "ContainerFrame5", "ContainerFrame6", "CompactRaidFrameManager",
+    "ContainerFrame5", "ContainerFrame6", "CompactRaidFrameManager", "PetStableFrame",
 }
 
 local done = setmetatable({}, { __mode = "k" })
@@ -2783,6 +2783,59 @@ PS.SPECIAL.CompactRaidFrameManager = function(frame)
     if rawget(_G, "CompactRaidFrameManager_UpdateOptionsFlowContainer") then
         hooksecurefunc("CompactRaidFrameManager_UpdateOptionsFlowContainer", hold)
     end
+end
+
+-- The stable (this client's is PetStableFrame, the Classic one): the full
+-- skin. The model stands on our card (the walk makes it from the scene's
+-- backing) with its own tint and the vignette round it gone; the vignette's
+-- long top and bottom pieces would pass for backings, so they get no cards.
+-- The pet slots are tiles (the walk), the chosen one in the accent ring;
+-- the loyalty level sits on a small tile.
+local function stableSlotRing(b)
+    local e = extras[b] or {}
+    extras[b] = e
+    local ct = b.GetCheckedTexture and b:GetCheckedTexture()
+    if ct and not e.ringSet then
+        e.ringSet = true
+        ct:SetTexture(ns.Media.ring)
+        if ct.SetTextureSliceMargins then ct:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+        ct:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(ct, "fel", "vertex", 1)
+        ct:ClearAllPoints()
+        ct:SetPoint("TOPLEFT", b, "TOPLEFT", -2, 2)
+        ct:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 2, -2)
+    end
+end
+
+PS.SPECIAL.PetStableFrame = function(frame)
+    fullSkin(frame, function(f)
+        local ms = f.modelScene
+        if ms then
+            fade(ms.Background)
+            local sh = ms.PetModelSceneShadow
+            if sh then
+                for _, r in ipairs({ sh:GetRegions() }) do
+                    if r:GetObjectType() == "Texture" then noCard[r] = true; r:SetAlpha(0) end
+                end
+            end
+        end
+        for _, name in ipairs({ "PetStableCurrentPet", "PetStableStabledPet1", "PetStableStabledPet2",
+            "PetStableStabledPet3", "PetStableStabledPet4" }) do
+            local b = rawget(_G, name)
+            if b then stableSlotRing(b) end
+        end
+        local ll = f.loyaltyLevel
+        if ll then
+            fadeRegions(ll)
+            if not done[ll] then
+                done[ll] = true
+                backdrop(ll, "Shadow", false, -4)
+            end
+            styleText(ll.levelText, 12, C.fel)
+        end
+        styleText(rawget(_G, "PetStableLevelText"), 13, C.fel)
+    end)
+    return "generic"
 end
 
 -- The talking windows: one black card over the content (the Inset), the
