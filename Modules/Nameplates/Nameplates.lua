@@ -112,8 +112,10 @@ local function style(self, unit)
     health.PostUpdate = function(h) updateExecute(h) end
     self.Health = health
 
+    -- Over the fill only, so the health that is left turns the colour and
+    -- the part already lost stays dark.
     local exec = health:CreateTexture(nil, "ARTWORK", nil, 2)
-    exec:SetAllPoints(health)
+    exec:SetAllPoints(health:GetStatusBarTexture())
     exec:SetTexture(ns.Media:Statusbar())
     exec:SetBlendMode("BLEND")
     exec:Hide()
