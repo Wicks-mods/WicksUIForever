@@ -1,22 +1,26 @@
 -- Wick's UI
 -- Core/Install.lua: the first-run setup.
 --
--- One question to a page. First the ones this character's addons raise:
--- with Wick's Bags on, which bags B opens; with another addon on that does
--- a job Wick's UI also does (other nameplates, other action bars, another
--- whole UI), which of the two keeps it. Then the look, the class colours
--- and the scale. Nothing reloads along the way: one reload at the end
--- puts every answer in. Every page can be skipped; a skipped addon
--- question keeps the other addon, and Wick's UI leaves that job to it.
+-- One question to a page: the look, the class colours and the scale, then
+-- the ones this character's addons raise. With Wick's Bags on, which bags
+-- B opens; with another addon on that does a job Wick's UI also does
+-- (other nameplates, other action bars), which of the two keeps it; with
+-- kits for other classes on, whether to switch them off here. Another
+-- whole UI is asked first: kept, the rest does not matter. Nothing reloads
+-- along the way: one reload at the end puts every answer in. Every page
+-- can be skipped; a skipped addon question keeps the other addon, and
+-- Wick's UI leaves that job to it. Addons are switched off for this
+-- character only.
 --
 -- The setup is drawn in Wick OG with the Fel colours, whatever look the
 -- character is in; the look chosen here shows after the reload at the end.
 -- Colours come with each look, so there is no colour question: the Done
 -- page points to WickCore's options for the palette.
 --
--- It runs once per profile; /wui install brings it back. An addon that
--- would clash, switched on later, brings back just its own question at
--- the next login, and Wick's UI stands its part down until it is answered.
+-- It runs once per character, new characters sharing a profile included;
+-- /wui install brings it back. An addon that would clash, switched on
+-- later, brings back just its own question at the next login, and Wick's
+-- UI stands its part down until it is answered.
 
 local ADDON, ns = ...
 
@@ -92,6 +96,18 @@ I.CONFLICTS = CONFLICTS
 -- Bag addons besides Wick's Bags, for the bags question.
 local OTHER_BAGS = { { "Baganator", "Baganator" }, { "Bagnon", "Bagnon" }, { "AdiBags", "AdiBags" },
     { "ArkInventory", "ArkInventory" }, { "BetterBags", "BetterBags" } }
+
+-- The suite's class kits and the class each is for.
+local KITS = {
+    { "WicksBeastsAndThings", "Wick's Beasts and Things", "HUNTER" },
+    { "WicksConjuresAndThings", "Wick's Conjures and Things", "MAGE" },
+    { "WicksDemonsAndThings", "Wick's Demons and Things", "WARLOCK" },
+    { "WicksFormsAndThings", "Wick's Forms and Things", "DRUID" },
+    { "WicksPoisonsAndThings", "Wick's Poisons and Things", "ROGUE" },
+    { "WicksStancesAndThings", "Wick's Stances and Things", "WARRIOR" },
+    { "WicksTotemsAndThings", "Wick's Totems and Things", "SHAMAN" },
+}
+I.KITS = KITS
 
 -- Every addon switched on for this session, by lowercase folder name.
 -- Asked at the time, never cached: an addon may be loaded late.
@@ -186,6 +202,7 @@ function I:Detect()
     end
     self.open = open
     self.bagsOpen = self:BagsQuestion(set, isLoaded)
+    self.kitsOpen = self:KitsQuestion(set, isLoaded)
     return open
 end
 
@@ -202,7 +219,8 @@ end
 
 -- Anything to ask at this login on a profile already set up.
 function I:HasQuestions()
-    return (self.open and #self.open > 0) or (self.bagsOpen and self.bagsOpen.open) or false
+    return (self.open and #self.open > 0) or (self.bagsOpen and self.bagsOpen.open)
+        or (self.kitsOpen and self.kitsOpen.open) or false
 end
 
 -- The setup is showing.
@@ -269,6 +287,22 @@ local function setBagKeys(v)
     local ch = charDB()
     ch.bagKeys, ch.bagKeysSet, ch.bagsKeepBoth = v, false, nil
     I:ApplyBagKeys()
+end
+
+-- Kits for other classes that are on here. all: every one (for /wui
+-- install); otherwise only the ones this character has not chosen to keep.
+function I:KitsQuestion(set, isLoaded, all)
+    if not set then set, isLoaded = loadedAddons() end
+    local _, mine = UnitClass("player")
+    local kept = charDB().kitsKept or {}
+    local list = {}
+    for _, k in ipairs(KITS) do
+        if k[3] ~= mine and (all or not kept[k[1]]) and #present({ k }, set, isLoaded) > 0 then
+            list[#list + 1] = k
+        end
+    end
+    if #list == 0 then return nil end
+    return { kits = list, open = true }
 end
 
 -- What Shift+B does now, if it is something else: the bags question says
@@ -399,6 +433,24 @@ local function featurePage(q)
     }
 end
 
+local function kitsPage(q)
+    local list = q.kits
+    local many = #list > 1
+    local className = UnitClass("player") or "character"
+    return {
+        title = "Class kits",
+        text = ("%s %s for other classes and %s nothing on this %s. Switch %s off for this character? Your other characters keep %s.\n\nThis character's own kit, if it has one, stays on."):format(
+            names(list), many and "are kits" or "is a kit", many and "do" or "does", className,
+            many and "them" or "it", many and "them" or "it"),
+        choices = {
+            { label = "Switch them off", on = function() return run.picked.kits ~= "keep" end,
+              pick = function() run.picked.kits = "off" end },
+            { label = "Keep them on", on = function() return run.picked.kits == "keep" end,
+              pick = function() run.picked.kits = "keep" end },
+        },
+    }
+end
+
 local function conflictPage(q)
     if q.def.whole then return wholePage(q) end
     if q.def.comforts then return comfortsPage(q) end
@@ -482,21 +534,22 @@ local function buildPages(full)
     local pages = {}
     local function add(p) pages[#pages + 1] = p end
     if full then add(WELCOME) end
-    -- The other addons first, a whole other UI before the rest: kept,
-    -- nothing else here matters.
+    -- A whole other UI first: kept, nothing else here matters.
     for _, q in ipairs(run.questions) do
         if q.def.whole then add(conflictPage(q)) end
     end
     if not run.leaving then
-        if run.bags then add(bagsPage(run.bags)) end
-        for _, q in ipairs(run.questions) do
-            if not q.def.whole then add(conflictPage(q)) end
-        end
         if full then
             add(STYLE)
             add(CLASS_COLOURS)
             add(SCALE)
         end
+        -- The other addons at the end.
+        if run.bags then add(bagsPage(run.bags)) end
+        for _, q in ipairs(run.questions) do
+            if not q.def.whole then add(conflictPage(q)) end
+        end
+        if run.kits then add(kitsPage(run.kits)) end
     end
     add(donePage(full))
     return pages
@@ -683,15 +736,17 @@ end
 -- Open the setup. full: every question (a new profile, or /wui install);
 -- otherwise just the ones this login raised.
 function I:Start(full)
-    if full == nil then full = not ns:G().installed end
+    if full == nil then full = not charDB().setupDone end
     if full then
         pendingStyle = nil
         resetRun(self:AllConflicts())
         run.bags = self:BagsQuestion()
+        run.kits = self:KitsQuestion(nil, nil, true)
     else
         resetRun(self.open or {})
         local b = self.bagsOpen
         run.bags = (b and b.open) and b or nil
+        run.kits = self.kitsOpen
     end
     self.full = full
     self.pages = buildPages(full)
@@ -715,11 +770,16 @@ function I:Show(page)
     self:PlaceReload()
 end
 
+-- Off for this character only. The game takes the character's GUID (its
+-- own addon list does the same); with no character it would switch the
+-- addon off for every character on the account.
 local function disableAddOn(name)
     local fn = (C_AddOns and C_AddOns.DisableAddOn) or rawget(_G, "DisableAddOn")
-    if not fn then return false end
-    return pcall(fn, name)
+    local who = UnitGUID and UnitGUID("player")
+    if not (fn and who) then return false end
+    return pcall(fn, name, who)
 end
+I.disableAddOn = disableAddOn
 
 -- End the setup. reload: "secure" from the secure Reload now (its /reload
 -- follows), true from the drawn one under it (in a fight), false from Later
@@ -752,6 +812,19 @@ function I:Finish(reload)
     if run.copyComforts and ns.ComfortsModule and ns.ComfortsModule.CopyFromComforts then
         pcall(ns.ComfortsModule.CopyFromComforts, ns.ComfortsModule)
     end
+    -- Kits for other classes: off unless kept.
+    if run.kits then
+        local ch = charDB()
+        ch.kitsKept = type(ch.kitsKept) == "table" and ch.kitsKept or {}
+        for _, k in ipairs(run.kits.kits) do
+            if run.picked.kits == "keep" then
+                ch.kitsKept[k[1]] = true
+            else
+                ch.kitsKept[k[1]] = nil
+                run.disable[k[1]] = true
+            end
+        end
+    end
     local switched = false
     for name in pairs(run.disable) do
         if disableAddOn(name) then switched = true end
@@ -763,7 +836,8 @@ function I:Finish(reload)
     if newStyle and Chrome.SetStyle then Chrome:SetStyle(pendingStyle) end
     pendingStyle = nil
     g.installed = true
-    self.open, self.bagsOpen = nil, nil
+    charDB().setupDone = true
+    self.open, self.bagsOpen, self.kitsOpen = nil, nil, nil
     if self.frame then self.frame:Hide() end
     -- The palette in use again: the character's, or the new look's.
     if self.themeWas then

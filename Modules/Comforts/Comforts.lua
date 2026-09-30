@@ -160,8 +160,14 @@ end
 -- addon's own reload, so this is one the game counts as the player's.
 function CM:TurnComfortsOff()
     self:CopyFromComforts()
-    local disable = (C_AddOns and C_AddOns.DisableAddOn) or rawget(_G, "DisableAddOn")
-    if disable then pcall(disable, "WicksComforts") end
+    -- For this character only, as the setup does it.
+    if ns.Install and ns.Install.disableAddOn then
+        ns.Install.disableAddOn("WicksComforts")
+    else
+        local disable = (C_AddOns and C_AddOns.DisableAddOn) or rawget(_G, "DisableAddOn")
+        local who = UnitGUID and UnitGUID("player")
+        if disable and who then pcall(disable, "WicksComforts", who) end
+    end
     C_Timer.After(0.1, function()
         if Core.Chrome.ReloadPrompt then
             Core.Chrome:ReloadPrompt("Wick's Comforts is switched off and its settings are in Wick's UI. Reload to finish.")

@@ -310,7 +310,13 @@ function A:OnEnable()
         -- Wick's Bags on B, if a reload came before the key change could.
         local ch = self.db.char
         if ch and ch.bagKeys == "wicks" and ch.bagKeysSet == false then ns.Install:ApplyBagKeys() end
-        if not ns:G().installed or ns.Install:HasQuestions() then
+        -- The setup is kept per character. One from before that counts as
+        -- set up if its profile was; a new one gets the setup, even on a
+        -- profile another character already set up.
+        if ch and ch.setupDone == nil then
+            ch.setupDone = (not self.db.charIsNew and ns:G().installed) and true or false
+        end
+        if (ch and not ch.setupDone) or ns.Install:HasQuestions() then
             C_Timer.After(2, function() ns:AfterCombat("install", function() ns.Install:Start() end) end)
         end
     end
