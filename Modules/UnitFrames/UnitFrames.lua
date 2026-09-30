@@ -599,18 +599,31 @@ function UF:Configure(self)
     if not InCombatLockdown() and not self.wuiHeaderChild then self:SetSize(d.width, d.height) end
     local w, h = d.width, d.height
 
+    -- A look can set the bars in from the frame (Rebel): past its border
+    -- and a black gap, so the outline reads against the slab.
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    local slab = st and not ns:Modern() and st.unitInset and st or nil
+    local edgePad = slab and (px * (slab.borderPx or 1) + slab.unitInset) or px
+    local split = slab and slab.unitGap or px
+    if st and st.unitShadow and st.hardShadow and self.wuiHardShadow then
+        local o = h >= 40 and st.unitShadow or math.abs(st.hardShadow.x or 3)
+        self.wuiHardShadow:ClearAllPoints()
+        self.wuiHardShadow:SetPoint("TOPLEFT", self, "TOPLEFT", o, -o)
+        self.wuiHardShadow:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", o, -o)
+    end
+
     -- Portrait takes a strip off one side.
     local pl, pr = 0, 0
     local portrait = self.wuiPortrait
     if d.portrait == "left" or d.portrait == "right" then
         portrait:ClearAllPoints()
         portrait:SetWidth(d.portraitWidth)
-        portrait:SetPoint("TOP", self, "TOP", 0, -px)
-        portrait:SetPoint("BOTTOM", self, "BOTTOM", 0, px)
+        portrait:SetPoint("TOP", self, "TOP", 0, -edgePad)
+        portrait:SetPoint("BOTTOM", self, "BOTTOM", 0, edgePad)
         if d.portrait == "left" then
-            portrait:SetPoint("LEFT", self, "LEFT", px, 0); pl = d.portraitWidth + px
+            portrait:SetPoint("LEFT", self, "LEFT", edgePad, 0); pl = d.portraitWidth + split
         else
-            portrait:SetPoint("RIGHT", self, "RIGHT", -px, 0); pr = d.portraitWidth + px
+            portrait:SetPoint("RIGHT", self, "RIGHT", -edgePad, 0); pr = d.portraitWidth + split
         end
         self.Portrait = portrait
         setElement(self, "Portrait", true)
@@ -626,14 +639,14 @@ function UF:Configure(self)
     -- it. Raid frames keep their text on the bar, having no room above it.
     local modern = ns:Modern() and key ~= "raid"
     local health, power = self.Health, self.Power
-    local pad, nameRow = px, 0
+    local pad, nameRow = edgePad, 0
     if modern then
         pad = h < 36 and 5 or 7
         local lt = d.texts and d.texts.left
         nameRow = ((lt and lt.size) or 12) + (h < 36 and 3 or 5)
     end
     local ph = d.power and (modern and math.min(d.powerHeight, 3) or d.powerHeight) or 0
-    local gap = d.power and (modern and 3 or (d.powerGap or 1)) or 0
+    local gap = d.power and (modern and 3 or (slab and slab.unitGap) or (d.powerGap or 1)) or 0
     health:ClearAllPoints()
     health:SetPoint("TOPLEFT", self, "TOPLEFT", pad + pl, -(pad + nameRow))
     health:SetPoint("TOPRIGHT", self, "TOPRIGHT", -pad - pr, -(pad + nameRow))
@@ -696,7 +709,7 @@ function UF:Configure(self)
             -- On a class-coloured bar a class-coloured name disappears, so
             -- the name colour is dropped there and the name shows white.
             local tag = td.tag
-            if g.healthColor == "class" then tag = tag:gsub("%[wui:namecolor%]", "") end
+            if g.healthColor == "class" or (slab and slab.unitPlainNames) then tag = tag:gsub("%[wui:namecolor%]", "") end
             self:Tag(fs, tag)
             fs.wuiTag = td.tag
             fs:Show()
