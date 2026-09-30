@@ -1906,8 +1906,52 @@ end
 -- get one card of their own over the content instead of one per piece.
 local ONE_CARD = { GossipFrame = true, QuestFrame = true, QuestLogPopupDetailFrame = true, ItemTextFrame = true }
 
+-- The old dropdowns (UIDropDownMenuTemplate: Left, Middle and Right
+-- textures round a text and an arrow button), still on a few pages (the
+-- guild's preferred play settings). Their art goes for a tile of ours round
+-- the part that shows and the arrow takes our chevron. Their textures are
+-- tall enough to pass for a panel's backing, so they are kept off the
+-- walk's cards, which stacked two of them into one dark block.
+local function isOldDropdown(f)
+    return f.Left and f.Middle and f.Right and f.Button and f.Text and f.GetObjectType and f:GetObjectType() == "Frame"
+end
+local function styleOldDropdown(dd)
+    for _, k in ipairs({ "Left", "Middle", "Right" }) do
+        local t = dd[k]
+        if t then
+            t:SetAlpha(0)
+            noCard[t] = true
+            if cards[t] then cards[t]:Hide() end
+        end
+    end
+    if done[dd] then return end
+    done[dd] = true
+    local b = dd.Button
+    local e = extras[dd] or {}
+    extras[dd] = e
+    if not e.backdrop and b then
+        local bd = CreateFrame("Frame", nil, dd)
+        bd:SetPoint("TOPLEFT", dd, "TOPLEFT", 18, -2)
+        bd:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 2, -2)
+        bd:SetFrameLevel(math.max(0, dd:GetFrameLevel() - 1))
+        ns:SetTemplate(bd, "Shadow")
+        e.backdrop = bd
+    end
+    if b then
+        for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
+            local t = b[get] and b[get](b)
+            if t then t:SetAlpha(0) end
+        end
+        ns:Glyph(b, "down", { tile = false, size = 12 })
+        done[b] = true
+    end
+    styleText(dd.Text)
+end
+PS.styleOldDropdown = styleOldDropdown
+
 local function stripArt(frame, root)
     if frame.wuiBG or rankBars[frame] then return end
+    if isOldDropdown(frame) then styleOldDropdown(frame) return end
     local rootName = root.GetName and root:GetName()
     local oneCard = rootName and ONE_CARD[rootName]
     local rw, rh = root:GetSize()
