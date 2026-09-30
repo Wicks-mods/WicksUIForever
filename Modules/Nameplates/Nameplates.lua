@@ -38,6 +38,11 @@ ns.defaults.profile.nameplates = {
     raidIcon = true, quest = true,
     targetBorder = true, targetScale = 1.1,
     nonTargetAlpha = 0.6,
+    targetMarker = "arrows",          -- arrows, glow or none
+    focusMarker = true,               -- your focus marked the same way, in its own colour
+    focusColor = { 0.40, 0.65, 1.00, 1 },
+    classMarker = true,               -- a diamond before the name for elites and rares
+    lockMark = true,                  -- a lock on casts you cannot interrupt
     friendlyNameOnly = true,
     execute = 0,                      -- percent; 0 is off
     executeColor = { 0.95, 0.25, 0.25, 1 },
@@ -151,7 +156,31 @@ local function style(self, unit)
     cb.Shield = locked
     cb.wuiLocked = locked
     cb.timeToHold = 0.4
-    self.Castbar = cb
+
+    -- Casts you cannot interrupt: the icon darkened under a lock (or a lock
+    -- at the bar's end with no icon). Whether a cast can be interrupted is
+    -- a secret; the client sets these alphas from it and we never read it.
+    local lockHolder = CreateFrame("Frame", nil, cb)
+    lockHolder:SetFrameLevel(iconHolder:GetFrameLevel() + 2)
+    local wash = lockHolder:CreateTexture(nil, "ARTWORK")
+    wash:SetColorTexture(0, 0, 0, 0.55)
+    local lock = lockHolder:CreateTexture(nil, "OVERLAY")
+    lock:SetTexture(ns.Media:Glyph("lock"))
+    wash:SetAlpha(0)
+    lock:SetAlpha(0)
+    cb.wuiLockHolder, cb.wuiLockWash, cb.wuiLockGlyph = lockHolder, wash, lock
+    local function lockFrom(el, flag)
+        local on = db().lockMark
+        for _, t in ipairs({ el.wuiLockWash, el.wuiLockGlyph }) do
+            if on and t.SetAlphaFromBoolean then t:SetAlphaFromBoolean(flag, 1, 0) else t:SetAlpha(0) end
+        end
+    end
+    cb.PostCastStart = function(el, _, _, flag) lockFrom(el, flag) end
+    cb.PostCastInterruptible = function(el, _, _, flag) lockFrom(el, flag) end
+    -- The target's pointers step out past the spell icon while it shows.
+    cb:HookScript("OnShow", function() NP:PlaceMarks(self) end)
+    cb:HookScript("OnHide", function() NP:PlaceMarks(self) end)
+    self.wuiCastbar = cb
 
     -- Your debuffs on it, above the name.
     if self.CreateAuras then
@@ -194,6 +223,7 @@ local function style(self, unit)
     local raid = overlay:CreateTexture(nil, "OVERLAY")
     raid:SetSize(18, 18)
     raid:SetPoint("RIGHT", health, "LEFT", -4, 0)
+    raid.PostUpdate = function() NP:PlaceMarks(self) end
     self.RaidTargetIndicator = raid
 
     -- Threat: a glow round the bar with your threat on this mob.
@@ -204,7 +234,21 @@ local function style(self, unit)
     local quest = overlay:CreateTexture(nil, "OVERLAY")
     quest:SetSize(14, 14)
     quest:SetPoint("LEFT", health, "RIGHT", 4, 0)
+    quest.PostUpdate = function() NP:PlaceMarks(self) end
     self.QuestIndicator = quest
+
+    -- Target and focus: a pointer each side of the bar, or a glow round it
+    -- (its own, apart from the threat glow).
+    local markL = overlay:CreateTexture(nil, "OVERLAY", nil, 2)
+    markL:SetTexture(ns.Media:Glyph("pointer-right"))
+    markL:Hide()
+    local markR = overlay:CreateTexture(nil, "OVERLAY", nil, 2)
+    markR:SetTexture(ns.Media:Glyph("pointer-left"))
+    markR:Hide()
+    self.wuiMarkL, self.wuiMarkR = markL, markR
+    local tglow = ns:Glow(health, 10)
+    tglow.Override = nil
+    self.wuiTargetGlow = tglow
 
     NP:Configure(self)
     self.wuiStyled = true
@@ -236,13 +280,43 @@ function NP:Configure(self)
         self.wuiThreatGlow:Hide()
     end
 
-    local cb = self.Castbar
+    local cb = self.wuiCastbar
+    -- Like the threat glow: assigned while styling, switched afterwards.
+    if not self.wuiStyled then
+        self.Castbar = d.castbar and cb or nil
+    elseif d.castbar then
+        self.Castbar = cb
+        if not self:IsElementEnabled("Castbar") then self:EnableElement("Castbar") end
+    elseif self.Castbar and self:IsElementEnabled("Castbar") then
+        self:DisableElement("Castbar")
+        cb:Hide()
+    end
     cb:SetHeight(d.castHeight)
     cb.wuiIconHolder:ClearAllPoints()
     local iconSize = d.height + d.castHeight + 3
     cb.wuiIconHolder:SetSize(iconSize, iconSize)
     cb.wuiIconHolder:SetPoint("TOPRIGHT", h, "TOPLEFT", -3, 0)
     cb.wuiIconHolder:SetShown(d.castIcon)
+    local lh, lw, lg = cb.wuiLockHolder, cb.wuiLockWash, cb.wuiLockGlyph
+    lh:ClearAllPoints()
+    lg:ClearAllPoints()
+    if d.castIcon then
+        lh:SetAllPoints(cb.wuiIconHolder)
+        lw:ClearAllPoints()
+        lw:SetPoint("TOPLEFT", 1, -1)
+        lw:SetPoint("BOTTOMRIGHT", -1, 1)
+        lw:Show()
+        local ls = math.max(10, math.floor(iconSize * 0.62 + 0.5))
+        lg:SetSize(ls, ls)
+        lg:SetPoint("CENTER", lh, "CENTER", 0, 0)
+    else
+        local ls = d.castHeight + 4
+        lh:SetSize(ls, ls)
+        lh:SetPoint("RIGHT", cb, "LEFT", -2, 0)
+        lw:Hide()
+        lg:SetAllPoints(lh)
+    end
+    lg:SetVertexColor(C.text[1], C.text[2], C.text[3], 1)
     local g = ns.UnitFrames and ns.UnitFrames:db()
     local cc = g and g.castColor or { C.fel[1], C.fel[2], C.fel[3] }
     local lc = g and g.castLocked or { 0.45, 0.42, 0.5 }
@@ -254,7 +328,8 @@ function NP:Configure(self)
     self.wuiName:SetWidth(d.width + 40)
 
     if self.wuiNameTag then self:Untag(self.wuiName) end
-    self.wuiNameTag = d.levelShown and "[wui:level] [wui:namecolor][name]" or "[wui:namecolor][name]"
+    self.wuiNameTag = (d.classMarker and "[wui:classmark]" or "")
+        .. (d.levelShown and "[wui:level] [wui:namecolor][name]" or "[wui:namecolor][name]")
     self:Tag(self.wuiName, self.wuiNameTag)
     if self.wuiPctTagged then self:Untag(self.wuiPercent); self.wuiPctTagged = nil end
     if d.percent then
@@ -275,6 +350,32 @@ function NP:Configure(self)
         self.wuiBuffs:SetPoint("BOTTOMRIGHT", h, "TOPRIGHT", 0, d.nameSize + 6)
         self.wuiBuffs:SetShown(d.buffs)
     end
+
+    local ms = math.max(10, d.height + 4)
+    self.wuiMarkL:SetSize(ms * 0.75, ms)
+    self.wuiMarkR:SetSize(ms * 0.75, ms)
+    NP:PlaceMarks(self)
+end
+
+-- The pointers hug the bar, stepping out past whatever else sits beside
+-- it: the spell icon while a cast shows, a raid mark, a quest icon.
+function NP:PlaceMarks(self)
+    local L, R, h = self.wuiMarkL, self.wuiMarkR, self.Health
+    if not (L and h) then return end
+    local d = db()
+    local left, right = 0, 0
+    local cb = self.wuiCastbar
+    if d.castIcon and cb and self.Castbar and cb:IsShown() then
+        left = math.max(left, d.height + d.castHeight + 3 + 3)
+    end
+    local raid = self.RaidTargetIndicator
+    if raid and raid:IsShown() then left = math.max(left, 18 + 4) end
+    local quest = self.QuestIndicator
+    if quest and quest:IsShown() then right = math.max(right, 14 + 4) end
+    L:ClearAllPoints()
+    L:SetPoint("RIGHT", h, "LEFT", -(3 + left), 0)
+    R:ClearAllPoints()
+    R:SetPoint("LEFT", h, "RIGHT", 3 + right, 0)
 end
 
 -- Things that depend on the unit as well as the settings: friendly
@@ -285,11 +386,12 @@ function NP:Refresh(self)
     local d = db()
     local hasTarget = UnitExists("target")
     local isTarget = hasTarget and UnitIsUnit(unit, "target")
+    local isFocus = d.focusMarker and not isTarget and UnitExists("focus") and plain(UnitIsUnit(unit, "focus"))
 
     local friendly = plain(UnitIsFriend("player", unit))
     local nameOnly = d.friendlyNameOnly and friendly
     self.Health:SetShown(not nameOnly)
-    self.Castbar:SetAlpha(nameOnly and 0 or 1)
+    self.wuiCastbar:SetAlpha(nameOnly and 0 or 1)
     self.wuiName:ClearAllPoints()
     if nameOnly then
         self.wuiName:SetPoint("CENTER", self, "CENTER", 0, 0)
@@ -298,9 +400,30 @@ function NP:Refresh(self)
     end
 
     if self.Health.backdrop then
-        ns:SetBorderColor(self.Health.backdrop, (isTarget and d.targetBorder) and "fel" or "border")
+        local border = "border"
+        if isTarget and d.targetBorder then border = "fel" elseif isFocus then border = d.focusColor end
+        ns:SetBorderColor(self.Health.backdrop, border)
     end
-    self:SetAlpha((not hasTarget or isTarget or nameOnly) and 1 or d.nonTargetAlpha)
+
+    -- Pointers or a glow, fel for the target and the focus colour for the
+    -- focus; none on a name-only plate.
+    local mark = (not nameOnly) and ((isTarget and "target") or (isFocus and "focus")) or nil
+    local style = mark and d.targetMarker or "none"
+    local c = mark == "focus" and d.focusColor or C.fel
+    local arrows, glow = style == "arrows", style == "glow"
+    if arrows then
+        self.wuiMarkL:SetVertexColor(c[1], c[2], c[3], 1)
+        self.wuiMarkR:SetVertexColor(c[1], c[2], c[3], 1)
+        NP:PlaceMarks(self)
+    end
+    self.wuiMarkL:SetShown(arrows)
+    self.wuiMarkR:SetShown(arrows)
+    if self.wuiTargetGlow then
+        if glow then self.wuiTargetGlow:SetVertexColor(c[1], c[2], c[3], 0.9) end
+        self.wuiTargetGlow:SetShown(glow)
+    end
+
+    self:SetAlpha((not hasTarget or isTarget or isFocus or nameOnly) and 1 or d.nonTargetAlpha)
     self.Health:SetScale((isTarget and d.targetBorder) and d.targetScale or 1)
 end
 
@@ -344,6 +467,7 @@ function NP:Initialize()
     if ns.UnitFrames and ns.UnitFrames.initialized then oUF:SetActiveStyle("WicksUI") end
     ns:On("PLAYER_TARGET_CHANGED", function() NP:RefreshAll() end)
     ns:On("UNIT_FACTION", function() NP:RefreshAll() end)
+    ns:On("PLAYER_FOCUS_CHANGED", function() NP:RefreshAll() end)
 end
 
 function NP:Update()
@@ -382,13 +506,17 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Color("Colour", "executeColor")
 
     L:Heading("Targeting")
+    L:Dropdown("Mark your target with", "targetMarker", { { "arrows", "Pointers either side" }, { "glow", "A glow" }, { "none", "Nothing" } })
     L:Toggle("Fel border and a size bump on your target", "targetBorder")
     L:Slider("Target size", "targetScale", 1, 1.5, 0.05)
+    L:Toggle("Mark your focus too", "focusMarker", { tooltip = "The same mark and a border in the focus colour. It stays bright while you target something else." })
+    L:Color("Focus colour", "focusColor")
     L:Slider("Everything else, alpha", "nonTargetAlpha", 0.1, 1, 0.05)
 
     L:Heading("Text")
     L:Slider("Name size", "nameSize", 6, 20, 1)
     L:Toggle("Level before the name", "levelShown")
+    L:Toggle("A diamond for elites and rares", "classMarker", { tooltip = "Gold for elites and bosses, silver for rares, before the name." })
     L:Toggle("Health percent", "percent")
     L:Slider("Percent size", "percentSize", 6, 20, 1)
     L:Toggle("Friendly plates show the name only", "friendlyNameOnly")
@@ -397,6 +525,7 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Toggle("Cast bar", "castbar")
     L:Slider("Cast bar height", "castHeight", 4, 24, 1)
     L:Toggle("Spell icon", "castIcon")
+    L:Toggle("A lock on casts you cannot interrupt", "lockMark", { tooltip = "Over the spell icon, or at the bar's end without one, on top of the bar's own cannot-interrupt colour." })
     L:Toggle("Your debuffs", "debuffs")
     L:Toggle("Buffs you can steal or purge", "buffs")
     L:Note("Aura sizes and counts are set when a plate is first made, so they take effect after a reload.")
