@@ -1,8 +1,9 @@
 # Wick's UI
 
-## 0.1.0 (2026-09-30)
+## 0.9.0 (2026-09-30)
 
-First release.
+First release, on the suite's shared version for the Forever beta. The
+suite goes to 1.0.0 together at launch.
 
 ### The interface
 
