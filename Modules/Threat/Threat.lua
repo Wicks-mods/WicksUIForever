@@ -33,6 +33,8 @@ local TH = ns:NewModule("threat", { title = "Threat", order = 45, defaults = {
     personalHeight = 8,
     warnAt = 90,            -- percent of the pull at which you are warned
     warnFlash = true,
+    warnSound = true,       -- a sound as the warning starts
+    warnSoundKit = "raid",  -- raid, alarm, ready, bell
 } })
 ns.Threat = TH
 
@@ -121,6 +123,32 @@ local function warning(mine)
     if isTankRole() then return not mine.tanking end
     return (not mine.tanking) and (mine.scaled or 0) >= (db().warnAt or 90)
 end
+
+-- The warning's sound: the game's own alerts, on the master channel so it
+-- is heard with the effects turned down. Once as the warning starts, not
+-- again until it has cleared, and never more than once in three seconds.
+local SK = rawget(_G, "SOUNDKIT") or {}
+local SOUNDS = {
+    raid  = { "Raid warning", SK.RAID_WARNING or 8959 },
+    alarm = { "Alarm", SK.ALARM_CLOCK_WARNING_3 or 12889 },
+    ready = { "Ready check", SK.READY_CHECK or 8960 },
+    bell  = { "Bell", SK.UI_BNET_TOAST or 18019 },
+}
+TH.SOUNDS = SOUNDS
+local warnedBefore, lastSound = false, 0
+local function soundCheck(list)
+    local d = db()
+    local mine
+    for _, e in ipairs(list) do if e.unit == "player" then mine = e break end end
+    local warn = warning(mine)
+    if warn and not warnedBefore and d.warnSound and GetTime() - lastSound > 3 then
+        local s = SOUNDS[d.warnSoundKit] or SOUNDS.raid
+        if PlaySound then pcall(PlaySound, s[2], "Master") end
+        lastSound = GetTime()
+    end
+    warnedBefore = warn and true or false
+end
+TH.SoundCheck = soundCheck
 
 -- ============================================================
 -- The meter
@@ -286,6 +314,7 @@ driver:SetScript("OnUpdate", function(_, e)
     if dirty or (fighting and acc >= 0.25) or acc >= 1 then
         acc, dirty = 0, false
         TH.list = read()
+        soundCheck(TH.list)
     end
     local list = TH.list or entries
     if meter then drawMeter(list) end
@@ -344,5 +373,13 @@ ns.Config:AddPage("threat", "Threat", function(L)
     L:Slider("Warn at (percent of the pull)", "warnAt", 50, 100, 1,
         { tooltip = "When your threat passes this share of what pulls the mob, your bar and your row turn the warning colour. A tank is warned when a mob is not on them instead." })
     L:Toggle("Flash when warned", "warnFlash")
+    L:Toggle("Sound when warned", "warnSound", { tooltip = "Once as the warning starts, not again until it clears, and never more than once in three seconds. Plays on the master channel." })
+    L:Dropdown("Sound", "warnSoundKit", function()
+        local out = {}
+        for _, key in ipairs({ "raid", "alarm", "ready", "bell" }) do out[#out + 1] = { key, SOUNDS[key][1] } end
+        return out
+    end, { disabled = function() return not db().warnSound end,
+           set = function() local snd = SOUNDS[db().warnSoundKit]; if snd and PlaySound then pcall(PlaySound, snd[2], "Master") end end,
+           tooltip = "Plays as you pick it." })
     L:Note("Move the meter and the bar with /wui move.")
 end, { onChange = function() TH:Update() end, order = 45 })
