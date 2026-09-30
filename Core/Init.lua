@@ -142,3 +142,10 @@ _G.WicksUI = ns   -- for /dump and the offline harness
 
 -- Settings, general section.
 function ns:G() return (A.db and A.db.profile.general) or ns.defaults.profile.general end
+
+-- The unit an oUF frame is showing. This oUF keeps it in __unit (the unit
+-- attribute on secure frames); nothing sets .unit, so reading that alone
+-- finds no unit on any frame, nameplates included.
+function ns:UnitOf(f)
+    return f and (f.unit or f.__unit or (f.GetAttribute and f:GetAttribute("unit"))) or nil
+end

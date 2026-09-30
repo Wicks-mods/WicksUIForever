@@ -265,7 +265,13 @@ function NP:Configure(self)
     h:SetSize(d.width, d.height)
 
     h.colorClass, h.colorReaction, h.colorHealth = d.healthColor == "class", d.healthColor == "class", d.healthColor ~= "class"
-    h.colorThreat = d.threat
+    -- Threat colours are for tanks, as the setting says: while you tank, a
+    -- mob that is not on you stands out. Anyone else keeps class and
+    -- reaction, where a mob your pet or the tank holds would otherwise go
+    -- grey. The threat glow and meter still warn them.
+    local tank = ns.Threat and ns.Threat.IsTank and ns.Threat.IsTank() or false
+    local byThreat = d.threat and tank and true or false
+    if self.wuiStyled and h.SetColorThreat and h.__owner then h:SetColorThreat(byThreat) else h.colorThreat = byThreat end
 
     -- While the plate is first being styled, oUF has not set it up yet and
     -- switching an element fails; the widget alone is enough then, oUF
@@ -383,8 +389,8 @@ end
 -- Things that depend on the unit as well as the settings: friendly
 -- name-only plates, whether this is the target.
 function NP:Refresh(self)
-    local unit = self.unit
-    if not unit then return end
+    local unit = ns:UnitOf(self)
+    if not unit or not UnitExists(unit) then return end
     local d = db()
     local hasTarget = UnitExists("target")
     local isTarget = hasTarget and UnitIsUnit(unit, "target")
@@ -431,7 +437,8 @@ end
 
 function NP:RefreshAll()
     for f in pairs(self.plates) do
-        if f.unit and f:IsShown() then self:Refresh(f) end
+        -- Visible, not just shown: a plate that has gone keeps its last unit.
+        if ns:UnitOf(f) and f:IsVisible() then self:Refresh(f) end
     end
 end
 
@@ -470,6 +477,9 @@ function NP:Initialize()
     ns:On("PLAYER_TARGET_CHANGED", function() NP:RefreshAll() end)
     ns:On("UNIT_FACTION", function() NP:RefreshAll() end)
     ns:On("PLAYER_FOCUS_CHANGED", function() NP:RefreshAll() end)
+    -- Tanking or not decides the threat colours.
+    ns:On("PLAYER_ROLES_ASSIGNED", function() NP:Update() end)
+    ns:On("PLAYER_SPECIALIZATION_CHANGED", function(unit) if unit == nil or unit == "player" then NP:Update() end end)
 end
 
 function NP:Update()
@@ -483,7 +493,7 @@ function NP:Update()
         end
         for f in pairs(self.plates) do
             self:Configure(f)
-            if f.unit then
+            if ns:UnitOf(f) and f:IsVisible() then
                 self:Refresh(f)
                 if f.UpdateAllElements then f:UpdateAllElements("WicksUI_Configure") end
             end
@@ -500,7 +510,7 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Slider("Width", "width", 60, 300, 1)
     L:Slider("Height", "height", 4, 40, 1)
     L:Dropdown("Health colour", "healthColor", { { "class", "Class and reaction" }, { "dark", "Dark" } })
-    L:Toggle("Colour by threat", "threat", { tooltip = "For tanks: the bar shows whether you hold the mob." })
+    L:Toggle("Colour by threat while you tank", "threat", { tooltip = "In a tank role or spec, the bar shows whether you hold the mob. In any other role plates keep their class and reaction colours; the threat glow and meter warn you instead." })
 
     L:Heading("Execute")
     L:Note("Lights the bar under a health percentage you choose. The client does the comparison against health it keeps from addons, so this works in combat. 0 switches it off.")

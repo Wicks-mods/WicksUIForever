@@ -865,7 +865,7 @@ function UF:UpdateBorders()
     local g = self:db()
     for f in pairs(self.all) do
         local color = "border"
-        local u = f.unit
+        local u = ns:UnitOf(f)
         if u and UnitExists(u) then
             if g.targetBorder and f.wuiKey ~= "target" and f.wuiKey ~= "player" and UnitIsUnit(u, "target") then
                 color = "fel"

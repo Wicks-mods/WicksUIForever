@@ -373,6 +373,7 @@ end
 driver:SetScript("OnEvent", function() dirty = true end)
 
 -- For the offline harness.
+TH.IsTank = isTankRole
 TH.Read, TH.Warning, TH.Draw = read, warning, function(list) if meter then drawMeter(list) end end
 
 function TH:Initialize()
