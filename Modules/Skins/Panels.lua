@@ -374,7 +374,8 @@ local function recolorText(frame)
     for _, r in ipairs({ frame:GetRegions() }) do
         if r:GetObjectType() == "Texture" then
             local a = r:GetAtlas()
-            if a and r:GetAlpha() > 0 and isRule(a) then r:SetAlpha(0) end
+            local al = r:GetAlpha()
+            if a and not (issecretvalue and issecretvalue(al)) and al > 0 and isRule(a) then r:SetAlpha(0) end
         elseif r:GetObjectType() == "FontString" then
             styleFont(r)
             local cr, cg, cb = r:GetTextColor()
@@ -733,8 +734,15 @@ end
 -- Frames that are not Blizzard's and must be left as their addon drew them:
 -- an add-on's page in the Settings window (the canvas it is shown on), and
 -- any Wick panel (WickCore marks those).
+-- A unit frame inside a window (the raid frame settings' preview) is
+-- content, and a live one hands back secret alphas and sizes.
+local function isUnitFrame(f)
+    return f.healthBar ~= nil and f.displayedUnit ~= nil
+end
+
 local function notOurs(frame)
     if frame.wickPanel then return true end
+    if isUnitFrame(frame) then return true end
     local sp = rawget(_G, "SettingsPanel")
     local canvas = sp and sp.Container and sp.Container.SettingsCanvas
     return canvas ~= nil and frame == canvas
@@ -745,74 +753,76 @@ local function scanButtons(frame, depth)
     if depth > 7 or not frame.GetChildren or notOurs(frame) then return end
     recolorText(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
-        local kind = child:GetObjectType()
-        local w, h = child:GetSize()
-        w, h = w or 0, h or 0
-        local isButton = kind == "Button" or kind == "CheckButton"
-        if isButton and (w < 1 or h < 1) then
-            -- Not laid out yet (a list row the moment it is made): judged
-            -- by its size it would pass for a small icon button. Left for a
-            -- later pass, once it has one.
-        elseif kind == "Button" and isFilter(child) then
-            styleFilter(child)
-        elseif kind == "Button" and child.StateIcon and child.Name then
-            -- A collapsible heading (skills, currencies): its brown bar,
-            -- drawn again as its hover, goes for a grey pill.
-            for _, r in ipairs({ child:GetRegions() }) do
-                local a = r:GetObjectType() == "Texture" and r:GetAtlas()
-                if a and a:find("collapseExpand") and r:GetAlpha() > 0 then r:SetAlpha(0) end
+        if not isUnitFrame(child) then
+            local kind = child:GetObjectType()
+            local w, h = child:GetSize()
+            w, h = w or 0, h or 0
+            local isButton = kind == "Button" or kind == "CheckButton"
+            if isButton and (w < 1 or h < 1) then
+                -- Not laid out yet (a list row the moment it is made): judged
+                -- by its size it would pass for a small icon button. Left for a
+                -- later pass, once it has one.
+            elseif kind == "Button" and isFilter(child) then
+                styleFilter(child)
+            elseif kind == "Button" and child.StateIcon and child.Name then
+                -- A collapsible heading (skills, currencies): its brown bar,
+                -- drawn again as its hover, goes for a grey pill.
+                for _, r in ipairs({ child:GetRegions() }) do
+                    local a = r:GetObjectType() == "Texture" and r:GetAtlas()
+                    if a and a:find("collapseExpand") and r:GetAlpha() > 0 then r:SetAlpha(0) end
+                end
+                child.Name:SetTextColor(C.text[1], C.text[2], C.text[3])
+                if not done[child] then
+                    done[child] = true
+                    backdrop(child, "Shadow", false, 1)
+                    local h = child:CreateTexture(nil, "HIGHLIGHT")
+                    h:SetPoint("TOPLEFT", 2, -2)
+                    h:SetPoint("BOTTOMRIGHT", -2, 2)
+                    ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.12)
+                end
+            elseif isButton and child.icon and child.name and child.selectedTexture and w > 64 then
+                styleListRow(child)
+            elseif isButton and w <= 64 and (child.Icon or child.icon) and not hasText(child) and not child.Name
+                and not (child:GetParent() and child:GetParent().Button == child) then
+                -- Icon tabs first: many are built on the tab template and carry
+                -- Left, Middle and Right, which would otherwise make them buttons.
+                styleIconButton(child)
+            elseif kind == "Button" and child.Left and child.Right and (child.Middle or child.Center) then
+                styleButton(child)
+            elseif kind == "EditBox" and ((child.Left and child.Right) or (child.left and child.right) or child.NineSlice) then
+                styleEditBox(child)
+            elseif child.Track and child.Track.Thumb and child.Back and child.Forward then
+                styleScrollBar(child)
+            elseif child.Arrow and child.Background and child.Text then
+                styleDropdown(child)
+            elseif child.Slider and child.Back and child.Forward then
+                -- A slider with arrows either side (the settings' sliders):
+                -- the arrows become our marks.
+                -- Bare marks, no tile: they sit either side of a thin track.
+                ns:Glyph(child.Back, "left", { tile = false, size = 12 })
+                ns:Glyph(child.Forward, "right", { tile = false, size = 12 })
+                done[child.Back], done[child.Forward] = true, true
+                if child.Slider:GetObjectType() == "Slider" then styleSlider(child.Slider) end
+            elseif kind == "Slider" then
+                styleSlider(child)
+            elseif kind == "StatusBar" then
+                styleBar(child)
+            elseif kind == "Frame" and child.Fill and child.Mask and child.Text
+                and child.Fill.GetObjectType and child.Fill:GetObjectType() == "Texture" then
+                paintFill(child)
+            elseif kind == "CheckButton" and w <= 36 and h <= 36 and not (child.Icon or child.icon) then
+                styleCheck(child)
+            elseif isButton and (child.Icon or child.icon) and not child.Left and not child.Name
+                and not (child:GetParent() and child:GetParent().Button == child) then
+                styleIconButton(child)
+            elseif arrowGlyphs[child] or (isButton and w <= 32 and h <= 32 and not hasText(child)) then
+                styleArrow(child)
+            elseif kind == "Button" and w >= 110 and h <= 36 and hasText(child) and not child.CollapseButton then
+                styleRow(child)
             end
-            child.Name:SetTextColor(C.text[1], C.text[2], C.text[3])
-            if not done[child] then
-                done[child] = true
-                backdrop(child, "Shadow", false, 1)
-                local h = child:CreateTexture(nil, "HIGHLIGHT")
-                h:SetPoint("TOPLEFT", 2, -2)
-                h:SetPoint("BOTTOMRIGHT", -2, 2)
-                ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.12)
+            if kind ~= "ScrollFrame" then
+                scanButtons(child, depth + 1)
             end
-        elseif isButton and child.icon and child.name and child.selectedTexture and w > 64 then
-            styleListRow(child)
-        elseif isButton and w <= 64 and (child.Icon or child.icon) and not hasText(child) and not child.Name
-            and not (child:GetParent() and child:GetParent().Button == child) then
-            -- Icon tabs first: many are built on the tab template and carry
-            -- Left, Middle and Right, which would otherwise make them buttons.
-            styleIconButton(child)
-        elseif kind == "Button" and child.Left and child.Right and (child.Middle or child.Center) then
-            styleButton(child)
-        elseif kind == "EditBox" and ((child.Left and child.Right) or (child.left and child.right) or child.NineSlice) then
-            styleEditBox(child)
-        elseif child.Track and child.Track.Thumb and child.Back and child.Forward then
-            styleScrollBar(child)
-        elseif child.Arrow and child.Background and child.Text then
-            styleDropdown(child)
-        elseif child.Slider and child.Back and child.Forward then
-            -- A slider with arrows either side (the settings' sliders):
-            -- the arrows become our marks.
-            -- Bare marks, no tile: they sit either side of a thin track.
-            ns:Glyph(child.Back, "left", { tile = false, size = 12 })
-            ns:Glyph(child.Forward, "right", { tile = false, size = 12 })
-            done[child.Back], done[child.Forward] = true, true
-            if child.Slider:GetObjectType() == "Slider" then styleSlider(child.Slider) end
-        elseif kind == "Slider" then
-            styleSlider(child)
-        elseif kind == "StatusBar" then
-            styleBar(child)
-        elseif kind == "Frame" and child.Fill and child.Mask and child.Text
-            and child.Fill.GetObjectType and child.Fill:GetObjectType() == "Texture" then
-            paintFill(child)
-        elseif kind == "CheckButton" and w <= 36 and h <= 36 and not (child.Icon or child.icon) then
-            styleCheck(child)
-        elseif isButton and (child.Icon or child.icon) and not child.Left and not child.Name
-            and not (child:GetParent() and child:GetParent().Button == child) then
-            styleIconButton(child)
-        elseif arrowGlyphs[child] or (isButton and w <= 32 and h <= 32 and not hasText(child)) then
-            styleArrow(child)
-        elseif kind == "Button" and w >= 110 and h <= 36 and hasText(child) and not child.CollapseButton then
-            styleRow(child)
-        end
-        if kind ~= "ScrollFrame" then
-            scanButtons(child, depth + 1)
         end
     end
 end
@@ -2059,7 +2069,7 @@ local function walkProfessions(frame, depth, root)
     fade(frame.NineSlice)
     recolorText(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
-        if child:IsShown() then
+        if child:IsShown() and not isUnitFrame(child) then
             local kind = child:GetObjectType()
             local fill = child.Fill
             if (kind == "Button" or kind == "CheckButton") and ((child:GetWidth() or 0) < 1 or (child:GetHeight() or 0) < 1) then
@@ -2652,17 +2662,21 @@ PS.SPECIAL.CompactRaidFrameManager = function(frame)
         end
     end
     -- The dividers between the icon buttons come from a pool, drawn again
-    -- as the group changes.
-    local function dividers()
+    -- as the group changes, which is also when the leader's Party/Raid
+    -- dropdown is shown or hidden: over the "Party" label, which Blizzard's
+    -- solid dropdown art covered and our see-through one does not.
+    local function hold()
         for _, pool in ipairs({ frame.dividerVerticalPool, frame.dividerHorizontalPool }) do
             if pool and pool.EnumerateActive then
                 for t in pool:EnumerateActive() do t:SetAlpha(0) end
             end
         end
+        local dd = dfr and dfr.ModeControlDropdown
+        if dfr and dfr.label and dd then dfr.label:SetAlpha(dd:IsShown() and 0 or 1) end
     end
-    dividers()
+    hold()
     if rawget(_G, "CompactRaidFrameManager_UpdateOptionsFlowContainer") then
-        hooksecurefunc("CompactRaidFrameManager_UpdateOptionsFlowContainer", dividers)
+        hooksecurefunc("CompactRaidFrameManager_UpdateOptionsFlowContainer", hold)
     end
 end
 
