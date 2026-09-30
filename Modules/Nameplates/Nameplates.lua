@@ -213,6 +213,7 @@ local function style(self, unit)
     self.QuestIndicator = quest
 
     NP:Configure(self)
+    self.wuiStyled = true
 end
 
 -- ============================================================
@@ -226,8 +227,14 @@ function NP:Configure(self)
     h.colorClass, h.colorReaction, h.colorHealth = d.healthColor == "class", d.healthColor == "class", d.healthColor ~= "class"
     h.colorThreat = d.threat
 
+    -- While the plate is first being styled, oUF has not set it up yet and
+    -- switching an element fails; the widget alone is enough then, oUF
+    -- enables it itself. Afterwards, a settings change switches it.
     local th = ns.A and ns.A.db and ns.A.db.profile.threat
-    if th and th.enable and th.plateGlow and self.wuiThreatGlow then
+    local want = th and th.enable and th.plateGlow and self.wuiThreatGlow and true or false
+    if not self.wuiStyled then
+        self.ThreatIndicator = want and self.wuiThreatGlow or nil
+    elseif want then
         self.ThreatIndicator = self.wuiThreatGlow
         if not self:IsElementEnabled("ThreatIndicator") then self:EnableElement("ThreatIndicator") end
     elseif self.ThreatIndicator and self:IsElementEnabled("ThreatIndicator") then
