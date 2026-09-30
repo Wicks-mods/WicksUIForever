@@ -1,12 +1,13 @@
 -- Wick's UI
 -- Core/Install.lua: the first-run setup.
 --
--- One question to a page: the look, the class colours and the scale, then
--- only the questions this character's addons raise. With Wick's Bags on:
--- which bags B opens. With another addon on that does a job Wick's UI
--- also does (other nameplates, other action bars, another whole UI): which
--- of the two keeps it. Every page can be skipped; a skipped addon question
--- keeps the other addon, and Wick's UI leaves that job to it.
+-- One question to a page. First the ones this character's addons raise:
+-- with Wick's Bags on, which bags B opens; with another addon on that does
+-- a job Wick's UI also does (other nameplates, other action bars, another
+-- whole UI), which of the two keeps it. Then the look, the class colours
+-- and the scale. Nothing reloads along the way: one reload at the end
+-- puts every answer in. Every page can be skipped; a skipped addon
+-- question keeps the other addon, and Wick's UI leaves that job to it.
 --
 -- The setup is drawn in Wick OG with the Fel colours, whatever look the
 -- character is in; the look chosen here shows after the reload at the end.
@@ -165,7 +166,7 @@ local pendingStyle      -- the look chosen here, saved at the end
 local run = {}          -- this run: the questions and what was picked
 
 local function resetRun(questions)
-    run = { questions = questions or {}, picked = {}, disable = {}, leaving = false, copyComforts = false }
+    run = { questions = questions or {}, picked = {}, disable = {}, leaving = false, copyComforts = false, finished = false }
 end
 resetRun()
 
@@ -481,19 +482,20 @@ local function buildPages(full)
     local pages = {}
     local function add(p) pages[#pages + 1] = p end
     if full then add(WELCOME) end
-    -- A whole other UI comes first: kept, nothing else here matters.
+    -- The other addons first, a whole other UI before the rest: kept,
+    -- nothing else here matters.
     for _, q in ipairs(run.questions) do
         if q.def.whole then add(conflictPage(q)) end
     end
     if not run.leaving then
+        if run.bags then add(bagsPage(run.bags)) end
+        for _, q in ipairs(run.questions) do
+            if not q.def.whole then add(conflictPage(q)) end
+        end
         if full then
             add(STYLE)
             add(CLASS_COLOURS)
             add(SCALE)
-        end
-        if run.bags then add(bagsPage(run.bags)) end
-        for _, q in ipairs(run.questions) do
-            if not q.def.whole then add(conflictPage(q)) end
         end
     end
     add(donePage(full))
@@ -515,6 +517,53 @@ local function paintChoice(btn, on)
     end
 end
 
+-- The last page's Reload now is a secure /reload: the game counts it as the
+-- player's own, so it goes through even after the setup has switched an
+-- addon off (an addon's own reload is refused then). One click, one reload.
+-- It lies over the drawn button, parented to UIParent so the setup window
+-- never turns protected, and steps away when a fight starts; the drawn
+-- button under it then waits for the fight to end.
+local secureGo
+
+function I:PlaceReload()
+    if InCombatLockdown() then return end
+    local f = self.frame
+    local ra = f and f.reloadAction
+    if not secureGo then
+        if not ra then return end
+        local b = CreateFrame("Button", "WicksUI_InstallReload", UIParent, "SecureActionButtonTemplate")
+        b:SetFrameStrata("DIALOG")
+        b:SetAttribute("type", "macro")
+        b:SetAttribute("macrotext", "/reload")
+        b:RegisterForClicks("AnyUp", "AnyDown")
+        -- Everything saved first; the /reload follows in the same click.
+        b:SetScript("PreClick", function() I:Finish("secure") end)
+        b:SetScript("OnEnter", function() ns:SetBorderColor(ra, "fel") end)
+        b:SetScript("OnLeave", function() ns:SetBorderColor(ra, "border") end)
+        b:RegisterEvent("PLAYER_REGEN_DISABLED")
+        b:RegisterEvent("PLAYER_REGEN_ENABLED")
+        b:SetScript("OnEvent", function(self, event)
+            if event == "PLAYER_REGEN_DISABLED" then self:Hide() else I:PlaceReload() end
+        end)
+        b:Hide()
+        secureGo = b
+    end
+    local b = secureGo
+    local show = f and f:IsShown() and ra and ra:IsShown() and not run.finished
+    local left, bottom
+    if show then left, bottom = ra:GetLeft(), ra:GetBottom() end
+    if left and bottom then
+        local s = ra:GetEffectiveScale() / UIParent:GetEffectiveScale()
+        b:ClearAllPoints()
+        b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left * s, bottom * s)
+        b:SetSize(ra:GetWidth() * s, ra:GetHeight() * s)
+        b:SetFrameLevel(ra:GetFrameLevel() + 5)
+        b:Show()
+    elseif not run.finished then
+        b:Hide()
+    end
+end
+
 -- Draw in Wick OG, whatever the character's look.
 local function inSetupLook(fn, ...)
     local was = Chrome.forceStyle
@@ -533,8 +582,14 @@ local function build()
     f:SetMovable(true)
     f:SetClampedToScreen(true)
     f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+        if secureGo and not InCombatLockdown() then secureGo:Hide() end
+    end)
+    f:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        I:PlaceReload()
+    end)
     ns:SetTemplate(f, "Default", { brackets = true })
     f.brand = ns:CreateText(f, 18, "LEFT", "NONE")
     f.brand:SetPoint("TOPLEFT", 18, -16)
@@ -657,6 +712,7 @@ function I:Show(page)
         fill(self.frame, page)
     end)
     self.frame:Show()
+    self:PlaceReload()
 end
 
 local function disableAddOn(name)
@@ -665,9 +721,13 @@ local function disableAddOn(name)
     return pcall(fn, name)
 end
 
--- End the setup. reload: the Reload now button; otherwise Later or the
--- close button, and what needs a reload waits for one.
+-- End the setup. reload: "secure" from the secure Reload now (its /reload
+-- follows), true from the drawn one under it (in a fight), false from Later
+-- or the close button, where what needs a reload waits for one. Once per
+-- run: the secure button can call it on the key's press and release.
 function I:Finish(reload)
+    if run.finished then return end
+    run.finished = true
     local g = ns:G()
     local a = answers()
     local p = profile()
@@ -710,6 +770,16 @@ function I:Finish(reload)
         Chrome:ApplyTheme(Chrome:ResolveTheme(Chrome:ThemeSetting()))
     end
     self.themeWas = nil
+    if reload == "secure" then
+        -- Left showing for the /reload on the key's release. Still here a
+        -- moment later, the reload did not happen: the prompt instead.
+        C_Timer.After(1, function()
+            if secureGo and not InCombatLockdown() then secureGo:Hide() end
+            if Chrome.ReloadPrompt then Chrome:ReloadPrompt("Setup done. Reload to finish.") end
+        end)
+        return
+    end
+    self:PlaceReload()
     if reload then
         -- The game refuses an addon's reload once an addon is switched
         -- off; the prompt's reload counts as the player's own.
