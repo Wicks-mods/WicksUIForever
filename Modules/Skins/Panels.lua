@@ -2367,6 +2367,48 @@ PS.SPECIAL.OpenMailFrame = function(frame)
     return "generic"
 end
 
+-- The guild window's side tabs (Chat, Roster, Benefits, Info), on
+-- Blizzard's right-side tab: in the look of the Character window's side
+-- tabs. A tile of ours for its black tab art, the icon cropped to the
+-- tile, the accent ring in place of the yellow glow on the chosen one; at
+-- rest the icon is greyed and dimmed, chosen or under the pointer it is in
+-- colour. Looked at on every pass: the chosen tab changes.
+local function styleRightTab(tab)
+    if not tab or not tab.Icon then return end
+    local e = extras[tab] or {}
+    extras[tab] = e
+    local icon = tab.Icon
+    if not e.rightTab then
+        e.rightTab = true
+        for _, r in ipairs({ tab:GetRegions() }) do
+            if r:GetObjectType() == "Texture" and r ~= icon and r ~= tab.IconOverlay then r:SetAlpha(0) end
+        end
+        for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetCheckedTexture" }) do
+            local t = tab[get] and tab[get](tab)
+            if t then t:SetAlpha(0) end
+        end
+        local bd = backdrop(tab, "Shadow", false, -3)
+        e.tile = bd
+        ns:CropIcon(icon)
+        icon:ClearAllPoints()
+        icon:SetPoint("TOPLEFT", tab, "TOPLEFT", 1, -1)
+        icon:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -1, 1)
+        local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
+        ring:SetTexture(ns.Media.ring)
+        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+        ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(ring, "fel", "vertex", 1)
+        ring:SetAllPoints(bd)
+        e.ring = ring
+    end
+    local open = tab.GetChecked and tab:GetChecked() or false
+    e.ring:SetShown(open)
+    local awake = open or tab:IsMouseOver()
+    icon:SetDesaturated(not awake)
+    icon:SetAlpha(awake and 1 or 0.55)
+end
+PS.styleRightTab = styleRightTab
+
 -- Guild & Communities: the full skin. The community list's blue backing
 -- becomes a card (the walk does that from its Bg) and its gold filigree
 -- goes; the chat and the member list get cards of their own, the guild
@@ -2416,14 +2458,21 @@ PS.SPECIAL.CommunitiesFrame = function(frame)
                 end
             end
         end
+        -- Their cards end flush on the right: each has its scroll bar in the
+        -- gap beside it, and a card reaching past it ran out over the bar
+        -- towards the window's edge.
         local members = f.MemberList
         if members and members:IsVisible() then
             if members.WatermarkFrame then fadeRegions(members.WatermarkFrame) end
-            card(members, "wuiCard", "TOPLEFT", members, "BOTTOMRIGHT", members, -3, 3, 3, -3)
+            card(members, "wuiCard", "TOPLEFT", members, "BOTTOMRIGHT", members, -3, 3, 0, -3)
         end
         local chat = f.Chat
         if chat and chat:IsVisible() then
-            card(chat, "wuiCard", "TOPLEFT", chat, "BOTTOMRIGHT", chat, -6, 4, 6, -4)
+            card(chat, "wuiCard", "TOPLEFT", chat, "BOTTOMRIGHT", chat, -6, 4, 0, -4)
+        end
+        for _, k in ipairs({ "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab", "GuildPreferredPlaySettingsTab" }) do
+            local tab = f[k]
+            if tab and tab:IsShown() then styleRightTab(tab) end
         end
     end)
     return "generic"
