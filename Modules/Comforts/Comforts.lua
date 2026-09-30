@@ -155,16 +155,19 @@ function CM:CopyFromComforts()
     return true
 end
 
--- Its settings across and Comforts switched off, then a second prompt
--- to reload. The client refuses a reload asked for in the same click that
--- switched an addon off, so the reload is a click of its own.
+-- Its settings across and Comforts switched off, then WickCore's reload
+-- prompt: once an addon has been switched off, the client refuses an
+-- addon's own reload, so this is one the game counts as the player's.
 function CM:TurnComfortsOff()
     self:CopyFromComforts()
     local disable = (C_AddOns and C_AddOns.DisableAddOn) or rawget(_G, "DisableAddOn")
     if disable then pcall(disable, "WicksComforts") end
     C_Timer.After(0.1, function()
-        W:Confirm("Wick's Comforts is switched off and its settings are in Wick's UI. Reload now to finish?",
-            nil, "Reload now", "Later", { reload = true })
+        if Core.Chrome.ReloadPrompt then
+            Core.Chrome:ReloadPrompt("Wick's Comforts is switched off and its settings are in Wick's UI. Reload to finish.")
+        else
+            ns.A:Print("Wick's Comforts is switched off. Type /reload to finish.")
+        end
     end)
 end
 
