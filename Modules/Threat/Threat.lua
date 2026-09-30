@@ -126,7 +126,7 @@ end
 
 -- The warning's sound: the game's own alerts, on the master channel so it
 -- is heard with the effects turned down. Once as the warning starts, not
--- again until it has cleared, and never more than once in three seconds.
+-- again until it has cleared, and never twice in two seconds.
 local SK = rawget(_G, "SOUNDKIT") or {}
 local SOUNDS = {
     raid  = { "Raid warning", SK.RAID_WARNING or 8959 },
@@ -135,26 +135,29 @@ local SOUNDS = {
     bell  = { "Bell", SK.UI_BNET_TOAST or 18019 },
 }
 TH.SOUNDS = SOUNDS
--- It plays as the warning starts, and, for anyone but a tank, as a mob
--- that was on someone else (your pet, the tank) turns to you: you pulled
--- it. A fight you open alone with no one else on the list is not a pull.
-local warnedBefore, lastSound, hadIt, targetBefore = false, 0, false, nil
+-- It plays as the warning on your target starts, and, for anyone but a
+-- tank, as anything at all turns to you while you have a pet or a group
+-- to take it off you: you pulled it. That is read from the game's overall
+-- threat state for you, so an add that is not your target counts, and a
+-- change of target does not. A fight opened alone is not a pull.
+local warnedBefore, lastSound, onMeBefore = false, 0, false
 local function soundCheck(list)
     local d = db()
     local mine
     for _, e in ipairs(list) do if e.unit == "player" then mine = e break end end
     local warn = warning(mine)
-    local target = UnitGUID and UnitGUID("target")
-    if target ~= targetBefore then hadIt = mine and mine.tanking or false; targetBefore = target end
-    local pulled = mine and mine.tanking and not hadIt and #list > 1 and not isTankRole()
-        and UnitAffectingCombat("player")
-    if (pulled or (warn and not warnedBefore)) and d.warnSound and GetTime() - lastSound > 3 then
+    local ok, st = pcall(UnitThreatSituation, "player")
+    st = ok and plain(st) or nil
+    local onMe = st ~= nil and st >= 2
+    local helped = UnitExists("pet") or (IsInGroup and IsInGroup())
+    local pulled = onMe and not onMeBefore and helped and not isTankRole() and UnitAffectingCombat("player")
+    if (pulled or (warn and not warnedBefore)) and d.warnSound and GetTime() - lastSound > 2 then
         local snd = SOUNDS[d.warnSoundKit] or SOUNDS.raid
         if PlaySound then pcall(PlaySound, snd[2], "Master") end
         lastSound = GetTime()
     end
     warnedBefore = warn and true or false
-    hadIt = mine and mine.tanking or false
+    onMeBefore = onMe
 end
 TH.SoundCheck = soundCheck
 
@@ -381,7 +384,7 @@ ns.Config:AddPage("threat", "Threat", function(L)
     L:Slider("Warn at (percent of the pull)", "warnAt", 50, 100, 1,
         { tooltip = "When your threat passes this share of what pulls the mob, your bar and your row turn the warning colour. A tank is warned when a mob is not on them instead." })
     L:Toggle("Flash when warned", "warnFlash")
-    L:Toggle("Sound when warned", "warnSound", { tooltip = "Once as the warning starts, not again until it clears, and never more than once in three seconds. Plays on the master channel." })
+    L:Toggle("Sound when warned", "warnSound", { tooltip = "As the warning on your target starts, and as anything turns to you while you have a pet or a group. Not again until it clears, never twice in two seconds, on the master channel." })
     L:Dropdown("Sound", "warnSoundKit", function()
         local out = {}
         for _, key in ipairs({ "raid", "alarm", "ready", "bell" }) do out[#out + 1] = { key, SOUNDS[key][1] } end
