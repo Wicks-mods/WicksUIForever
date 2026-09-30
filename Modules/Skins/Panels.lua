@@ -277,7 +277,24 @@ local function styleDropdown(dd)
     fade(dd.Background)
     for _, k in ipairs({ "Left", "Middle", "Right" }) do fade(dd[k]) end
     backdrop(dd, "Shadow", false, 0)
-    if dd.Arrow and dd.Arrow.SetDesaturated then dd.Arrow:SetDesaturated(true) end
+    -- Blizzard's boxed arrow goes for our chevron, in the text colour and
+    -- the accent on hover. Its art is swapped on hover and press, which
+    -- keeps the alpha, so it stays gone.
+    local arrow = dd.Arrow
+    if arrow then
+        arrow:SetAlpha(0)
+        local mark = dd:CreateTexture(nil, "OVERLAY", nil, 6)
+        mark:SetTexture(ns.Media:Glyph("down"))
+        mark:SetSize(12, 12)
+        mark:SetPoint("RIGHT", dd, "RIGHT", -7, 0)
+        mark:SetVertexColor(C.text[1], C.text[2], C.text[3], 1)
+        Chrome:Register(mark, C.text, "vertex", 1)
+        local hover = dd:CreateTexture(nil, "HIGHLIGHT", nil, 6)
+        hover:SetTexture(ns.Media:Glyph("down"))
+        hover:SetAllPoints(mark)
+        hover:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(hover, C.fel, "vertex", 1)
+    end
     styleText(dd.Text)
 end
 
@@ -3228,6 +3245,11 @@ function PS:Initialize()
             shown[n] = on
             if on and done[f] then
                 centreTitle(f)
+                local mm = f.MaximizeMinimizeFrame or (f.BorderFrame and f.BorderFrame.MaximizeMinimizeFrame)
+                if mm then
+                    if mm.MaximizeButton and mm.MaximizeButton:IsShown() then ns:Glyph(mm.MaximizeButton, "plus") end
+                    if mm.MinimizeButton and mm.MinimizeButton:IsShown() then ns:Glyph(mm.MinimizeButton, "minus") end
+                end
                 PS.holdWindow(n, f)
                 if full or fresh[n] or not boxes[f] then boxes[f] = findBoxes(f, 1, {}) end
                 local sig = signature(n, f)

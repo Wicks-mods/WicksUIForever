@@ -20,7 +20,7 @@ ns.Skins = SK
 
 ns.defaults.profile.skins = {
     enable = true,
-    tracker = true, trackerFontSize = 12,
+    tracker = true, trackerFontSize = 14,
     damageMeter = true,
     meterAlign = true,           -- the meter as wide as the right info panel, sat on it
     microMenu = "mouseover",     -- show, mouseover, hide
@@ -63,6 +63,13 @@ local TRACKERS = { "ObjectiveTrackerFrame", "QuestObjectiveTracker", "CampaignQu
 
 function SK:Tracker()
     if not db().tracker then return end
+    -- The default went from 12 to 14; a profile still on the old default
+    -- moves up once, and a size picked after that stands.
+    local g = ns:G()
+    if not g.trackerSize14 then
+        g.trackerSize14 = true
+        if db().trackerFontSize == 12 then db().trackerFontSize = 14 end
+    end
     local font = ns.Media:Font()
     local size = db().trackerFontSize
     for _, name in ipairs(TRACKERS) do

@@ -607,7 +607,7 @@ local LAYOUT = {
         meterAlign = true,
         microMenu = "mouseover",
         tracker = true,
-        trackerFontSize = 12,
+        trackerFontSize = 14,
     },
     tooltip = {
         anchor = "default",
