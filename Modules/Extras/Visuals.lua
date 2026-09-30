@@ -169,6 +169,27 @@ local function cvNum(name) return function() return tonumber(get(name) or "") or
 local function cvSetNum(name) return function(v) if usable(name) then set(name, tostring(v)) end end end
 local function locked(name) return function() return not usable(name) end end
 local SELF = "enableFloatingCombatText"
+
+-- Blizzard's own combat text is an addon of its own. It loads at startup
+-- when this is on, or when it is switched through the game's settings,
+-- and it starts and stops listening the same way: switched from here, it
+-- takes a reload. Loading it from here instead would run it tainted, and
+-- it handles numbers the client keeps secret in a fight. The other
+-- options are read as each line is shown, so they apply at once.
+local function combatTextLoaded()
+    local CA = rawget(_G, "C_AddOns")
+    local fn = (CA and CA.IsAddOnLoaded) or rawget(_G, "IsAddOnLoaded")
+    return fn and fn("Blizzard_CombatText") and true or false
+end
+local function setSelf(v)
+    if not usable(SELF) then return end
+    set(SELF, v and "1" or "0")
+    if v ~= combatTextLoaded() then
+        local Chrome = ns.Core.Chrome
+        local text = v and "Your own combat text starts after a reload." or "Your own combat text stops after a reload."
+        if Chrome.ReloadPrompt then Chrome:ReloadPrompt(text) end
+    end
+end
 local function selfOff(name) return function() return not usable(name) or get(SELF) ~= "1" end end
 
 local function cvToggle(L, label, name, tip, ...)
@@ -208,7 +229,10 @@ ns.Config:AddPage("combattext", "Combat text", function(L)
     cvToggle(L, "Threat changes", "threatWorldText", "The threat notes that float up in a fight.")
 
     L:Heading("Your own combat text")
-    cvToggle(L, "Show it", SELF, "The text that scrolls round your character: what hits you, heals you and happens to you.")
+    L:Toggle("Show it", SELF, {
+        get = cvOn(SELF), setter = setSelf, disabled = locked(SELF),
+        tooltip = "The text that scrolls round your character: what hits you, heals you and happens to you. Switching it on or off takes a reload.",
+    })
     L:Dropdown("Direction", "floatingCombatTextFloatMode_v2", { { 1, "Up" }, { 2, "Down" }, { 3, "Arc" } }, {
         get = cvNum("floatingCombatTextFloatMode_v2"), setter = cvSetNum("floatingCombatTextFloatMode_v2"),
         disabled = selfOff("floatingCombatTextFloatMode_v2"),
