@@ -2849,6 +2849,25 @@ end
 local ROLE_ICON = { TANK = "groupfinder-icon-role-large-tank", HEALER = "groupfinder-icon-role-large-heal",
     DAMAGER = "groupfinder-icon-role-large-dps" }
 
+-- A tile in a fully skinned window: the window itself wears the Shadow
+-- template, so a Shadow tile vanishes into it; its buttons are Default, a
+-- touch see-through, with no lift. The same here, and one size for all:
+-- a tile made earlier (by the generic pass) is put to the same place.
+local function lfgTile(b, inset)
+    local e = extras[b] or {}
+    extras[b] = e
+    local bd = backdrop(b, "Default", false, inset)
+    if not e.lfgTile then
+        e.lfgTile = true
+        bd:ClearAllPoints()
+        bd:SetPoint("TOPLEFT", b, "TOPLEFT", inset, -inset)
+        bd:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -inset, inset)
+        ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+        if bd.wuiShadow then bd.wuiShadow:Hide() end
+    end
+    return bd
+end
+
 local function styleCategoryButton(b)
     for _, r in ipairs({ b:GetRegions() }) do
         local a = r:GetObjectType() == "Texture" and r.GetAtlas and r:GetAtlas()
@@ -2858,7 +2877,7 @@ local function styleCategoryButton(b)
     extras[b] = e
     if not e.category then
         e.category = true
-        local bd = backdrop(b, "Shadow", false, 4)
+        local bd = lfgTile(b, 4)
         if not e.hover then
             local h = b:CreateTexture(nil, "HIGHLIGHT")
             h:SetAllPoints(bd)
@@ -2885,7 +2904,7 @@ local function styleRoleButton(b, atlas)
         end
         e.icon = nt
         local w = b:GetWidth() or 64
-        local bd = backdrop(b, "Shadow", false, math.max(0, math.floor((w - 48) / 2)))
+        local bd = lfgTile(b, math.max(0, math.floor((w - 48) / 2)))
         local ring = b:CreateTexture(nil, "OVERLAY", nil, 2)
         ring:SetTexture(ns.Media.ring)
         if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
