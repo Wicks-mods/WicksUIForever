@@ -19,24 +19,24 @@ ns.defaults.profile.visuals = {
     enable = true,
     noFog = false, noVolumeFog = false, noGlow = false, noDeathGrey = false,
     noNether = false, noWeather = false,
-    cameraStays = false,
     moreGrass = false, sharpen = false, bestShots = false,
 }
 
 local function db() return VX:db() end
 
--- Each option and the variables it sets while on. The names were checked
--- against this client's own executable; the game's settings panel
--- offers none of them.
+-- Each option and the variables it sets while on. The names are from this
+-- client's own console list (Wick's Probe, /wp cvars); the game's settings
+-- panel offers none of them. Raids and battlegrounds keep copies of some
+-- (RAID...), set with them so the option holds there too.
 local OPTIONS = {
-    { key = "noFog",       cvars = { showFog = "0" } },
+    -- showFog is not a variable on this client; this is its "full fog" distance.
+    { key = "noFog",       cvars = { disableHorizonStart = "1" } },
     -- The level as well: with it above 0 the client puts volumeFog back.
-    { key = "noVolumeFog", cvars = { volumeFog = "0", volumeFogLevel = "0" } },
+    { key = "noVolumeFog", cvars = { volumeFog = "0", volumeFogLevel = "0", RAIDVolumeFog = "0", RAIDVolumeFogLevel = "0" } },
     { key = "noGlow",      cvars = { ffxGlow = "0" } },
     { key = "noDeathGrey", cvars = { ffxDeath = "0" } },
     { key = "noNether",    cvars = { ffxNether = "0" } },
-    { key = "noWeather",   cvars = { weatherDensity = "0" } },
-    { key = "cameraStays", cvars = { cameraIndirectVisibility = "1", cameraIndirectOffset = "10" } },
+    { key = "noWeather",   cvars = { weatherDensity = "0", RAIDweatherDensity = "0" } },
     { key = "moreGrass",   cvars = { groundEffectDensity = "256", groundEffectFade = "370", groundEffectDist = "500" } },
     { key = "sharpen",     cvars = { ResampleAlwaysSharpen = "1" } },
     { key = "bestShots",   cvars = { screenshotQuality = "10" } },
@@ -134,8 +134,6 @@ ns.Config:AddPage("visuals", "Visuals", function(L)
     toggle(L, "noDeathGrey", "No grey screen when you die", "The world keeps its colour while you are dead.")
     toggle(L, "noNether", "No haze while invisible", "The shimmer laid over the screen by invisibility effects.")
     toggle(L, "noWeather", "No weather", "No rain, snow or sandstorms.")
-    L:Heading("Camera")
-    toggle(L, "cameraStays", "Camera stays out when something is in the way", "Walls and trees between you and the camera no longer pull it in close.")
     L:Heading("Picture")
     toggle(L, "moreGrass", "More grass, drawn further out", "Grass and ground clutter thicker and further away than the game's Ground Clutter slider goes. It costs frame rate.")
     toggle(L, "sharpen", "Sharpen at full resolution", "The game only sharpens when the render scale is below 100%. This sharpens at 100% too; Sharpness in the game's Graphics settings sets how much.")
