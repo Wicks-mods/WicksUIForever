@@ -190,11 +190,9 @@ function CM:Initialize()
         if m.Init then Core.safe(m.Init, m) end
     end
     CF.Apply()
-    if CF.dormant then
-        C_Timer.After(4, function()
-            ns:AfterCombat("comforts:offer", function() CM:OfferToTurnComfortsOff() end)
-        end)
-    end
+    -- Which of the two keeps it is a question in the setup (Core/Install),
+    -- asked at the next login while it is open; the settings page still
+    -- offers to turn Comforts off.
 end
 
 function CM:Update()

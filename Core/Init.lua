@@ -39,6 +39,7 @@ ns.defaults = {
             classColors  = true,
             moversLocked = true,
             installed    = false,
+            combatTextFont = true,   -- the game's combat text in the look's font
         },
         movers = {},                 -- mover name -> "POINT,relativeTo,relPoint,x,y"
     },

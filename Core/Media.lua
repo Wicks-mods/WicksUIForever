@@ -175,6 +175,20 @@ local function face(name, path)
     local _, size, flags = fo:GetFont()
     if size and size > 0 then fo:SetFont(path, size, flags or "") end
 end
+-- The game's own combat text fonts, as they were before we touched them,
+-- and what we set: with another combat text addon kept in the setup,
+-- ours go back, unless that addon has set its own since.
+local GAME_DAMAGE = rawget(_G, "DAMAGE_TEXT_FONT")
+local GAME_COMBAT = (function()
+    local fo = rawget(_G, "CombatTextFont")
+    return fo and fo.GetFont and (fo:GetFont()) or nil
+end)()
+local oursDamage, oursCombat
+local function combatTextOurs()
+    local A = ns.A
+    local g = A and A.db and A.db.profile and A.db.profile.general
+    return not g or g.combatTextFont ~= false
+end
 function M:WorldFonts()
     if not LATIN[(GetLocale and GetLocale()) or "enUS"] then return end
     local Chrome = ns.Core and ns.Core.Chrome
@@ -182,11 +196,21 @@ function M:WorldFonts()
     local body = Chrome:Font()
     local head = Chrome.HeadingFont and Chrome:HeadingFont() or body
     UNIT_NAME_FONT = body
-    DAMAGE_TEXT_FONT = body
     face("ZoneTextFont", head)
     face("SubZoneTextFont", head)
     face("PVPInfoTextFont", body)
-    face("CombatTextFont", body)
+    local ct = rawget(_G, "CombatTextFont")
+    if combatTextOurs() then
+        DAMAGE_TEXT_FONT, oursDamage = body, body
+        face("CombatTextFont", body)
+        oursCombat = body
+    else
+        if oursDamage and DAMAGE_TEXT_FONT == oursDamage and GAME_DAMAGE then DAMAGE_TEXT_FONT = GAME_DAMAGE end
+        if oursCombat and GAME_COMBAT and ct and ct.GetFont and (ct:GetFont()) == oursCombat then
+            face("CombatTextFont", GAME_COMBAT)
+        end
+        oursDamage, oursCombat = nil, nil
+    end
 end
 M.UnitNameFont = M.WorldFonts
 M:WorldFonts()

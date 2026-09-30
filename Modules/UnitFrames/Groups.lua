@@ -305,10 +305,15 @@ end
 function G:Initialize()
     self.headers, self.holders = {}, {}
     -- The game's own party and raid frames step aside for ours. The raid
-    -- manager stays: world markers and the ready check live on it.
-    pcall(oUF.DisableBlizzard, oUF, "party")
-    local crc = _G.CompactRaidFrameContainer
-    if crc then ns:Kill(crc) end
+    -- manager stays: world markers and the ready check live on it. With
+    -- both of ours off (another addon draws the group) the game's stay,
+    -- for that addon to hide or keep.
+    local party, raid = UF:UnitDB("party"), UF:UnitDB("raid")
+    if (party and party.enable) or (raid and raid.enable) then
+        pcall(oUF.DisableBlizzard, oUF, "party")
+        local crc = _G.CompactRaidFrameContainer
+        if crc then ns:Kill(crc) end
+    end
     self:Spawn("party")
     self:Spawn("raid")
 end

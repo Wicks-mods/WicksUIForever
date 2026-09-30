@@ -267,6 +267,13 @@ function A:OnEnable()
         if uf.font == "Friz Quadrata" then uf.font = "Wick" end
         g.ptSans = true
     end
+    -- Another addon doing a job of ours (other nameplates, other action
+    -- bars) is asked about in the setup; until then ours stands down, so
+    -- the two never run at once.
+    if ns.Install then
+        local okD, errD = pcall(ns.Install.Detect, ns.Install)
+        if not okD then self:Print("|cffff6060setup check failed|r: " .. tostring(errD)) end
+    end
     local ok, err = xpcall(function()
         ns:UpdatePixel()
         ns:ApplyScale()
@@ -299,8 +306,13 @@ function A:OnEnable()
         y = O:Button(page, "Move frames", function() ns.Movers:Unlock() end, y - 2, 150)
     end)
 
-    if not ns:G().installed and ns.Install then
-        C_Timer.After(2, function() ns:AfterCombat("install", function() ns.Install:Show(1) end) end)
+    if ns.Install then
+        -- Wick's Bags on B, if a reload came before the key change could.
+        local ch = self.db.char
+        if ch and ch.bagKeys == "wicks" and ch.bagKeysSet == false then ns.Install:ApplyBagKeys() end
+        if not ns:G().installed or ns.Install:HasQuestions() then
+            C_Timer.After(2, function() ns:AfterCombat("install", function() ns.Install:Start() end) end)
+        end
     end
 end
 
@@ -338,7 +350,7 @@ local function slash(_, msg)
     elseif cmd:match("^unskin") then
         if ns.PanelSkins then ns.PanelSkins:Unskin((msg or ""):match("^%S+%s+(%S+)")) end
     elseif cmd == "install" or cmd == "setup" then
-        if ns.Install then ns.Install:Show(1) end
+        if ns.Install then ns.Install:Start(true) end
     elseif cmd == "errors" then
         if not ns.errors or #ns.errors == 0 then
             A:Print("nothing reported.")

@@ -204,7 +204,16 @@ local function selfToggle(L, label, name, tip)
 end
 
 ns.Config:AddPage("combattext", "Combat text", function(L)
-    L:Note("The game's floating combat text. These are the game's own settings, so they are account-wide and hold with Wick's UI switched off. Changes show after a reload. The font follows the look.")
+    L:Note("The game's floating combat text. These are the game's own settings, so they are account-wide and hold with Wick's UI switched off. Changes show after a reload.")
+    L:Toggle("In the look's font", "combatTextFont", {
+        get = function() return ns:G().combatTextFont ~= false end,
+        setter = function(v)
+            ns:G().combatTextFont = v and true or false
+            if ns.Media and ns.Media.WorldFonts then ns.Media:WorldFonts() end
+            ns.A:Print("the numbers over what you hit change font after a relog; your own combat text changes now.")
+        end,
+        tooltip = "The numbers and your own scrolling text in the look's font. Off leaves them to the game, or to a combat text addon.",
+    })
     L:Heading("Numbers over what you hit")
     cvToggle(L, "Damage", "floatingCombatTextCombatDamage_v2", "Your damage over the creatures and players you hit.")
     cvToggle(L, "Damage over time", "floatingCombatTextCombatLogPeriodicSpells_v2", "The ticks of your periodic spells.")
