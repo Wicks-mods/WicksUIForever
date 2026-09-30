@@ -206,10 +206,52 @@ local function walkMeter(f, depth)
     end
     for _, c in ipairs({ f:GetChildren() }) do walkMeter(c, depth + 1) end
 end
+-- The bars in the look's colours (ns:MeterBarColor), where the theme is not
+-- the class colours. Blizzard paints a bar only when its colour changes
+-- (it keeps the last one), so ours stays on; a post-hook on the bar's
+-- texture puts it back whenever Blizzard paints, in a fight too. Method
+-- calls only: nothing is written into the meter's own rows.
+local meterBars = setmetatable({}, { __mode = "k" })
+local painting = false
+local function paintBar(entry, tex)
+    if painting then return end
+    local mine = entry.isLocalPlayer
+    if issecretvalue and issecretvalue(mine) then mine = false end
+    local c = ns:MeterBarColor(mine and true or false)
+    if not c then return end
+    painting = true
+    pcall(tex.SetVertexColor, tex, c[1], c[2], c[3])
+    painting = false
+end
+local function hookBar(entry)
+    local tex = entry.GetStatusBarTexture and entry:GetStatusBarTexture()
+    if not tex then return end
+    if not meterBars[tex] then
+        meterBars[tex] = entry
+        hooksecurefunc(tex, "SetVertexColor", function(t) paintBar(meterBars[t] or entry, t) end)
+    end
+    paintBar(entry, tex)
+end
+SK.MeterBars = meterBars
+local function meterBarsPass(dm)
+    for _, win in ipairs({ dm:GetChildren() }) do
+        local box = win.GetScrollBox and win:GetScrollBox()
+        if box and box.ForEachFrame then
+            box:ForEachFrame(function(entry) if entry.isClassColorDesired ~= nil or entry.StatusBar then hookBar(entry) end end)
+        end
+    end
+end
+
 function SK:MeterFonts()
     if not db().damageMeter or InCombatLockdown() then return end
     local dm = rawget(_G, "DamageMeter")
-    if dm then pcall(walkMeter, dm, 1) end
+    if dm then
+        pcall(walkMeter, dm, 1)
+        pcall(meterBarsPass, dm)
+    end
+end
+if Chrome.OnThemeChanged then
+    Chrome:OnThemeChanged(function() for tex, entry in pairs(meterBars) do paintBar(entry, tex) end end)
 end
 do
     local acc = 0

@@ -397,6 +397,17 @@ function ns:QuietAuraCooldown(button)
     if fs then fs:SetAlpha(0) end
 end
 
+-- A meter bar's colour in the look (threat meter, damage meter). Where the
+-- theme is the class colours (Wick Modern and OG's own) the meters keep
+-- them: nil. Otherwise your own bar is the look's accent and everyone
+-- else's a darker shade of it, so the meters sit in the theme.
+function ns:MeterBarColor(mine)
+    if Chrome.themeSetting == "auto" then return nil end
+    local f, v = C.fel, C.void
+    if mine then return { f[1], f[2], f[3] } end
+    return { f[1] * 0.55 + v[1] * 0.45, f[2] * 0.55 + v[2] * 0.45, f[3] * 0.55 + v[3] * 0.45 }
+end
+
 -- A glow round a frame for alerts (threat): a soft halo in whatever colour
 -- is given it, on a layer of its own above the frame so nothing it rings
 -- covers it, and clear in the middle so it covers nothing. Hidden until

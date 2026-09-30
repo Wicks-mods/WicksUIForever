@@ -270,11 +270,16 @@ local function drawMeter(list)
         local e = list[i]
         local r = row(i)
         if e then
-            local c = classColor(e)
+            local mine = e.unit == "player"
+            local look = ns:MeterBarColor(mine)
+            local c = look or classColor(e)
             r:SetStatusBarColor(c[1], c[2], c[3], e.pet and 0.6 or 0.9)
             r:SetValue(math.min(1, e.value / top))
-            local mine = e.unit == "player"
-            r.name:SetText((mine and "|cff" .. (Chrome.Hex and Chrome.Hex.fel or "4FC778") or "|cffffffff") .. e.name .. "|r")
+            -- On class-coloured bars your name is in the accent; on bars in
+            -- the look's own colours (your bar is the accent) every name is
+            -- in its text colour.
+            local nameEsc = look and Chrome:Esc("text") or (mine and Chrome:Esc("fel") or "|cffffffff")
+            r.name:SetText(nameEsc .. e.name .. "|r")
             r.pct:SetText(e.tanking and "tank" or ("%d%%"):format(math.floor((e.scaled or 0) + 0.5)))
             -- The tank's row is ringed in the accent; a warning in the
             -- threat colour, pulsing when it flashes.
