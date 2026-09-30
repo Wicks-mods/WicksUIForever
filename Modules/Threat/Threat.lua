@@ -135,18 +135,26 @@ local SOUNDS = {
     bell  = { "Bell", SK.UI_BNET_TOAST or 18019 },
 }
 TH.SOUNDS = SOUNDS
-local warnedBefore, lastSound = false, 0
+-- It plays as the warning starts, and, for anyone but a tank, as a mob
+-- that was on someone else (your pet, the tank) turns to you: you pulled
+-- it. A fight you open alone with no one else on the list is not a pull.
+local warnedBefore, lastSound, hadIt, targetBefore = false, 0, false, nil
 local function soundCheck(list)
     local d = db()
     local mine
     for _, e in ipairs(list) do if e.unit == "player" then mine = e break end end
     local warn = warning(mine)
-    if warn and not warnedBefore and d.warnSound and GetTime() - lastSound > 3 then
-        local s = SOUNDS[d.warnSoundKit] or SOUNDS.raid
-        if PlaySound then pcall(PlaySound, s[2], "Master") end
+    local target = UnitGUID and UnitGUID("target")
+    if target ~= targetBefore then hadIt = mine and mine.tanking or false; targetBefore = target end
+    local pulled = mine and mine.tanking and not hadIt and #list > 1 and not isTankRole()
+        and UnitAffectingCombat("player")
+    if (pulled or (warn and not warnedBefore)) and d.warnSound and GetTime() - lastSound > 3 then
+        local snd = SOUNDS[d.warnSoundKit] or SOUNDS.raid
+        if PlaySound then pcall(PlaySound, snd[2], "Master") end
         lastSound = GetTime()
     end
     warnedBefore = warn and true or false
+    hadIt = mine and mine.tanking or false
 end
 TH.SoundCheck = soundCheck
 
