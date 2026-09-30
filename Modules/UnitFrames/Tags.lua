@@ -114,19 +114,6 @@ M["wui:level"] = function(u)
 end
 E["wui:level"] = "UNIT_LEVEL PLAYER_LEVEL_UP UNIT_CLASSIFICATION_CHANGED"
 
--- A diamond before the name: gold for elites and bosses, silver for rares.
-local CLASSMARK = {
-    elite = "F2C75A", worldboss = "F2C75A",
-    rare = "C8CED8", rareelite = "C8CED8",
-}
-M["wui:classmark"] = function(u)
-    local hex = CLASSMARK[plain(UnitClassification(u)) or ""]
-    if not hex then return "" end
-    local r, g, b = tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16)
-    return ("|T%s:0:0:0:0:32:32:0:32:0:32:%d:%d:%d|t "):format(ns.Media:Glyph("diamond"), r, g, b)
-end
-E["wui:classmark"] = "UNIT_CLASSIFICATION_CHANGED"
-
 -- Name in the class colour for players and the reaction colour otherwise.
 M["wui:namecolor"] = function(u)
     if plain(UnitIsPlayer(u)) then
@@ -149,7 +136,6 @@ ns.TagList = {
     { "[wui:namecolor][name]", "Name, coloured" },
     { "[name]", "Name" },
     { "[wui:level] [wui:namecolor][name]", "Level and name" },
-    { "[wui:classmark][wui:level] [wui:namecolor][name]", "Elite mark, level and name" },
     { "[wui:health]", "Health and percent" },
     { "[wui:curhp]", "Health" },
     { "[wui:perhp]", "Health percent" },

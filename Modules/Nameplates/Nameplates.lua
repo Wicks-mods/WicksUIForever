@@ -41,7 +41,7 @@ ns.defaults.profile.nameplates = {
     targetMarker = "arrows",          -- arrows, glow or none
     focusMarker = true,               -- your focus marked the same way, in its own colour
     focusColor = { 0.40, 0.65, 1.00, 1 },
-    classMarker = true,               -- a diamond before the name for elites and rares
+    classMarker = true,               -- a diamond on the bar for elites and rares
     lockMark = true,                  -- a lock on casts you cannot interrupt
     friendlyNameOnly = true,
     execute = 0,                      -- percent; 0 is off
@@ -54,6 +54,12 @@ ns.defaults.profile.nameplates = {
 }
 
 local function db() return NP:db() end
+
+-- The elite diamond's colour: gold for elites and bosses, silver for rares.
+local CLASSMARK = {
+    elite = { 0.95, 0.78, 0.35 }, worldboss = { 0.95, 0.78, 0.35 },
+    rare = { 0.78, 0.81, 0.85 }, rareelite = { 0.78, 0.81, 0.85 },
+}
 
 -- ============================================================
 -- Execute curve
@@ -248,6 +254,19 @@ local function style(self, unit)
     markR:SetTexture(ns.Media:Glyph("pointer-left"))
     markR:Hide()
     self.wuiMarkL, self.wuiMarkR = markL, markR
+
+    -- Elites and rares: a diamond at the bar's left end, over a dark one a
+    -- little larger so it reads on any health colour. A texture, not text:
+    -- the client does not draw an addon's own PNG inside a string.
+    local cmBack = overlay:CreateTexture(nil, "OVERLAY", nil, 3)
+    cmBack:SetTexture(ns.Media:Glyph("diamond"))
+    cmBack:SetVertexColor(0, 0, 0, 0.85)
+    cmBack:Hide()
+    local cm = overlay:CreateTexture(nil, "OVERLAY", nil, 4)
+    cm:SetTexture(ns.Media:Glyph("diamond"))
+    cm:SetPoint("CENTER", cmBack, "CENTER", 0, 0)
+    cm:Hide()
+    self.wuiClassMark, self.wuiClassBack = cm, cmBack
     local tglow = ns:Glow(health, 10)
     tglow.Override = nil
     self.wuiTargetGlow = tglow
@@ -336,8 +355,7 @@ function NP:Configure(self)
     self.wuiName:SetWidth(d.width + 40)
 
     if self.wuiNameTag then self:Untag(self.wuiName) end
-    self.wuiNameTag = (d.classMarker and "[wui:classmark]" or "")
-        .. (d.levelShown and "[wui:level] [wui:namecolor][name]" or "[wui:namecolor][name]")
+    self.wuiNameTag = d.levelShown and "[wui:level] [wui:namecolor][name]" or "[wui:namecolor][name]"
     self:Tag(self.wuiName, self.wuiNameTag)
     if self.wuiPctTagged then self:Untag(self.wuiPercent); self.wuiPctTagged = nil end
     if d.percent then
@@ -358,6 +376,12 @@ function NP:Configure(self)
         self.wuiBuffs:SetPoint("BOTTOMRIGHT", h, "TOPRIGHT", 0, d.nameSize + 6)
         self.wuiBuffs:SetShown(d.buffs)
     end
+
+    local cs = math.max(7, d.height - 3)
+    self.wuiClassBack:SetSize(cs + 3, cs + 3)
+    self.wuiClassBack:ClearAllPoints()
+    self.wuiClassBack:SetPoint("LEFT", h, "LEFT", 2, 0)
+    self.wuiClassMark:SetSize(cs, cs)
 
     local ms = math.max(10, d.height + 4)
     self.wuiMarkL:SetSize(ms * 0.75, ms)
@@ -400,6 +424,11 @@ function NP:Refresh(self)
     local nameOnly = d.friendlyNameOnly and friendly
     self.Health:SetShown(not nameOnly)
     self.wuiCastbar:SetAlpha(nameOnly and 0 or 1)
+    local cls = d.classMarker and not nameOnly and CLASSMARK[plain(UnitClassification(unit)) or ""]
+    if cls then self.wuiClassMark:SetVertexColor(cls[1], cls[2], cls[3], 1) end
+    self.wuiClassMark:SetShown(cls and true or false)
+    self.wuiClassBack:SetShown(cls and true or false)
+
     self.wuiName:ClearAllPoints()
     if nameOnly then
         self.wuiName:SetPoint("CENTER", self, "CENTER", 0, 0)
@@ -477,6 +506,7 @@ function NP:Initialize()
     ns:On("PLAYER_TARGET_CHANGED", function() NP:RefreshAll() end)
     ns:On("UNIT_FACTION", function() NP:RefreshAll() end)
     ns:On("PLAYER_FOCUS_CHANGED", function() NP:RefreshAll() end)
+    ns:On("UNIT_CLASSIFICATION_CHANGED", function() NP:RefreshAll() end)
     -- Tanking or not decides the threat colours.
     ns:On("PLAYER_ROLES_ASSIGNED", function() NP:Update() end)
     ns:On("PLAYER_SPECIALIZATION_CHANGED", function(unit) if unit == nil or unit == "player" then NP:Update() end end)
@@ -528,7 +558,7 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Heading("Text")
     L:Slider("Name size", "nameSize", 6, 20, 1)
     L:Toggle("Level before the name", "levelShown")
-    L:Toggle("A diamond for elites and rares", "classMarker", { tooltip = "Gold for elites and bosses, silver for rares, before the name." })
+    L:Toggle("A diamond for elites and rares", "classMarker", { tooltip = "Gold for elites and bosses, silver for rares, at the left end of the bar." })
     L:Toggle("Health percent", "percent")
     L:Slider("Percent size", "percentSize", 6, 20, 1)
     L:Toggle("Friendly plates show the name only", "friendlyNameOnly")
