@@ -488,6 +488,17 @@ local function style(self, unit)
         self.wuiTexts[slot] = ns:CreateText(overlay, 12, "LEFT")
     end
 
+    -- Threat: a soft glow round the frame in Blizzard's threat colours,
+    -- driven by oUF's threat element (see Modules/Threat).
+    local glow = self:CreateTexture(nil, "BACKGROUND", nil, -8)
+    glow:SetTexture(ns.Media.shadow)
+    if glow.SetTextureSliceMargins then glow:SetTextureSliceMargins(28, 28, 28, 28) end
+    glow:SetPoint("TOPLEFT", self, "TOPLEFT", -10, 10)
+    glow:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 10, -10)
+    glow:SetAlpha(0.9)
+    glow:Hide()
+    self.wuiThreatGlow = glow
+
     -- Indicators
     local function icon(size)
         local t = overlay:CreateTexture(nil, "OVERLAY")
@@ -730,6 +741,20 @@ function UF:Configure(self)
     if d.leader then
         self.AssistantIndicator = icons.assistant
         setElement(self, "AssistantIndicator", true)
+    end
+
+    -- Threat glow. Your own frame, your pet's and the group's glow when a
+    -- mob is on them; a target, focus or boss frame glows with your threat
+    -- on that mob, which is the one worth watching there.
+    local th = ns.A and ns.A.db and ns.A.db.profile.threat
+    if th and th.enable and th.frameGlow then
+        self.ThreatIndicator = self.wuiThreatGlow
+        local mobKeys = { target = true, focus = true, boss = true, targettarget = true, focustarget = true }
+        self.wuiThreatGlow.feedbackUnit = mobKeys[key] and "player" or nil
+        setElement(self, "ThreatIndicator", true)
+    elseif self.ThreatIndicator then
+        setElement(self, "ThreatIndicator", false)
+        self.wuiThreatGlow:Hide()
     end
 
     -- Range

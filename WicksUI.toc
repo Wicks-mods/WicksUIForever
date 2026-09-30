@@ -42,6 +42,7 @@ Modules\Tooltip\Tooltip.lua
 Modules\DataTexts\DataTexts.lua
 Modules\DataTexts\DataBars.lua
 Modules\Extras\Extras.lua
+Modules\Threat\Threat.lua
 Modules\Comforts\Comforts.lua
 Modules\Comforts\Tooltips.lua
 Modules\Comforts\Loot.lua

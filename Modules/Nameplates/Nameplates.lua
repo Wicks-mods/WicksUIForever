@@ -196,6 +196,17 @@ local function style(self, unit)
     raid:SetPoint("RIGHT", health, "LEFT", -4, 0)
     self.RaidTargetIndicator = raid
 
+    -- Threat: a glow round the bar with your threat on this mob.
+    local glow = health:CreateTexture(nil, "BACKGROUND", nil, -8)
+    glow:SetTexture(ns.Media.shadow)
+    if glow.SetTextureSliceMargins then glow:SetTextureSliceMargins(28, 28, 28, 28) end
+    glow:SetPoint("TOPLEFT", health, "TOPLEFT", -9, 9)
+    glow:SetPoint("BOTTOMRIGHT", health, "BOTTOMRIGHT", 9, -9)
+    glow:SetAlpha(0.9)
+    glow:Hide()
+    glow.feedbackUnit = "player"
+    self.wuiThreatGlow = glow
+
     local quest = overlay:CreateTexture(nil, "OVERLAY")
     quest:SetSize(14, 14)
     quest:SetPoint("LEFT", health, "RIGHT", 4, 0)
@@ -214,6 +225,15 @@ function NP:Configure(self)
 
     h.colorClass, h.colorReaction, h.colorHealth = d.healthColor == "class", d.healthColor == "class", d.healthColor ~= "class"
     h.colorThreat = d.threat
+
+    local th = ns.A and ns.A.db and ns.A.db.profile.threat
+    if th and th.enable and th.plateGlow and self.wuiThreatGlow then
+        self.ThreatIndicator = self.wuiThreatGlow
+        if not self:IsElementEnabled("ThreatIndicator") then self:EnableElement("ThreatIndicator") end
+    elseif self.ThreatIndicator and self:IsElementEnabled("ThreatIndicator") then
+        self:DisableElement("ThreatIndicator")
+        self.wuiThreatGlow:Hide()
+    end
 
     local cb = self.Castbar
     cb:SetHeight(d.castHeight)
