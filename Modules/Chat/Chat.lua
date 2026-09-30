@@ -162,11 +162,15 @@ end
 -- few times a second) rather than set once; turning it off hands the chat
 -- back to Edit Mode after a reload.
 local GAP = 4
--- The chat text sits this much further left inside the panel than the
--- Edit Mode box would put it, closer to the panel's edge.
-local NUDGE = 8
-local SCROLL_ROOM = 12
+-- Inside the panel the text keeps margins of its own, not the Edit Mode
+-- box's padding, which left it well in from the panel's left edge and a
+-- wide empty strip down the right: a few pixels in on the left, to the
+-- right edge less room for the scroll bar, and a little lower than the
+-- box's padding would sit it.
+local LEFT_PAD = 4
 local RIGHT_PAD = 4
+local SCROLL_ROOM = 12
+local DROP = 6
 
 -- Blizzard's Edit Mode box for the chat (its Selection frame) is larger
 -- than the chat's text area, padded on every side. The panel fills that
@@ -228,19 +232,15 @@ function CH:Align()
         r = sel:GetRight() - cf:GetRight()
         bt = cf:GetBottom() - sel:GetBottom()
     end
-    -- The full nudge, even past the text area's own margin: the text itself
-    -- carries a couple of pixels of inset inside the chat frame.
-    local left = l - NUDGE
-    -- The text runs to the panel's right edge, less a small margin and room
-    -- for the chat's scroll bar. The box's own padding on that side left a
-    -- wide empty strip down the right of the panel.
+    local left = LEFT_PAD
     local want = w - left - RIGHT_PAD - SCROLL_ROOM
     if want > 50 and math.abs((cf:GetWidth() or 0) - want) > 0.5 then cf:SetWidth(want) end
+    local up = GAP + math.max(0, bt - DROP)
     local p, rel, rp, x, y = cf:GetPoint(1)
     if p ~= "BOTTOMLEFT" or rel ~= info or rp ~= "TOPLEFT" or math.abs((x or 0) - left) > 0.5
-        or math.abs((y or 0) - (GAP + bt)) > 0.5 or cf:GetNumPoints() ~= 1 then
+        or math.abs((y or 0) - up) > 0.5 or cf:GetNumPoints() ~= 1 then
         cf:ClearAllPoints()
-        cf:SetPoint("BOTTOMLEFT", info, "TOPLEFT", left, GAP + bt)
+        cf:SetPoint("BOTTOMLEFT", info, "TOPLEFT", left, up)
     end
 end
 
