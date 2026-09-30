@@ -114,6 +114,16 @@ M["wui:level"] = function(u)
 end
 E["wui:level"] = "UNIT_LEVEL PLAYER_LEVEL_UP UNIT_CLASSIFICATION_CHANGED"
 
+-- The same without its colour, for text on a coloured tag.
+M["wui:levelplain"] = function(u)
+    local l = plain(UnitEffectiveLevel and UnitEffectiveLevel(u) or UnitLevel(u))
+    local c = plain(UnitClassification(u))
+    local plus = (c == "elite" or c == "worldboss" or c == "rareelite") and "+" or ""
+    if not l or l <= 0 then return "??" end
+    return l .. plus
+end
+E["wui:levelplain"] = E["wui:level"]
+
 -- Name in the class colour for players and the reaction colour otherwise.
 M["wui:namecolor"] = function(u)
     if plain(UnitIsPlayer(u)) then

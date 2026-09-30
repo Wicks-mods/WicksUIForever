@@ -599,12 +599,10 @@ function UF:Configure(self)
     if not InCombatLockdown() and not self.wuiHeaderChild then self:SetSize(d.width, d.height) end
     local w, h = d.width, d.height
 
-    -- A look can set the bars in from the frame (Rebel): past its border
-    -- and a black gap, so the outline reads against the slab.
+    -- A look can deepen the drop shadow on the big frames (Rebel), and put
+    -- the name on a tag in its accent, like its headings.
     local st = Chrome.StyleDef and Chrome:StyleDef()
-    local slab = st and not ns:Modern() and st.unitInset and st or nil
-    local edgePad = slab and (px * (slab.borderPx or 1) + slab.unitInset) or px
-    local split = slab and slab.unitGap or px
+    local nameTag = st and not ns:Modern() and st.unitNameTag
     if st and st.unitShadow and st.hardShadow and self.wuiHardShadow then
         local o = h >= 40 and st.unitShadow or math.abs(st.hardShadow.x or 3)
         self.wuiHardShadow:ClearAllPoints()
@@ -618,12 +616,12 @@ function UF:Configure(self)
     if d.portrait == "left" or d.portrait == "right" then
         portrait:ClearAllPoints()
         portrait:SetWidth(d.portraitWidth)
-        portrait:SetPoint("TOP", self, "TOP", 0, -edgePad)
-        portrait:SetPoint("BOTTOM", self, "BOTTOM", 0, edgePad)
+        portrait:SetPoint("TOP", self, "TOP", 0, -px)
+        portrait:SetPoint("BOTTOM", self, "BOTTOM", 0, px)
         if d.portrait == "left" then
-            portrait:SetPoint("LEFT", self, "LEFT", edgePad, 0); pl = d.portraitWidth + split
+            portrait:SetPoint("LEFT", self, "LEFT", px, 0); pl = d.portraitWidth + px
         else
-            portrait:SetPoint("RIGHT", self, "RIGHT", -edgePad, 0); pr = d.portraitWidth + split
+            portrait:SetPoint("RIGHT", self, "RIGHT", -px, 0); pr = d.portraitWidth + px
         end
         self.Portrait = portrait
         setElement(self, "Portrait", true)
@@ -639,14 +637,14 @@ function UF:Configure(self)
     -- it. Raid frames keep their text on the bar, having no room above it.
     local modern = ns:Modern() and key ~= "raid"
     local health, power = self.Health, self.Power
-    local pad, nameRow = edgePad, 0
+    local pad, nameRow = px, 0
     if modern then
         pad = h < 36 and 5 or 7
         local lt = d.texts and d.texts.left
         nameRow = ((lt and lt.size) or 12) + (h < 36 and 3 or 5)
     end
     local ph = d.power and (modern and math.min(d.powerHeight, 3) or d.powerHeight) or 0
-    local gap = d.power and (modern and 3 or (slab and slab.unitGap) or (d.powerGap or 1)) or 0
+    local gap = d.power and (modern and 3 or (d.powerGap or 1)) or 0
     health:ClearAllPoints()
     health:SetPoint("TOPLEFT", self, "TOPLEFT", pad + pl, -(pad + nameRow))
     health:SetPoint("TOPRIGHT", self, "TOPRIGHT", -pad - pr, -(pad + nameRow))
@@ -705,11 +703,18 @@ function UF:Configure(self)
             end
             -- Names are cut to the frame, not by counting letters, since
             -- an enemy's name can be secret and so cannot be measured.
-            if slot == "left" then fs:SetWidth(math.max(20, (w - pl - pr) * 0.62)) else fs:SetWidth(0) end
+            local cut = math.max(20, (w - pl - pr) * 0.62)
+            if slot == "left" then fs:SetWidth(cut) else fs:SetWidth(0) end
             -- On a class-coloured bar a class-coloured name disappears, so
             -- the name colour is dropped there and the name shows white.
             local tag = td.tag
-            if g.healthColor == "class" or (slab and slab.unitPlainNames) then tag = tag:gsub("%[wui:namecolor%]", "") end
+            if g.healthColor == "class" then tag = tag:gsub("%[wui:namecolor%]", "") end
+            if slot == "left" then
+                if nameTag then
+                    tag = tag:gsub("%[wui:namecolor%]", ""):gsub("%[wui:level%]", "[wui:levelplain]")
+                end
+                UF:NameTag(fs, nameTag, cut, self.wuiOverlay)
+            end
             self:Tag(fs, tag)
             fs.wuiTag = td.tag
             fs:Show()
@@ -871,6 +876,48 @@ function UF:Configure(self)
     if self.wuiClassPower then UF:LayoutClassPower(self) end
 
     if self.UpdateAllElements then self:UpdateAllElements("WicksUI_Configure") end
+end
+
+-- ============================================================
+-- Name tags
+-- ============================================================
+-- A look's name on a tag in its accent (Rebel), the letters in the same
+-- colour under a black outline, as its headings are drawn. The tag fits
+-- the name: the text is left to size itself, which the client does even
+-- for a secret name, and a readable name longer than the frame allows is
+-- cut there.
+local issecretNT = rawget(_G, "issecretvalue")
+local function fitName(fs)
+    local max = fs.wuiNameMax
+    if not max then return end
+    fs:SetWidth(0)
+    local tw = fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth()
+    if tw == nil or (issecretNT and issecretNT(tw)) or type(tw) ~= "number" then return end
+    if tw > max then fs:SetWidth(max) end
+end
+
+function UF:NameTag(fs, on, max, host)
+    local p = fs.wuiNamePlate
+    if on then
+        if not p then
+            p = host:CreateTexture(nil, "ARTWORK", nil, -1)
+            p:SetPoint("TOPLEFT", fs, "TOPLEFT", -4, 2)
+            p:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", 4, -2)
+            fs.wuiNamePlate = p
+            hooksecurefunc(fs, "SetFormattedText", fitName)
+            hooksecurefunc(fs, "SetText", fitName)
+        end
+        p:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(p, C.fel, "texture")
+        fs:SetTextColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(fs, C.fel, "text")
+        fs.wuiNameMax = max
+        fitName(fs)
+        p:Show()
+    else
+        fs.wuiNameMax = nil
+        if p then p:Hide() end
+    end
 end
 
 -- ============================================================
