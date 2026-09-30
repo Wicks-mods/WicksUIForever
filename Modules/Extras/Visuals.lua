@@ -156,6 +156,12 @@ end, { onChange = function() VX:Apply() end, order = 91 })
 -- settings leave out. Every control here reads and writes the game's own
 -- setting, so the choices are account-wide and hold without Wick's UI; a
 -- setting this client locks shows greyed out.
+-- The game reads these through a cache that an addon's change does not
+-- clear, so every change here shows after a reload, and asks for one.
+local function askReload(text)
+    local Chrome = ns.Core.Chrome
+    if Chrome.ReloadPrompt then Chrome:ReloadPrompt(text or "Combat text changes show after a reload.") end
+end
 local function cvOn(name) return function() return get(name) == "1" end end
 local function cvSetOn(...)
     local names = { ... }
@@ -163,10 +169,11 @@ local function cvSetOn(...)
         for _, n in ipairs(names) do
             if usable(n) then set(n, v and "1" or "0") end
         end
+        askReload()
     end
 end
 local function cvNum(name) return function() return tonumber(get(name) or "") or 0 end end
-local function cvSetNum(name) return function(v) if usable(name) then set(name, tostring(v)) end end end
+local function cvSetNum(name) return function(v) if usable(name) then set(name, tostring(v)); askReload() end end end
 local function locked(name) return function() return not usable(name) end end
 local SELF = "enableFloatingCombatText"
 
@@ -174,21 +181,11 @@ local SELF = "enableFloatingCombatText"
 -- when this is on, or when it is switched through the game's settings,
 -- and it starts and stops listening the same way: switched from here, it
 -- takes a reload. Loading it from here instead would run it tainted, and
--- it handles numbers the client keeps secret in a fight. The other
--- options are read as each line is shown, so they apply at once.
-local function combatTextLoaded()
-    local CA = rawget(_G, "C_AddOns")
-    local fn = (CA and CA.IsAddOnLoaded) or rawget(_G, "IsAddOnLoaded")
-    return fn and fn("Blizzard_CombatText") and true or false
-end
+-- it handles numbers the client keeps secret in a fight.
 local function setSelf(v)
     if not usable(SELF) then return end
     set(SELF, v and "1" or "0")
-    if v ~= combatTextLoaded() then
-        local Chrome = ns.Core.Chrome
-        local text = v and "Your own combat text starts after a reload." or "Your own combat text stops after a reload."
-        if Chrome.ReloadPrompt then Chrome:ReloadPrompt(text) end
-    end
+    askReload(v and "Your own combat text starts after a reload." or "Your own combat text stops after a reload.")
 end
 local function selfOff(name) return function() return not usable(name) or get(SELF) ~= "1" end end
 
@@ -207,7 +204,7 @@ local function selfToggle(L, label, name, tip)
 end
 
 ns.Config:AddPage("combattext", "Combat text", function(L)
-    L:Note("The game's floating combat text. These are the game's own settings, so they are account-wide and hold with Wick's UI switched off. The font follows the look.")
+    L:Note("The game's floating combat text. These are the game's own settings, so they are account-wide and hold with Wick's UI switched off. Changes show after a reload. The font follows the look.")
     L:Heading("Numbers over what you hit")
     cvToggle(L, "Damage", "floatingCombatTextCombatDamage_v2", "Your damage over the creatures and players you hit.")
     cvToggle(L, "Damage over time", "floatingCombatTextCombatLogPeriodicSpells_v2", "The ticks of your periodic spells.")
@@ -231,7 +228,7 @@ ns.Config:AddPage("combattext", "Combat text", function(L)
     L:Heading("Your own combat text")
     L:Toggle("Show it", SELF, {
         get = cvOn(SELF), setter = setSelf, disabled = locked(SELF),
-        tooltip = "The text that scrolls round your character: what hits you, heals you and happens to you. Switching it on or off takes a reload.",
+        tooltip = "The text that scrolls round your character: what hits you, heals you and happens to you.",
     })
     L:Dropdown("Direction", "floatingCombatTextFloatMode_v2", { { 1, "Up" }, { 2, "Down" }, { 3, "Arc" } }, {
         get = cvNum("floatingCombatTextFloatMode_v2"), setter = cvSetNum("floatingCombatTextFloatMode_v2"),
