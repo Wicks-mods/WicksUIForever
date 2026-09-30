@@ -26,6 +26,7 @@ ns.defaults.profile.skins = {
     meterHeight = 150,           -- its height while lined up (0 leaves it to Edit Mode)
     microMenu = "mouseover",     -- show, mouseover, hide
     bagsBar = "mouseover",
+    swingTimers = true,          -- the game's swing timers in the look
 }
 
 local function db() return SK:db() end
@@ -297,6 +298,79 @@ function SK:DamageMeter()
 end
 
 -- ============================================================
+-- Swing timers
+-- ============================================================
+-- The game's own swing timers (main hand, off hand, ranged), which Edit
+-- Mode places. Their art is cleared rather than faded: Blizzard dims the
+-- background and frame by alpha when you are out of range, which would
+-- bring a faded texture back. The bar takes our texture in the look's
+-- accent (the off hand a darker shade of it, so the two read apart) over
+-- a panel of ours that dims with it; the labels take the look's font and
+-- keep Blizzard's out-of-range colour. Method calls on their regions, and
+-- post-hooks on their own methods.
+local SWING = { "SwingTimerMainHandFrame", "SwingTimerOffHandFrame", "SwingTimerRangedFrame" }
+local swingDone = setmetatable({}, { __mode = "k" })
+
+local function clearTex(t)
+    if not t then return end
+    if t.SetAtlas then pcall(t.SetAtlas, t, nil) end
+    if t.SetTexture then t:SetTexture(nil) end
+end
+
+local function swingColour(f)
+    local sb = f.StatusBar
+    if not sb then return end
+    local c = C.fel
+    if f:GetName() == "SwingTimerOffHandFrame" then
+        local v = C.void
+        c = { c[1] * 0.6 + v[1] * 0.4, c[2] * 0.6 + v[2] * 0.4, c[3] * 0.6 + v[3] * 0.4 }
+    end
+    sb:SetStatusBarTexture(ns.Media:Statusbar())
+    sb:SetStatusBarColor(c[1], c[2], c[3], 1)
+end
+
+local function swingDim(f)
+    local e = swingDone[f]
+    local sb = f.StatusBar
+    if e and e.backdrop and sb then e.backdrop:SetAlpha(sb:GetAlpha() or 1) end
+end
+
+local function skinSwing(f)
+    if not f or swingDone[f] then return end
+    local sb = f.StatusBar
+    if not sb then return end
+    local e = {}
+    swingDone[f] = e
+    clearTex(f.Background)
+    clearTex(f.Border)
+    clearTex(sb.TypeLabelShadow)
+    e.backdrop = ns:CreateBackdrop(sb, "Default", ns.mult)
+    for _, fs in ipairs({ sb.TypeLabel, sb.TimeLabel }) do
+        if fs and fs.GetFont then
+            local _, size = fs:GetFont()
+            ns.Media:SetFont(fs, math.floor((size or 10) + 0.5), "look")
+        end
+    end
+    swingColour(f)
+    -- Blizzard sets the bar's texture again when it lays the bar out, and
+    -- dims it when you are out of range.
+    if f.InitializeBarPresentation then hooksecurefunc(f, "InitializeBarPresentation", swingColour) end
+    if f.ApplyRangePresentation then hooksecurefunc(f, "ApplyRangePresentation", swingDim) end
+    swingDim(f)
+end
+
+function SK:SwingTimers()
+    if not db().swingTimers then return end
+    for _, name in ipairs(SWING) do
+        local f = rawget(_G, name)
+        if f then skinSwing(f) end
+    end
+end
+if Chrome.OnThemeChanged then
+    Chrome:OnThemeChanged(function() for f in pairs(swingDone) do swingColour(f) end end)
+end
+
+-- ============================================================
 -- Micro menu and bag bar
 -- ============================================================
 local faders = {}
@@ -463,13 +537,13 @@ end
 -- ============================================================
 function SK:Initialize()
     self:Update()
-    local function later() C_Timer.After(0.2, function() SK:Tracker(); SK:DamageMeter() end) end
+    local function later() C_Timer.After(0.2, function() SK:Tracker(); SK:DamageMeter(); SK:SwingTimers() end) end
     for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED",
         "TRACKED_ACHIEVEMENT_UPDATE", "SCENARIO_UPDATE", "GROUP_ROSTER_UPDATE" }) do
         ns:On(e, later)
     end
     ns:On("ADDON_LOADED", function(_, name)
-        if name == "Blizzard_DamageMeter" or name == "Blizzard_ObjectiveTracker" then later() end
+        if name == "Blizzard_DamageMeter" or name == "Blizzard_ObjectiveTracker" or name == "Blizzard_SwingTimer" then later() end
     end)
     if EventRegistry and EventRegistry.RegisterCallback then
         pcall(EventRegistry.RegisterCallback, EventRegistry, "EditMode.Exit", later, SK)
@@ -479,6 +553,7 @@ end
 function SK:Update()
     self:Tracker()
     self:DamageMeter()
+    self:SwingTimers()
     self:Menus()
 end
 
@@ -491,6 +566,7 @@ ns.Config:AddPage("skins", "Blizzard frames", function(L)
     L:Toggle("Line the meter up with the info panel", "meterAlign", { tooltip = "The meter's window is made as wide as the right info panel and sits just above it. Off leaves it to Edit Mode (after a reload)." })
     L:Slider("Damage meter height", "meterHeight", 0, 400, 5, { disabled = function() return not db().meterAlign end,
         tooltip = "Its height while it is lined up with the info panel. 0 leaves the height to Edit Mode." })
+    L:Toggle("Swing timers", "swingTimers", { tooltip = "The game's main hand, off hand and ranged timers in the look: its bar in the accent, the off hand a darker shade. Edit Mode still places them." })
     L:Dropdown("Micro menu", "microMenu", { { "show", "Always" }, { "mouseover", "When moused over" }, { "hide", "Hidden" } })
     L:Dropdown("Bag bar", "bagsBar", { { "show", "Always" }, { "mouseover", "When moused over" }, { "hide", "Hidden" } })
 end, { onChange = function() SK:Update() end, order = 95 })
