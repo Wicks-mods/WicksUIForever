@@ -26,6 +26,7 @@ local TH = ns:NewModule("threat", { title = "Threat", order = 45, defaults = {
     meter = true,
     meterShow = "combat",   -- combat, group, always
     meterRows = 6,
+    onMeter = true,         -- sit on the damage meter, as wide as it
     meterWidth = 220,
     rowHeight = 16,
     personal = true,
@@ -204,9 +205,35 @@ local function row(i)
     return r
 end
 
+-- On the damage meter: straight above its window, as wide as it, a few
+-- pixels off; it follows the meter wherever Edit Mode or the alignment
+-- puts it. With the meter hidden or off, back to its own place.
+local function placeMeter()
+    local d = db()
+    local win = rawget(_G, "DamageMeterSessionWindow1")
+    local want = d.onMeter and win and win:IsVisible() and win or nil
+    if want then
+        -- Checked every time: placing the frames again (a profile change,
+        -- /wui move) ties the meter back to its mover.
+        local _, rel = meter:GetPoint(1)
+        if meter.wuiOn ~= want or rel ~= want then
+            meter:ClearAllPoints()
+            meter:SetPoint("BOTTOMLEFT", want, "TOPLEFT", 0, 6)
+            meter:SetPoint("BOTTOMRIGHT", want, "TOPRIGHT", 0, 6)
+            meter.wuiOn = want
+        end
+    elseif meter.wuiOn then
+        meter.wuiOn = nil
+        if ns.Movers and ns.Movers.Place then ns.Movers:Place("threatmeter") end
+    end
+end
+TH.PlaceMeter = function() if meter then placeMeter() end end
+
 local function layoutMeter()
     local d = db()
-    meter:SetSize(d.meterWidth, 24 + d.meterRows * (d.rowHeight + 2))
+    placeMeter()
+    local h = 24 + d.meterRows * (d.rowHeight + 2)
+    if meter.wuiOn then meter:SetHeight(h) else meter:SetSize(d.meterWidth, h) end
     for i, r in ipairs(meter.rows) do
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", meter, "TOPLEFT", 4, -22 - (i - 1) * (d.rowHeight + 2))
@@ -374,7 +401,8 @@ ns.Config:AddPage("threat", "Threat", function(L)
     L:Toggle("Threat meter", "meter")
     L:Dropdown("Show it", "meterShow", { { "combat", "In a fight" }, { "group", "In a fight, in a group" }, { "always", "Always" } })
     L:Slider("Rows", "meterRows", 2, 15, 1)
-    L:Slider("Width", "meterWidth", 140, 400, 2)
+    L:Toggle("Sit on the damage meter", "onMeter", { tooltip = "Straight above the damage meter, as wide as it, following it wherever it goes. With the damage meter hidden, the threat meter goes back to its own place (move it with /wui move)." })
+    L:Slider("Width", "meterWidth", 140, 400, 2, { disabled = function() return db().onMeter end })
     L:Slider("Row height", "rowHeight", 10, 28, 1)
     L:Heading("Your bar")
     L:Toggle("Personal threat bar", "personal")
