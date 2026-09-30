@@ -508,6 +508,18 @@ local LAYOUT = {
         fontSize = 14,
         pixelPerfect = true,
         statusbar = "Wick Flat",
+        -- Hologram's face runs large: its player name a size of its own.
+        styleSizes = {
+            hologram = {
+                units = {
+                    player = {
+                        texts = {
+                            left = 12,
+                        },
+                    },
+                },
+            },
+        },
     },
     minimap = {
         clock = true,

@@ -75,7 +75,8 @@ local function presetFor(key)
     return ns:Modern() and PRESETS.modern or PRESETS.wick
 end
 
--- Each style keeps the player's own sizes, frame positions, health colours
+-- Each style keeps the player's own sizes, unit frame text sizes (one
+-- look's face runs larger than another's), frame positions, health colours
 -- and the minimap's shape (round
 -- suits one style, square the other): leaving a style saves what it had
 -- (general settings are per profile), and coming back to it puts them
@@ -89,7 +90,12 @@ local function takeSizes(prof)
         out.bars[id] = { size = d.size, spacing = d.spacing }
     end
     for key, u in pairs(prof.unitframes and prof.unitframes.units or {}) do
-        out.units[key] = { width = u.width, height = u.height }
+        local texts
+        if u.texts then
+            texts = {}
+            for slot, t in pairs(u.texts) do texts[slot] = t.size end
+        end
+        out.units[key] = { width = u.width, height = u.height, texts = texts }
     end
     out.healthColor = prof.unitframes and prof.unitframes.healthColor
     -- Where the frames sit: a style's shadows and borders can need a frame
@@ -113,7 +119,15 @@ local function putSizes(prof, saved)
     end
     for key, s in pairs(saved.units or {}) do
         local u = prof.unitframes and prof.unitframes.units and prof.unitframes.units[key]
-        if u then u.width, u.height = s.width or u.width, s.height or u.height end
+        if u then
+            u.width, u.height = s.width or u.width, s.height or u.height
+            -- A snapshot from before texts were kept leaves them as they are.
+            if s.texts and u.texts then
+                for slot, size in pairs(s.texts) do
+                    if u.texts[slot] then u.texts[slot].size = size end
+                end
+            end
+        end
     end
     if saved.healthColor and prof.unitframes then prof.unitframes.healthColor = saved.healthColor end
     if saved.movers and prof.movers then
