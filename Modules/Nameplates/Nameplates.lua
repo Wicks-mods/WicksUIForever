@@ -394,10 +394,10 @@ function NP:Configure(self)
     -- heavy outline) reaches the plates too.
     local ufd = ns.UnitFrames and ns.UnitFrames.db and ns.UnitFrames:db()
     local face, outline = ufd and ufd.font, ufd and ufd.fontOutline
-    ns.Media:SetFont(self.wuiName, d.nameSize, outline, face)
-    ns.Media:SetFont(self.wuiPercent, d.percentSize, outline, face)
-    ns.Media:SetFont(cb.Text, 9, outline, face)
-    ns.Media:SetFont(cb.Time, 9, outline, face)
+    ns.Media:SetFont(self.wuiName, d.nameSize, outline, face, true)
+    ns.Media:SetFont(self.wuiPercent, d.percentSize, outline, face, true)
+    ns.Media:SetFont(cb.Text, 9, outline, face, true)
+    ns.Media:SetFont(cb.Time, 9, outline, face, true)
     self.wuiName:SetWidth(d.width + 40)
 
     if self.wuiNameTag then self:Untag(self.wuiName) end

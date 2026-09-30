@@ -125,17 +125,26 @@ function M:List(kind)
 end
 
 -- Apply a font to a FontString. "NONE" is not a real flag, the client
--- wants an empty string for no outline.
-function M:SetFont(fs, size, outline, face)
+-- wants an empty string for no outline. unit: unit frame and nameplate
+-- text, which a look can give a face and size of its own (Rebel's heavy
+-- condensed capitals) apart from the rest of the UI.
+function M:SetFont(fs, size, outline, face, unit)
     local g = ns:G()
     outline = outline or g.fontOutline
     if outline == "NONE" then outline = "" end
     size = size or g.fontSize
-    -- A look whose face runs small sets the Wick font a little larger.
     local Chrome = ns.Core and ns.Core.Chrome
     local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
-    if st and st.uiBump and (face or g.font) == "Wick" then size = size + st.uiBump end
-    fs:SetFont(self:Font(face), size, outline)
+    local path
+    if st and (face or g.font) == "Wick" then
+        if unit and st.unitFont then
+            path, size = st.unitFont, size + (st.unitBump or 0)
+        elseif st.uiBump then
+            -- A look whose face runs small sets the Wick font a little larger.
+            size = size + st.uiBump
+        end
+    end
+    fs:SetFont(path or self:Font(face), size, outline)
     if outline == "" then
         fs:SetShadowOffset(1, -1)
         fs:SetShadowColor(0, 0, 0, 1)

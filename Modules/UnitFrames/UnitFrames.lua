@@ -678,7 +678,7 @@ function UF:Configure(self)
         local td = d.texts and d.texts[slot]
         if fs.wuiTag then self:Untag(fs); fs.wuiTag = nil end
         if td and td.enable and td.tag and td.tag ~= "" then
-            ns.Media:SetFont(fs, td.size, g.fontOutline, g.font)
+            ns.Media:SetFont(fs, td.size, g.fontOutline, g.font, true)
             local anchorTo = (slot == "power" and d.power) and power or health
             if modern and slot ~= "power" then
                 -- The row above the bar: name on the left, health on the right.
@@ -794,8 +794,8 @@ function UF:Configure(self)
         cb.Text:SetShown(cd.showName)
         cb.Time:SetShown(cd.showTime)
         local cs = cd.fontSize or math.max(9, math.min(14, ch - 6))
-        ns.Media:SetFont(cb.Text, cs, g.fontOutline, g.font)
-        ns.Media:SetFont(cb.Time, cs, g.fontOutline, g.font)
+        ns.Media:SetFont(cb.Text, cs, g.fontOutline, g.font, true)
+        ns.Media:SetFont(cb.Time, cs, g.fontOutline, g.font, true)
         cb.Spark:SetHeight(ch)
         local cc, lc = g.castColor, g.castLocked
         cb:SetStatusBarColor(cc[1], cc[2], cc[3], 1)
