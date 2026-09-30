@@ -21,7 +21,8 @@ ns.Config:AddPage("unitframes", "Unit Frames", function(L)
     L:Dropdown("Health bars", "healthColor", {
         { "class", "Class and reaction" }, { "dark", "Dark" }, { "gradient", "Red to green by health" },
         { "look", "The look's colours" },
-    }, { tooltip = "The gradient is worked out by the client from your health, which this client keeps from addons, so it still follows health in combat. Every look but Wick Modern and Wick OG has colours of its own, one for friends and one for enemies. Each style keeps its own choice." })
+    }, { set = function() if ns.HealthChosen then ns:HealthChosen() end end,
+         tooltip = "The gradient is worked out by the client from your health, which this client keeps from addons, so it still follows health in combat. Every look but Wick Modern and Wick OG has colours of its own, one for friends and one for enemies, and uses them unless you pick something else here while in it. Each style keeps its own choice." })
     L:Color("Dark colour", "darkColor", { disabled = function() return UF:db().healthColor ~= "dark" end })
     L:Toggle("Class colour behind the bar", "classBackdrop", { tooltip = "The empty part of the health bar in a dim class colour, so a dark bar still says who it is." })
     L:Slider("Behind the bar, strength", "bgAlpha", 0, 1, 0.05, { disabled = function() return not UF:db().classBackdrop end })

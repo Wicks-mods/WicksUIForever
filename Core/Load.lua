@@ -136,15 +136,22 @@ local function lookHealth(g, style)
     local Chrome = ns.Core and ns.Core.Chrome
     local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
     if not uf then return end
-    g.lookHealth = g.lookHealth or {}
     if st and st.health then
-        if not g.lookHealth[style] then
-            uf.healthColor = "look"
-            g.lookHealth[style] = true
-        end
+        -- A look draws health in its own colours unless the player picked
+        -- something else from the Health bars list while in it.
+        local chosen = g.healthChosen and g.healthChosen[style]
+        if not chosen then uf.healthColor = "look" end
     elseif uf.healthColor == "look" then
         uf.healthColor = "class"
     end
+end
+
+-- The Health bars list calls this when the player picks: that choice is
+-- this style's from then on.
+function ns:HealthChosen()
+    local g = ns:G()
+    g.healthChosen = g.healthChosen or {}
+    g.healthChosen[styleKey()] = true
 end
 
 function ns:ApplyStylePreset(force)
@@ -197,9 +204,6 @@ function ns:AdoptStyle()
     local g = ns:G()
     local style = styleKey()
     g.presetFor = style
-    -- A copied profile brings the health colour of the style it was made
-    -- in; a look with colours of its own takes them again.
-    if g.lookHealth then g.lookHealth[style] = nil end
     lookHealth(g, style)
 end
 
