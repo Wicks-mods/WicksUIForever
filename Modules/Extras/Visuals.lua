@@ -20,7 +20,7 @@ ns.defaults.profile.visuals = {
     noFog = false, noVolumeFog = false, noGlow = false, noDeathGrey = false,
     noNether = false, noWeather = false,
     cameraStays = false,
-    sharpen = false, bestShots = false,
+    moreGrass = false, sharpen = false, bestShots = false,
 }
 
 local function db() return VX:db() end
@@ -30,12 +30,14 @@ local function db() return VX:db() end
 -- offers none of them.
 local OPTIONS = {
     { key = "noFog",       cvars = { showFog = "0" } },
-    { key = "noVolumeFog", cvars = { volumeFog = "0" } },
+    -- The level as well: with it above 0 the client puts volumeFog back.
+    { key = "noVolumeFog", cvars = { volumeFog = "0", volumeFogLevel = "0" } },
     { key = "noGlow",      cvars = { ffxGlow = "0" } },
     { key = "noDeathGrey", cvars = { ffxDeath = "0" } },
     { key = "noNether",    cvars = { ffxNether = "0" } },
     { key = "noWeather",   cvars = { weatherDensity = "0" } },
     { key = "cameraStays", cvars = { cameraIndirectVisibility = "1", cameraIndirectOffset = "10" } },
+    { key = "moreGrass",   cvars = { groundEffectDensity = "256", groundEffectFade = "370", groundEffectDist = "500" } },
     { key = "sharpen",     cvars = { ResampleAlwaysSharpen = "1" } },
     { key = "bestShots",   cvars = { screenshotQuality = "10" } },
 }
@@ -60,14 +62,15 @@ local function usable(name)
     return get(name) ~= nil
 end
 
--- An option can be offered when every variable it sets is there to set.
+-- An option can be offered when any variable it sets is there to set; the
+-- rest are skipped.
 function VX:Available(key)
     for _, o in ipairs(OPTIONS) do
         if o.key == key then
             for name in pairs(o.cvars) do
-                if not usable(name) then return false end
+                if usable(name) then return true end
             end
-            return true
+            return false
         end
     end
     return false
@@ -134,6 +137,7 @@ ns.Config:AddPage("visuals", "Visuals", function(L)
     L:Heading("Camera")
     toggle(L, "cameraStays", "Camera stays out when something is in the way", "Walls and trees between you and the camera no longer pull it in close.")
     L:Heading("Picture")
+    toggle(L, "moreGrass", "More grass, drawn further out", "Grass and ground clutter thicker and further away than the game's Ground Clutter slider goes. It costs frame rate.")
     toggle(L, "sharpen", "Sharpen at full resolution", "The game only sharpens when the render scale is below 100%. This sharpens at 100% too; Sharpness in the game's Graphics settings sets how much.")
     toggle(L, "bestShots", "Best screenshot quality", "Screenshots are saved at the highest quality the game has.")
 end, { onChange = function() VX:Apply() end, order = 91 })
