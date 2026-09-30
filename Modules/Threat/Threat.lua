@@ -228,13 +228,15 @@ local function placeMeter()
     end
 end
 TH.PlaceMeter = function() if meter then placeMeter() end end
+TH.Meter = function() return meter end
 
 local function layoutMeter(shown)
     local d = db()
     placeMeter()
-    -- As tall as the rows it shows (at least one), up to the setting.
-    local n = math.max(1, math.min(d.meterRows, shown or d.meterRows))
-    local h = 24 + n * (d.rowHeight + 2) + 2
+    -- As tall as the rows it shows, up to the setting; with none, just
+    -- the heading.
+    local n = math.max(0, math.min(d.meterRows, shown or d.meterRows))
+    local h = n > 0 and (24 + n * (d.rowHeight + 2) + 2) or 24
     if meter.wuiOn then meter:SetHeight(h) else meter:SetSize(d.meterWidth, h) end
     for i, r in ipairs(meter.rows) do
         r:ClearAllPoints()
@@ -292,7 +294,8 @@ local function drawMeter(list)
             r:Hide()
         end
     end
-    layoutMeter(#list)
+    -- Unlocked, it keeps its full size, so it is placed with room to grow.
+    layoutMeter(unlocked and d.meterRows or #list)
     -- As see-through as the damage meter and the chat, which both follow
     -- the chat's panel alpha.
     if ns.Skins and ns.Skins.MatchChat then ns.Skins:MatchChat(meter) end
@@ -370,7 +373,7 @@ end
 driver:SetScript("OnEvent", function() dirty = true end)
 
 -- For the offline harness.
-TH.Read, TH.Warning = read, warning
+TH.Read, TH.Warning, TH.Draw = read, warning, function(list) if meter then drawMeter(list) end end
 
 function TH:Initialize()
     meter = meter or buildMeter()
