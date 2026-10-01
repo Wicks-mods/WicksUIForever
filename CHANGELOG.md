@@ -1,5 +1,18 @@
 # Wick's UI
 
+## 0.9.3 (unreleased)
+
+### Unit frames
+
+- Resting shows as a crescent moon in the look's accent, on a small tile
+  at the corner of your frame, in place of the game's yellow Zzz.
+
+### Fixes
+
+- An incoming heal on the unit frames stops at the end of the health
+  bar. At full health, the heal you were casting ran out past the edge
+  of the frame.
+
 ## 0.9.2 (2026-10-01)
 
 ### Combat text

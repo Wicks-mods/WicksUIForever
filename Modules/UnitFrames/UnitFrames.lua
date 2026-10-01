@@ -429,6 +429,26 @@ function UF.OnLeave(self)
     end
 end
 
+-- Resting: our own mark, a crescent in the accent on a small dark tile,
+-- in place of the game's yellow Zzz. A frame, so oUF shows and hides the
+-- tile with the mark and never puts the game's texture on it. Only made
+-- for a frame that shows resting, which is the player's unless changed.
+local function restMark(self)
+    local f = CreateFrame("Frame", nil, self.wuiOverlay)
+    f:SetSize(18, 18)
+    f:SetPoint("CENTER", self, "TOPLEFT", 0, 0)
+    ns:SetTemplate(f, "Default", { alpha = 0.9, shadow = false })
+    local mark = f:CreateTexture(nil, "OVERLAY")
+    mark:SetSize(12, 12)
+    mark:SetPoint("CENTER")
+    mark:SetTexture(ns.Media:Glyph("rest"))
+    mark:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+    Chrome:Register(mark, "fel", "vertex", 1)
+    f.mark = mark
+    f:Hide()
+    return f
+end
+
 local function style(self, unit)
     local key = keyFor(unit)
     self.wuiKey = key
@@ -462,6 +482,9 @@ local function style(self, unit)
     heal:SetPoint("LEFT", health:GetStatusBarTexture(), "RIGHT")
     heal:SetStatusBarColor(C.fel[1], C.fel[2], C.fel[3], 0.4)
     health.HealingAll = heal
+    -- A heal stops at full health. The client's calculator lets it run 5%
+    -- past by default, which drew it out beyond the frame's edge.
+    health.incomingHealOverflow = 1
     local absorb = newBar(health)
     absorb:SetPoint("TOP"); absorb:SetPoint("BOTTOM")
     absorb:SetPoint("LEFT", heal:GetStatusBarTexture(), "RIGHT")
@@ -524,15 +547,15 @@ local function style(self, unit)
         t:SetSize(size, size)
         return t
     end
+    -- The resting mark is made when a frame first shows it (restMark).
     self.wuiIcons = {
-        raidIcon = icon(18), leader = icon(14), assistant = icon(14), combat = icon(16), resting = icon(16),
+        raidIcon = icon(18), leader = icon(14), assistant = icon(14), combat = icon(16),
         role = icon(14), readyCheck = icon(20), phase = icon(20), resurrect = icon(22), summon = icon(22),
     }
     self.wuiIcons.raidIcon:SetPoint("CENTER", self, "TOP", 0, 0)
     self.wuiIcons.leader:SetPoint("CENTER", self, "TOPLEFT", 8, 0)
     self.wuiIcons.assistant:SetPoint("CENTER", self, "TOPLEFT", 8, 0)
     self.wuiIcons.combat:SetPoint("CENTER", self, "TOPRIGHT", -4, 0)
-    self.wuiIcons.resting:SetPoint("CENTER", self, "TOPLEFT", 0, 0)
     self.wuiIcons.role:SetPoint("TOPRIGHT", self, "TOPRIGHT", -2, -2)
     self.wuiIcons.readyCheck:SetPoint("CENTER", self, "CENTER")
     self.wuiIcons.phase:SetPoint("CENTER", self, "CENTER")
@@ -768,6 +791,7 @@ function UF:Configure(self)
     }
     for opt, element in pairs(map) do
         if d[opt] then
+            if opt == "resting" and not icons.resting then icons.resting = restMark(self) end
             self[element] = icons[opt]
             setElement(self, element, true)
         elseif self[element] then
