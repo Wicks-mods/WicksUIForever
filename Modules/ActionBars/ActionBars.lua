@@ -17,7 +17,7 @@ local LAB = ns.LAB
 local Chrome = ns.Core.Chrome
 local C = Chrome.Colors
 
-local AB = ns:NewModule("actionbars", { title = "Action Bars", order = 10 })
+local AB = ns:NewModule("actionbars", { title = "Action bars", order = 10 })
 ns.ActionBars = AB
 
 -- The bars and the page each one shows. 7 to 10 are the pages the game
@@ -122,7 +122,8 @@ local defaults = {
     macroSize     = 10,
     countSize     = 14,
     fontOutline   = "OUTLINE",
-    hotkeyColor   = { 0.83, 0.78, 0.63, 1 },
+    hotkeyColor   = nil,        -- nil: the look's text colour
+    colorsMigrated = false,
     abbreviate    = true,       -- SHIFT-5 becomes S5, Mouse Button 4 becomes M4
     -- Behaviour
     rangeColoring = "button",   -- button, hotkey or none
@@ -380,11 +381,40 @@ end)
 -- ============================================================
 AB.bars = {}
 
+-- The keybind text: the colour the player picked, or the look's text
+-- colour. Read as it is painted, so a theme change only has to paint again.
+function AB:HotkeyColor()
+    return self:db().hotkeyColor or C.text
+end
+
+-- The button text outline as a font flag. "look" is the look's own (an
+-- outline in Rebel, none elsewhere), the way Media:SetFont reads it; the
+-- library hands its flags to the client untouched, so it must be a flag.
+function AB:OutlineFlag()
+    local o = self:db().fontOutline
+    if o == "look" then
+        local st = Chrome.StyleDef and Chrome:StyleDef()
+        o = st and st.textOutline or "NONE"
+    end
+    return (o == nil or o == "NONE") and "" or o
+end
+
+-- A profile keeps every default it was made with, so one made before the
+-- keybinds followed the look still holds the old copy of the text colour.
+-- That copy is let go once, per profile; a colour the player picked stays.
+local OLD_HOTKEY = { 0.83, 0.78, 0.63 }
+function AB:MigrateColors()
+    local d = self:db()
+    if d.colorsMigrated then return end
+    if ns:SameColor(d.hotkeyColor, OLD_HOTKEY) then d.hotkeyColor = nil end
+    d.colorsMigrated = true
+end
+
 local function buttonConfig(db, bar)
     local g = AB:db()
     local font = ns.Media:Font(g.font)
-    local outline = g.fontOutline == "NONE" and "" or g.fontOutline
-    local hk = g.hotkeyColor or { 1, 1, 1 }
+    local outline = AB:OutlineFlag()
+    local hk = AB:HotkeyColor()
     return {
         outOfRangeColoring = g.rangeColoring,
         tooltip = g.tooltips,
@@ -444,7 +474,7 @@ function AB:CreateBar(id)
     bar:SetSize(1, 1)
     bar:SetFrameStrata("LOW")
     bar.buttons = {}
-    ns:CreateBackdrop(bar, "Transparent")
+    bar.backdrop = ns:CreateBackdrop(bar, "Transparent")
     bar.backdrop:Hide()
 
     for i = 1, 12 do
@@ -708,6 +738,7 @@ function AB:MatchGame()
 end
 
 function AB:Initialize()
+    self:MigrateColors()
     -- Before the bars exist, so their movers start where this puts them.
     if not self:db().matchedGame then self:MatchGame() end
     self:DisableBlizzard()
@@ -723,10 +754,31 @@ function AB:Initialize()
         "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED" }) do
         ns:On(e, function(_, unit) if unit == "player" then evalFade() end end)
     end
+    if Chrome.OnThemeChanged then Chrome:OnThemeChanged(function() AB:PaintHotkeys() end) end
+end
+
+-- Keybind text in the look's colours again after a theme change. The
+-- library keeps a copy of the config it was given, so the buttons are
+-- handed a fresh one; that sets attributes, so it waits out a fight.
+function AB:PaintHotkeys()
+    ns:AfterCombat("ab:hotkeys", function()
+        for _, id in ipairs(self.BAR_IDS) do
+            local bar, d = self.bars[id], self:db().bars[id]
+            if bar and d then
+                for _, b in ipairs(bar.buttons) do
+                    local cfg = buttonConfig(d, d)
+                    cfg.keyBoundTarget = b.keyBoundTarget
+                    b:UpdateConfig(cfg)
+                end
+            end
+        end
+        if ns.Special and ns.Special.PaintHotkeys then ns.Special:PaintHotkeys() end
+    end)
 end
 
 function AB:Update()
     ns:AfterCombat("ab:update", function()
+        self:MigrateColors()
         self:ApplyCVars()
         for _, id in ipairs(self.BAR_IDS) do
             if self.bars[id] then self:LayoutBar(id) end
@@ -748,7 +800,7 @@ local GROWTH = {
 }
 local FLYOUT = { { "UP", "Up" }, { "DOWN", "Down" }, { "LEFT", "Left" }, { "RIGHT", "Right" } }
 
-ns.Config:AddPage("actionbars", "Action Bars", function(L)
+ns.Config:AddPage("actionbars", "Action bars", function(L)
     local W = ns.Widgets
     L:DB(function() return AB:db() end)
     L:Heading("Behaviour")
@@ -775,15 +827,16 @@ ns.Config:AddPage("actionbars", "Action Bars", function(L)
         for _, name in ipairs(ns.Media:List("font")) do out[#out + 1] = { name, name, name } end
         return out
     end)
-    L:Dropdown("Outline", "fontOutline", W.Values(ns.Media.outlines))
+    L:Dropdown("Outline", "fontOutline", W.Values(ns.Media.outlines, ns.Media.outlineLabels))
     L:Slider("Keybind size", "hotkeySize", 6, 24, 1)
     L:Slider("Macro name size", "macroSize", 6, 24, 1)
     L:Slider("Stack count size", "countSize", 6, 24, 1)
-    L:Color("Keybind colour", "hotkeyColor")
+    L:Color("Keybind colour", "hotkeyColor", { fallback = function() return AB:HotkeyColor() end,
+        tooltip = "Until you pick one, the look's text colour. Right-click to follow the look again." })
 
     L:Heading("Global fade")
-    L:Note("Bars set to follow the global fade sit at the alpha below, and come up together when any of the reasons you pick is true. Health cannot be one of the reasons: this client keeps your health from addons.")
-    L:Slider("Faded alpha", "fadeAlpha", 0, 1, 0.05)
+    L:Note("Bars set to follow the global fade sit at the opacity below, and come up together when any of the reasons you pick is true. Health cannot be one of the reasons: this client keeps your health from addons.")
+    L:Slider("Faded opacity", "fadeAlpha", 0, 1, 0.05)
     L:Input("Come up for", "fadeIn", { tooltip = "Any of: combat, target, focus, casting, mouseover. Separate with commas." })
 end, { onChange = onChange, order = 10 })
 
@@ -823,9 +876,9 @@ local function barPage(id)
         L:Dropdown("Flyouts open", "flyout", FLYOUT)
 
         L:Heading("Fading")
-        L:Slider("Alpha", "alpha", 0, 1, 0.05)
+        L:Slider("Opacity", "alpha", 0, 1, 0.05)
         L:Toggle("Fade until moused over", "mouseover")
-        L:Slider("Moused-out alpha", "mouseoverAlpha", 0, 1, 0.05, { disabled = function() return not AB:db().bars[id].mouseover end })
+        L:Slider("Opacity until moused over", "mouseoverAlpha", 0, 1, 0.05, { disabled = function() return not AB:db().bars[id].mouseover end })
         L:Toggle("Follow the global fade", "globalFade")
 
         L:Heading("Buttons")

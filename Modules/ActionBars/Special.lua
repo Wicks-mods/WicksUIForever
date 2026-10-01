@@ -122,7 +122,7 @@ local function makeBar(key, label, template, fallbackType, count)
     bar:SetSize(1, 1)
     bar:SetFrameStrata("LOW")
     bar.buttons = {}
-    ns:CreateBackdrop(bar, "Transparent")
+    bar.backdrop = ns:CreateBackdrop(bar, "Transparent")
     bar.backdrop:Hide()
     for i = 1, count do bar.buttons[i] = makeButton(bar, i, template, fallbackType) end
     bar:SetScript("OnEnter", function(self) AB:BarEnter(self) end)
@@ -154,6 +154,9 @@ local function layout(bar, d, shown)
         b:SetShown(i <= n)
         if b.wuiHotKey then
             ns.Media:SetFont(b.wuiHotKey, g.hotkeySize, g.fontOutline, g.font)
+            -- The action bars' keybind colour; the look's text colour by
+            -- default, which then follows a theme change by itself.
+            ns:TextColor(b.wuiHotKey, AB:HotkeyColor())
             b.wuiHotKey:SetShown(d.showHotkey)
         end
     end
@@ -345,9 +348,9 @@ local function page(key, title, extraNote)
         })
         L:Toggle("Keybind text", "showHotkey")
         L:Heading("Fading")
-        L:Slider("Alpha", "alpha", 0, 1, 0.05)
+        L:Slider("Opacity", "alpha", 0, 1, 0.05)
         L:Toggle("Fade until moused over", "mouseover")
-        L:Slider("Moused-out alpha", "mouseoverAlpha", 0, 1, 0.05, { disabled = function() return not AB:db()[key].mouseover end })
+        L:Slider("Opacity until moused over", "mouseoverAlpha", 0, 1, 0.05, { disabled = function() return not AB:db()[key].mouseover end })
         L:Toggle("Follow the global fade", "globalFade")
         L:Heading("Conditions")
         L:TextArea("Visibility", "visibility", { default = function() return ns.defaults.profile.actionbars[key].visibility end })

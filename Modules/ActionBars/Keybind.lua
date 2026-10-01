@@ -159,7 +159,7 @@ local function makePanel()
     note:SetPoint("TOPLEFT", 14, -30)
     note:SetPoint("TOPRIGHT", -14, -30)
     note:SetText("Point at a button and press a key, a mouse button or turn the wheel. Escape clears the button. Left and right click only bind with a modifier held.")
-    note:SetTextColor(C.muted[1], C.muted[2], C.muted[3])
+    ns:TextColor(note, "muted")
 
     panel.perChar = W:Check(panel, "Save for this character only", function()
         return GetCurrentBindingSet and GetCurrentBindingSet() == 2

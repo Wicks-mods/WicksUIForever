@@ -54,11 +54,35 @@ local function paintGlass(tex, token, alpha)
     tex:SetVertexColor(c[1], c[2], c[3], alpha or 1)
     glass[tex] = { token = token, alpha = alpha }
 end
+
+-- Text in a palette colour keeps its own list too. WickCore's registry
+-- has no way to let a region go, so a label it held would be painted back
+-- to its first colour after it was recoloured (the accent for the chosen
+-- answer, a class colour for a name). Here a label is held by the token
+-- it was last given and let go the moment it is given anything else.
+local texts = setmetatable({}, { __mode = "k" })
+local TOKEN_NAME = {}
+for name, tbl in pairs(C) do TOKEN_NAME[tbl] = name end
+
+-- color: a token name ("fel", "muted"), one of Chrome.Colors' tables, or
+-- any { r, g, b } (array or keyed), which is painted once and not held.
+function ns:TextColor(fs, color, alpha)
+    if not fs then return end
+    local token = (type(color) == "string" and C[color] and color) or TOKEN_NAME[color]
+    local c = token and C[token] or color or C.text
+    fs:SetTextColor(c[1] or c.r, c[2] or c.g, c[3] or c.b, alpha or 1)
+    texts[fs] = token and { token = token, alpha = alpha } or nil
+end
+
 if Chrome.OnThemeChanged then
     Chrome:OnThemeChanged(function()
         for tex, g in pairs(glass) do
             local c = C[g.token] or C.void
             tex:SetVertexColor(c[1], c[2], c[3], g.alpha or 1)
+        end
+        for fs, t in pairs(texts) do
+            local c = C[t.token]
+            if c then fs:SetTextColor(c[1], c[2], c[3], t.alpha or 1) end
         end
     end)
 end
@@ -77,8 +101,11 @@ local function modernTemplate(f, template, opts)
     else
         f.wuiBG:Hide()
     end
-    -- The lift: a soft shadow reaching past the frame's edges.
+    -- The lift: a soft shadow reaching past the frame's edges. Painted
+    -- again without one (a backdrop made lifted, then turned into a flat
+    -- tile), the shadow it already has is put away.
     local lifted = opts.shadow == true or (opts.shadow ~= false and (template == nil or template == "Default" or template == "Transparent"))
+    if f.wuiShadow then f.wuiShadow:SetShown(lifted and t.bg ~= nil) end
     if lifted and t.bg and not f.wuiShadow then
         local s = f:CreateTexture(nil, "BACKGROUND", nil, -8)
         s:SetTexture(ns.Media.shadow)
@@ -254,17 +281,23 @@ end
 -- A backdrop as a separate child frame, one level below the host. This is
 -- what secure buttons and status bars want: the host keeps its own draw
 -- layers for its own art, and the panel can sit outside it by an inset.
+-- The host may be the client's (an aura button its container made, a swing
+-- timer bar), so the backdrop is kept here, never written onto the host.
+-- A caller that owns its host can keep the returned frame on it.
+local backdrops = setmetatable({}, { __mode = "k" })
 function ns:CreateBackdrop(host, template, inset, opts)
-    if host.backdrop then return host.backdrop end
+    if backdrops[host] then return backdrops[host] end
     local bd = CreateFrame("Frame", nil, host)
     local o = inset or 0
     bd:SetPoint("TOPLEFT", host, "TOPLEFT", -o, o)
     bd:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", o, -o)
     bd:SetFrameLevel(math.max(0, host:GetFrameLevel() - 1))
     ns:SetTemplate(bd, template, opts)
-    host.backdrop = bd
+    backdrops[host] = bd
     return bd
 end
+
+function ns:BackdropOf(host) return host and backdrops[host] end
 
 -- Re-lay every border after the pixel size changes (UI scale, resolution).
 function ns:RefreshBorders()
@@ -306,21 +339,42 @@ end
 
 -- Icon cropped to lose Blizzard's baked-in border. In the modern style
 -- the icon also gets the rounded mask, so its corners follow the panel.
+-- The icon is often Blizzard's (a spellbook slot, a tab), so its mask is
+-- remembered here rather than on it.
+local masks = setmetatable({}, { __mode = "k" })
 function ns:CropIcon(tex, zoom, whole)
     local z = zoom or 0.08
     tex:SetTexCoord(z, 1 - z, z, 1 - z)
     if ns:Modern() and tex.AddMaskTexture and tex.GetParent then
         local parent = tex:GetParent()
-        if parent and parent.CreateMaskTexture and not tex.wuiMask then
+        if parent and parent.CreateMaskTexture and not masks[tex] then
             local m = parent:CreateMaskTexture()
             m:SetTexture(ns.Media.iconmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             -- whole: the icon has been drawn shorter already (TabIcon), so the
             -- mask covers all of it rather than cutting its top.
             if Chrome.PlaceIconMask and not whole then Chrome:PlaceIconMask(m, tex) else m:SetAllPoints(tex) end
             tex:AddMaskTexture(m)
-            tex.wuiMask = m
+            masks[tex] = m
         end
     end
+end
+
+-- The ring a tile is picked out with (a selected tab, a chosen slot, a
+-- talent's state). Modern looks draw their own: the tile ring on small
+-- tiles where a look has one (Foundry), its panel ring elsewhere. The OG
+-- family draws square, single-line borders, so its rings are square
+-- hairlines rather than the rounded base ring.
+local SQUARE_RING = "Interface\\AddOns\\WickCore\\Media\\Textures\\ring-hair.png"
+function ns:SetRing(tex, host)
+    local path, m
+    if ns:Modern() then
+        path = Chrome.RingTex and Chrome:RingTex(host) or ns.Media.ring
+        m = ns.Media.slice
+    else
+        path, m = SQUARE_RING, 4
+    end
+    tex:SetTexture(path)
+    if tex.SetTextureSliceMargins then tex:SetTextureSliceMargins(m, m, m, m) end
 end
 
 -- Aura icons carry their own time-left text. The game's cooldown numbers
@@ -479,14 +533,40 @@ function ns:HeadingFont(fs, size)
     end
 end
 
+-- A heading's colour, after Chrome:SetHeadingText: the accent, or the text
+-- colour where the look sets headings on a tag in the accent (Rebel).
+function ns:HeadingColor(fs)
+    ns:TextColor(fs, fs.wickPlate and "text" or "fel")
+end
+
 function ns:CreateText(parent, size, justify, outline, layer)
     local fs = parent:CreateFontString(nil, layer or "OVERLAY")
     ns.Media:SetFont(fs, size, outline)
     fs:SetJustifyH(justify or "LEFT")
     fs:SetWordWrap(false)
-    local c = C.text
-    fs:SetTextColor(c[1], c[2], c[3], 1)
+    -- In the text colour, held so a theme change repaints it. A caller
+    -- that recolours the label later does it through ns:TextColor.
+    ns:TextColor(fs, "text")
     return fs
+end
+
+-- A bar that takes the bar texture from settings, and keeps taking it when
+-- the setting changes. Blizzard's bars may be tracked too: the list is
+-- ours, the bar is only ever given method calls.
+function ns:TrackStatusBar(sb)
+    if not sb then return sb end
+    ns.statusbars = ns.statusbars or setmetatable({}, { __mode = "k" })
+    ns.statusbars[sb] = true
+    return sb
+end
+
+-- A plain texture drawn in the bar texture: an overlay on a bar's fill
+-- (the execute tint, the cannot-interrupt shade), a bar's background.
+local barTextures = setmetatable({}, { __mode = "k" })
+function ns:BarTexture(tex)
+    tex:SetTexture(ns.Media:Statusbar())
+    barTextures[tex] = true
+    return tex
 end
 
 function ns:CreateStatusBar(parent, template)
@@ -494,10 +574,9 @@ function ns:CreateStatusBar(parent, template)
     sb:SetStatusBarTexture(ns.Media:Statusbar())
     local tex = sb:GetStatusBarTexture()
     if tex and tex.SetSnapToPixelGrid then tex:SetSnapToPixelGrid(false); tex:SetTexelSnappingBias(0) end
-    if template ~= false then ns:CreateBackdrop(sb, template or "Default", ns.mult) end
-    ns.statusbars = ns.statusbars or setmetatable({}, { __mode = "k" })
-    ns.statusbars[sb] = true
-    return sb
+    -- The bar is ours, so its backdrop can be kept on it.
+    if template ~= false then sb.backdrop = ns:CreateBackdrop(sb, template or "Default", ns.mult) end
+    return ns:TrackStatusBar(sb)
 end
 
 -- Repaint every bar we made with the texture from settings.
@@ -506,6 +585,7 @@ function ns:RefreshStatusbars()
     if ns.statusbars then
         for sb in pairs(ns.statusbars) do sb:SetStatusBarTexture(path) end
     end
+    for tex in pairs(barTextures) do tex:SetTexture(path) end
 end
 
 -- ============================================================

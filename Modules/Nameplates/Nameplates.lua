@@ -65,6 +65,33 @@ local function edge()
     return ns.mult
 end
 
+-- Wick Modern and the looks like it draw a plate the way they draw a unit
+-- frame: the bar inset in a rounded card on a rounded track, and the cast
+-- bar a thin line with the spell above it and no icon. The card reaches
+-- this far past the bar, enough for a square bar end to sit inside its
+-- rounded corner. It has no soft shadow: plates crowd, and their shadows
+-- would pool. The OG family keeps the bordered bar.
+local CARD_PAD, CAST_LINE = 3, 5
+local function cardPad() return ns:Modern() and CARD_PAD or 0 end
+NP.CardPad = cardPad
+local function cardInset() return ns:Modern() and CARD_PAD or edge() end
+NP.CardInset = cardInset
+
+-- A rounded track, faintly lighter than the card it sits on, as the unit
+-- frames draw one; flat in the OG family.
+local function track(bar, alpha)
+    local bg = bar:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    if ns:Modern() then
+        bg:SetTexture(ns.Media.rounded)
+        if bg.SetTextureSliceMargins then bg:SetTextureSliceMargins(3, 3, 3, 3) end
+        bg:SetVertexColor(1, 1, 1, 0.07)
+    else
+        bg:SetColorTexture(C.void[1], C.void[2], C.void[3], alpha)
+    end
+    return bg
+end
+
 -- The look's own health colours, where it has them: one for friends, one
 -- for anything you can attack, the pair the unit frames use.
 local function lookColor(unit)
@@ -123,9 +150,7 @@ end
 local function newBar(parent)
     local sb = CreateFrame("StatusBar", nil, parent)
     sb:SetStatusBarTexture(ns.Media:Statusbar())
-    ns.statusbars = ns.statusbars or setmetatable({}, { __mode = "k" })
-    ns.statusbars[sb] = true
-    return sb
+    return ns:TrackStatusBar(sb)
 end
 
 local function style(self, unit)
@@ -134,10 +159,8 @@ local function style(self, unit)
 
     local health = newBar(self)
     health:SetPoint("CENTER")
-    ns:CreateBackdrop(health, "Default", edge())
-    local bg = health:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(C.void[1], C.void[2], C.void[3], 0.9)
+    health.backdrop = ns:CreateBackdrop(health, "Default", cardInset(), ns:Modern() and { shadow = false } or nil)
+    track(health, 0.9)
     health.colorTapping = true
     health.colorDisconnected = true
     health.PostUpdate = function(h) updateExecute(h) end
@@ -157,7 +180,7 @@ local function style(self, unit)
     -- the part already lost stays dark.
     local exec = health:CreateTexture(nil, "ARTWORK", nil, 2)
     exec:SetAllPoints(health:GetStatusBarTexture())
-    exec:SetTexture(ns.Media:Statusbar())
+    ns:BarTexture(exec)
     exec:SetBlendMode("BLEND")
     exec:Hide()
     health.wuiExecute = exec
@@ -167,18 +190,22 @@ local function style(self, unit)
     overlay:SetFrameLevel(health:GetFrameLevel() + 5)
 
     self.wuiName = ns:CreateText(overlay, d.nameSize, "CENTER")
-    self.wuiName:SetPoint("BOTTOM", health, "TOP", 0, 3)
+    self.wuiName:SetPoint("BOTTOM", health, "TOP", 0, 3 + cardPad())
     self.wuiPercent = ns:CreateText(overlay, d.percentSize, "RIGHT")
     self.wuiPercent:SetPoint("RIGHT", health, "RIGHT", -2, 0)
 
-    -- Cast bar
+    -- Cast bar. Placed under the bar here; Modern places its thin line in
+    -- Configure, once the size of the text above it is known.
     local cb = newBar(self)
     cb:SetPoint("TOPLEFT", health, "BOTTOMLEFT", 0, -3)
     cb:SetPoint("TOPRIGHT", health, "BOTTOMRIGHT", 0, -3)
-    ns:CreateBackdrop(cb, "Default", edge())
-    local cbg = cb:CreateTexture(nil, "BACKGROUND")
-    cbg:SetAllPoints()
-    cbg:SetColorTexture(C.void[1], C.void[2], C.void[3], 0.9)
+    ns:CreateBackdrop(cb, "Default", edge(), ns:Modern() and { shadow = false } or nil)
+    local cbg = track(cb, 0.9)
+    -- The unit frames' thin cast line runs over a dark track.
+    if ns:Modern() then
+        cbg:SetVertexColor(C.void[1], C.void[2], C.void[3], 1)
+        Chrome:Register(cbg, "void", "vertex", 1)
+    end
     cb.Text = ns:CreateText(cb, 9, "LEFT")
     cb.Text:SetPoint("LEFT", 2, 0)
     cb.Text:SetPoint("RIGHT", -24, 0)
@@ -194,7 +221,7 @@ local function style(self, unit)
     cb.wuiIconHolder = iconHolder
     local locked = cb:CreateTexture(nil, "ARTWORK", nil, 1)
     locked:SetAllPoints(cb:GetStatusBarTexture())
-    locked:SetTexture(ns.Media:Statusbar())
+    ns:BarTexture(locked)
     locked:SetAlpha(0)
     cb.Shield = locked
     cb.wuiLocked = locked
@@ -265,7 +292,7 @@ local function style(self, unit)
 
     local raid = overlay:CreateTexture(nil, "OVERLAY")
     raid:SetSize(18, 18)
-    raid:SetPoint("RIGHT", health, "LEFT", -4, 0)
+    raid:SetPoint("RIGHT", health, "LEFT", -4 - cardPad(), 0)
     raid.PostUpdate = function() NP:PlaceMarks(self) end
     self.RaidTargetIndicator = raid
 
@@ -279,7 +306,7 @@ local function style(self, unit)
 
     local quest = overlay:CreateTexture(nil, "OVERLAY")
     quest:SetSize(14, 14)
-    quest:SetPoint("LEFT", health, "RIGHT", 4, 0)
+    quest:SetPoint("LEFT", health, "RIGHT", 4 + cardPad(), 0)
     quest.PostUpdate = function() NP:PlaceMarks(self) end
     self.QuestIndicator = quest
 
@@ -358,16 +385,20 @@ function NP:Configure(self)
         self:DisableElement("Castbar")
         cb:Hide()
     end
-    cb:SetHeight(d.castHeight)
+    -- Modern's cast bar is a thin line with no icon, whatever the height
+    -- and icon settings say; those are the OG family's.
+    local modern = ns:Modern()
+    local showIcon = d.castIcon and not modern
+    cb:SetHeight(modern and CAST_LINE or d.castHeight)
     cb.wuiIconHolder:ClearAllPoints()
     local iconSize = d.height + d.castHeight + 3
     cb.wuiIconHolder:SetSize(iconSize, iconSize)
     cb.wuiIconHolder:SetPoint("TOPRIGHT", h, "TOPLEFT", -3, 0)
-    cb.wuiIconHolder:SetShown(d.castIcon)
+    cb.wuiIconHolder:SetShown(showIcon)
     local lh, lw, lg = cb.wuiLockHolder, cb.wuiLockWash, cb.wuiLockGlyph
     lh:ClearAllPoints()
     lg:ClearAllPoints()
-    if d.castIcon then
+    if showIcon then
         lh:SetAllPoints(cb.wuiIconHolder)
         lw:ClearAllPoints()
         lw:SetPoint("TOPLEFT", 1, -1)
@@ -377,18 +408,16 @@ function NP:Configure(self)
         lg:SetSize(ls, ls)
         lg:SetPoint("CENTER", lh, "CENTER", 0, 0)
     else
-        local ls = d.castHeight + 4
+        -- With no icon the lock sits at the bar's left end.
+        local ls = modern and 10 or d.castHeight + 4
         lh:SetSize(ls, ls)
-        lh:SetPoint("RIGHT", cb, "LEFT", -2, 0)
+        lh:SetPoint("RIGHT", cb, "LEFT", modern and -3 or -2, 0)
         lw:Hide()
         lg:SetAllPoints(lh)
     end
     lg:SetVertexColor(C.text[1], C.text[2], C.text[3], 1)
-    local g = ns.UnitFrames and ns.UnitFrames:db()
-    local cc = g and g.castColor or { C.fel[1], C.fel[2], C.fel[3] }
-    local lc = g and g.castLocked or { 0.45, 0.42, 0.5 }
-    cb:SetStatusBarColor(cc[1], cc[2], cc[3], 1)
-    cb.wuiLocked:SetVertexColor(lc[1], lc[2], lc[3], 1)
+    -- The unit frames' cast colours, the look's accent unless one was picked.
+    if ns.UnitFrames and ns.UnitFrames.PaintCast then ns.UnitFrames:PaintCast(cb) end
 
     -- The unit frames' face and outline, so a look's lettering (Rebel's
     -- heavy outline) reaches the plates too.
@@ -399,6 +428,20 @@ function NP:Configure(self)
     ns.Media:SetFont(cb.Text, 9, outline, face, true)
     ns.Media:SetFont(cb.Time, 9, outline, face, true)
     self.wuiName:SetWidth(d.width + 40)
+    -- Modern: the line hangs under the card, the spell name and its time
+    -- in a row above it, as on the unit frames.
+    if modern then
+        local _, ts = cb.Text:GetFont()
+        local drop = CARD_PAD + 2 + (tonumber(ts) or 9) + 4
+        cb:ClearAllPoints()
+        cb:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -drop)
+        cb:SetPoint("TOPRIGHT", h, "BOTTOMRIGHT", 0, -drop)
+        cb.Text:ClearAllPoints()
+        cb.Text:SetPoint("BOTTOMLEFT", cb, "TOPLEFT", 0, 3)
+        cb.Text:SetPoint("RIGHT", cb.Time, "LEFT", -6, 0)
+        cb.Time:ClearAllPoints()
+        cb.Time:SetPoint("BOTTOMRIGHT", cb, "TOPRIGHT", 0, 3)
+    end
 
     if self.wuiNameTag then self:Untag(self.wuiName) end
     self.wuiNameTag = d.levelShown and "[wui:level] [wui:namecolor][name]" or "[wui:namecolor][name]"
@@ -414,12 +457,12 @@ function NP:Configure(self)
 
     if self.wuiDebuffs then
         self.wuiDebuffs:ClearAllPoints()
-        self.wuiDebuffs:SetPoint("BOTTOMLEFT", h, "TOPLEFT", 0, d.nameSize + 6)
+        self.wuiDebuffs:SetPoint("BOTTOMLEFT", h, "TOPLEFT", 0, d.nameSize + 6 + cardPad())
         self.wuiDebuffs:SetShown(d.debuffs)
     end
     if self.wuiBuffs then
         self.wuiBuffs:ClearAllPoints()
-        self.wuiBuffs:SetPoint("BOTTOMRIGHT", h, "TOPRIGHT", 0, d.nameSize + 6)
+        self.wuiBuffs:SetPoint("BOTTOMRIGHT", h, "TOPRIGHT", 0, d.nameSize + 6 + cardPad())
         self.wuiBuffs:SetShown(d.buffs)
     end
 
@@ -435,25 +478,27 @@ function NP:Configure(self)
     NP:PlaceMarks(self)
 end
 
--- The pointers hug the bar, stepping out past whatever else sits beside
--- it: the spell icon while a cast shows, a raid mark, a quest icon.
+-- The pointers hug the bar (its card, in Modern), stepping out past
+-- whatever else sits beside it: the spell icon while a cast shows, a raid
+-- mark, a quest icon.
 function NP:PlaceMarks(self)
     local L, R, h = self.wuiMarkL, self.wuiMarkR, self.Health
     if not (L and h) then return end
     local d = db()
     local left, right = 0, 0
     local cb = self.wuiCastbar
-    if d.castIcon and cb and self.Castbar and cb:IsShown() then
+    if d.castIcon and not ns:Modern() and cb and self.Castbar and cb:IsShown() then
         left = math.max(left, d.height + d.castHeight + 3 + 3)
     end
     local raid = self.RaidTargetIndicator
     if raid and raid:IsShown() then left = math.max(left, 18 + 4) end
     local quest = self.QuestIndicator
     if quest and quest:IsShown() then right = math.max(right, 14 + 4) end
+    local pad = cardPad()
     L:ClearAllPoints()
-    L:SetPoint("RIGHT", h, "LEFT", -(3 + left), 0)
+    L:SetPoint("RIGHT", h, "LEFT", -(3 + pad + left), 0)
     R:ClearAllPoints()
-    R:SetPoint("LEFT", h, "RIGHT", 3 + right, 0)
+    R:SetPoint("LEFT", h, "RIGHT", 3 + pad + right, 0)
 end
 
 -- Things that depend on the unit as well as the settings: friendly
@@ -484,7 +529,7 @@ function NP:Refresh(self)
     if nameOnly then
         self.wuiName:SetPoint("CENTER", self, "CENTER", 0, 0)
     else
-        self.wuiName:SetPoint("BOTTOM", self.Health, "TOP", 0, 3)
+        self.wuiName:SetPoint("BOTTOM", self.Health, "TOP", 0, 3 + cardPad())
     end
 
     if self.Health.backdrop then
@@ -568,6 +613,18 @@ function NP:Initialize()
     -- Tanking or not decides the threat colours.
     ns:On("PLAYER_ROLES_ASSIGNED", function() NP:Update() end)
     ns:On("PLAYER_SPECIALIZATION_CHANGED", function(unit) if unit == nil or unit == "player" then NP:Update() end end)
+    -- A theme change repaints the plates in the new colours: cast bars in
+    -- the accent, the look's health colours, the target's pointers.
+    if Chrome.OnThemeChanged then
+        Chrome:OnThemeChanged(function()
+            for plate in pairs(NP.plates) do
+                if ns.UnitFrames and ns.UnitFrames.PaintCast then ns.UnitFrames:PaintCast(rawget(plate, "wuiCastbar")) end
+                local hb = rawget(plate, "Health")
+                if hb and hb.ForceUpdate and ns:UnitOf(plate) and plate:IsVisible() then pcall(hb.ForceUpdate, hb) end
+            end
+            NP:RefreshAll()
+        end)
+    end
 end
 
 function NP:Update()
@@ -594,6 +651,13 @@ end
 -- ============================================================
 ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:DB(db)
+    -- The looks that draw the full cast bar, by name, for the settings that
+    -- only apply in them.
+    local og = {}
+    for _, st in ipairs(Chrome.Styles or {}) do
+        if st.family == "og" then og[#og + 1] = st.name end
+    end
+    local ogNames = table.concat(og, " and ")
     L:Toggle("Enable", "enable", { tooltip = "Takes effect after a reload." })
     L:Slider("Width", "width", 60, 300, 1)
     L:Slider("Height", "height", 4, 40, 1)
@@ -608,30 +672,42 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
 
     L:Heading("Targeting")
     L:Dropdown("Mark your target with", "targetMarker", { { "arrows", "Pointers either side" }, { "glow", "A glow" }, { "none", "Nothing" } })
-    L:Toggle("Fel border and a size bump on your target", "targetBorder")
-    L:Slider("Target size", "targetScale", 1, 1.5, 0.05)
+    L:Toggle("Accent border and a size bump on your target", "targetBorder")
+    L:Slider("Target size", "targetScale", 1, 1.5, 0.05, { disabled = function() return not db().targetBorder end })
     L:Toggle("Mark your focus too", "focusMarker", { tooltip = "The same mark and a border in the focus colour. It stays bright while you target something else." })
-    L:Color("Focus colour", "focusColor")
-    L:Slider("Everything else, alpha", "nonTargetAlpha", 0.1, 1, 0.05)
+    L:Color("Focus colour", "focusColor", { disabled = function() return not db().focusMarker end })
+    L:Slider("Everything else, opacity", "nonTargetAlpha", 0.1, 1, 0.05)
 
     L:Heading("Text")
     L:Slider("Name size", "nameSize", 6, 20, 1)
     L:Toggle("Level before the name", "levelShown")
     L:Toggle("A diamond for elites and rares", "classMarker", { tooltip = "Gold for elites and bosses, silver for rares, at the left end of the bar." })
     L:Toggle("Health percent", "percent")
-    L:Slider("Percent size", "percentSize", 6, 20, 1)
+    L:Slider("Percent size", "percentSize", 6, 20, 1, { disabled = function() return not db().percent end })
     L:Toggle("Friendly plates show the name only", "friendlyNameOnly")
 
     L:Heading("Cast bar and auras")
+    -- A greyed-out setting takes no pointer, so cannot say why it is grey.
+    if ns:Modern() then
+        L:Note(("This look draws the cast bar as a thin line with the spell name above it, as on the unit frames. Its height and spell icon apply in %s."):format(ogNames))
+    end
     L:Toggle("Cast bar", "castbar")
-    L:Slider("Cast bar height", "castHeight", 4, 24, 1)
-    L:Toggle("Spell icon", "castIcon")
-    L:Toggle("A lock on casts you cannot interrupt", "lockMark", { tooltip = "Over the spell icon, or at the bar's end without one, on top of the bar's own cannot-interrupt colour." })
+    local noCast = function() return not db().castbar end
+    L:Slider("Cast bar height", "castHeight", 4, 24, 1, {
+        disabled = function() return noCast() or ns:Modern() end,
+        tooltip = ("Applies in %s. The other looks draw the cast bar as a thin line with the spell name above it."):format(ogNames),
+    })
+    L:Toggle("Spell icon", "castIcon", {
+        disabled = function() return noCast() or ns:Modern() end,
+        tooltip = ("Applies in %s. The other looks leave the icon off, as their unit frames do."):format(ogNames),
+    })
+    L:Toggle("A lock on casts you cannot interrupt", "lockMark", { disabled = noCast,
+        tooltip = "Over the spell icon, or at the bar's end without one, on top of the bar's own cannot-interrupt colour." })
     L:Toggle("Your debuffs", "debuffs")
     L:Toggle("Buffs you can steal or purge", "buffs")
     L:Note("Aura sizes and counts are set when a plate is first made, so they take effect after a reload.")
-    L:Slider("Debuff size", "debuffSize", 10, 40, 1)
-    L:Slider("Debuffs shown", "debuffCount", 1, 10, 1)
+    L:Slider("Debuff size", "debuffSize", 10, 40, 1, { disabled = function() return not db().debuffs end })
+    L:Slider("Debuffs shown", "debuffCount", 1, 10, 1, { disabled = function() return not db().debuffs end })
 
     L:Heading("The game's settings")
     L:Slider("How far away plates show", "maxDistance", 20, 41, 1)

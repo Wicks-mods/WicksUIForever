@@ -404,11 +404,11 @@ ns.Config:AddPage("general", "General", function(L)
     end)
     L:Toggle("Crisp borders", "pixelPerfect", { tooltip = "Draw borders one physical pixel wide at any scale.", set = function() ns:UpdatePixel(); ns:RefreshBorders() end })
     L:Toggle("Black edge around panels", "edges", { tooltip = "A one-pixel black line outside every border, which is what makes flat panels look solid.", set = function() ns:RefreshBorders() end })
-    L:Toggle("Fel corners on panels", "brackets", { tooltip = "The Wick L-bracket corners on the larger panels. Takes effect after a reload." })
+    L:Toggle("Accent corners on panels", "brackets", { tooltip = "The Wick L-bracket corners on the larger panels. Takes effect after a reload." })
 
     L:Heading("Appearance")
     L:Note("Shared by the whole suite: every Wick addon follows these, and they are the same settings WickCore's own panel shows.")
-    L:Dropdown("Style", "style", function()
+    L:Dropdown("Look", "style", function()
         local out = {}
         for _, st in ipairs(Chrome.Styles or {}) do out[#out + 1] = { st.id, st.name } end
         return out
@@ -417,24 +417,24 @@ ns.Config:AddPage("general", "General", function(L)
         setter = function(v)
             if v == Chrome:StyleID() then return end
             local st = Chrome.StyleByID[v]
-            ns.Widgets:Confirm(("%s: %s\n\nChanging the style rebuilds every frame, and every Wick addon follows it, so the interface reloads. Reload now?"):format(st.name, st.blurb), function()
+            ns.Widgets:Confirm(("%s: %s\n\nChanging the look rebuilds every frame, and every Wick addon follows it, so the interface reloads. Reload now?"):format(st.name, st.blurb), function()
                 -- The suite's style lives in WickCore; the whole suite follows.
                 Chrome:SetStyle(v)
             end, "Reload", nil, { reload = true })
         end,
-        tooltip = "The shape everything is drawn in, across the suite. Each style keeps its own frame positions, button sizes, frame heights, health colours and minimap shape.",
+        tooltip = "The shape everything is drawn in, across the suite. Each look keeps its own frame positions, button sizes, frame heights, health colours and minimap shape.",
     })
     L:Dropdown("Class colours", "classColorSet", {
         { "client", "The game's own" }, { "classic", "Classic era" },
     }, {
         get = function() return Chrome.classColorSet or "client" end,
         setter = function(v) if Chrome.SetClassColorSet then Chrome:SetClassColorSet(v) end end,
-        tooltip = "The Classic set is the one the original game used.",
+        tooltip = "The Classic era set has a warmer shaman blue and a deeper paladin pink.",
     })
-    L:Button("Apply the style's spacing again", function()
+    L:Button("Apply the look's spacing again", function()
         ns:ApplyStylePreset(true)
         ns:UpdateAll()
-    end, { tooltip = "Button sizes, gaps and frame heights to suit the style, for this profile only. Your positions are kept." })
+    end, { tooltip = "Button sizes, gaps and frame heights to suit the look, for this profile only. Your positions are kept." })
     -- The theme picker is WickCore's own, so the two panels can never
     -- show different things.
     local O = ns.Core and ns.Core.Options
@@ -446,7 +446,7 @@ ns.Config:AddPage("general", "General", function(L)
         L:Custom(holder)
     end
 
-    L:Heading("Look")
+    L:Heading("Fonts and bars")
     L:Dropdown("Font", "font", function()
         local out = {}
         for _, name in ipairs(ns.Media:List("font")) do out[#out + 1] = { name, name, name } end

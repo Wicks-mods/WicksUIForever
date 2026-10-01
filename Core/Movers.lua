@@ -210,8 +210,12 @@ local function onClick(m, button)
     end
 end
 
+-- A mover's fill, in the accent: rounded in Modern like everything else,
+-- and repainted when the theme changes.
+local function moverFill(m, alpha) ns:Fill(m.wuiBG, C.fel[1], C.fel[2], C.fel[3], alpha) end
+
 local function onEnter(m)
-    m.wuiBG:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.35)
+    moverFill(m, 0.35)
     GameTooltip:SetOwner(m, "ANCHOR_TOP")
     GameTooltip:AddLine(m.label, C.fel[1], C.fel[2], C.fel[3])
     GameTooltip:AddLine("Drag to move. Shift while dropping skips snapping.", 1, 1, 1)
@@ -222,7 +226,7 @@ local function onEnter(m)
 end
 
 local function onLeave(m)
-    m.wuiBG:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.15)
+    moverFill(m, 0.15)
     GameTooltip:Hide()
 end
 
@@ -246,7 +250,7 @@ function ns:CreateMover(frame, name, label, default, opts)
         m:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         ns:SetTemplate(m, "None")
         m.wuiBG:Show()
-        m.wuiBG:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.15)
+        moverFill(m, 0.15)
         m.text = ns:CreateText(m, 11, "CENTER")
         m.text:SetPoint("CENTER")
         m:SetScript("OnDragStart", onDragStart)
@@ -313,6 +317,8 @@ function Movers:Lock()
     if self.grid then self.grid:Hide() end
     if self.panel then self.panel:Hide() end
     if self.nudge then self.nudge:Hide() end
+    -- The panel's Show dropdown, if it was left open.
+    if ns.Widgets and ns.Widgets.CloseMenu then ns.Widgets.CloseMenu() end
 end
 
 function Movers:Toggle()
@@ -394,6 +400,13 @@ function Movers:ShowPanel()
         p:SetScript("OnDragStart", p.StartMoving)
         p:SetScript("OnDragStop", p.StopMovingOrSizing)
         ns:SetTemplate(p, "Default", { brackets = true })
+        -- Escape locks the frames, so none is left unlocked with no panel
+        -- to lock it from. Only the panel's own hiding counts; hiding the
+        -- whole interface (Alt-Z) leaves everything as it was.
+        Chrome:CloseOnEscape(p)
+        p:SetScript("OnHide", function(self)
+            if not self:IsShown() and unlocked then Movers:Lock() end
+        end)
 
         local title = ns:CreateText(p, 13, "CENTER")
         title:SetPoint("TOP", 0, -8)
@@ -458,6 +471,11 @@ function Movers:ShowNudge(m)
         n:EnableKeyboard(true)
         n:SetPropagateKeyboardInput(true)
         ns:SetTemplate(n, "Default")
+        -- Escape closes it with the panel above it.
+        Chrome:CloseOnEscape(n)
+        n:SetScript("OnHide", function(self)
+            if not self:IsShown() and selected then selectMover(nil) end
+        end)
         n.title = ns:CreateText(n, 12, "CENTER")
         n.title:SetPoint("TOP", 0, -6)
 
@@ -478,6 +496,9 @@ function Movers:ShowNudge(m)
             apply(m2, s)
         end)
         n.y:SetPoint("LEFT", n.x, "RIGHT", 30, 0)
+        -- Escape in either box puts back where the frame is.
+        n.x.wuiRevert = function() n:Refresh() end
+        n.y.wuiRevert = function() n:Refresh() end
 
         local reset = W:Button(n, "Reset", 70, function() if selected then Movers:Reset(selected.name) end end)
         reset:SetPoint("BOTTOMLEFT", 10, 8)

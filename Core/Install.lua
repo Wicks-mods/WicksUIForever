@@ -43,12 +43,12 @@ local CONFLICTS = {
                  { "KkthnxUI", "KkthnxUI" }, { "RealUI", "RealUI" } } },
     { key = "comforts", comforts = true, title = "Wick's Comforts", what = "tooltips, looting, the vendor, quests and the camera",
       addons = { { "WicksComforts", "Wick's Comforts" } } },
-    { key = "unitframes", title = "Unit frames", what = "the unit frames", page = "Unit Frames",
+    { key = "unitframes", title = "Unit frames", what = "the unit frames", page = "Unit frames",
       addons = { { "ShadowedUnitFrames", "Shadowed Unit Frames" }, { "PitBull4", "PitBull" }, { "ZPerl", "Z-Perl" },
                  { "XPerl", "X-Perl" }, { "UnhaltedUnitFrames", "Unhalted Unit Frames" } },
       get = function(p) return p.unitframes.enable ~= false end,
       set = function(p, on) p.unitframes.enable = on end },
-    { key = "groups", title = "Party and raid frames", what = "the party and raid frames", page = "Unit Frames",
+    { key = "groups", title = "Party and raid frames", what = "the party and raid frames", page = "Unit frames",
       addons = { { "Grid2", "Grid2" }, { "VuhDo", "VuhDo" }, { "Cell", "Cell" }, { "HealBot", "HealBot" } },
       get = function(p)
           local u = p.unitframes.units
@@ -60,7 +60,7 @@ local CONFLICTS = {
                  { "TidyPlates_ThreatPlates", "Threat Plates" }, { "TidyPlates", "TidyPlates" }, { "NeatPlates", "NeatPlates" } },
       get = function(p) return p.nameplates.enable ~= false end,
       set = function(p, on) p.nameplates.enable = on end },
-    { key = "actionbars", title = "Action bars", what = "the action bars", page = "Action Bars",
+    { key = "actionbars", title = "Action bars", what = "the action bars", page = "Action bars",
       addons = { { "Bartender4", "Bartender" }, { "Dominos", "Dominos" } },
       get = function(p) return p.actionbars.enable ~= false end,
       set = function(p, on) p.actionbars.enable = on end },
@@ -492,7 +492,7 @@ local STYLE = {
 
 local CLASS_COLOURS = {
     title = "Class colours",
-    text = "How players' classes are coloured on unit frames, nameplates, chat and the class palettes.\n\nThe game's own set, or the Classic era set the original game used (a warmer shaman blue, a deeper paladin pink).",
+    text = "How players' classes are coloured on unit frames, nameplates, chat and the class palettes.\n\nThe game's own set, or the Classic era set (a warmer shaman blue, a deeper paladin pink).",
     choices = {
         { label = "The game's own", on = function() return Chrome.classColorSet ~= "classic" end,
           pick = function() Chrome:SetClassColorSet("client") end },
@@ -560,14 +560,10 @@ end
 -- ============================================================
 local CHOICE_W = 150
 
+-- The chosen answer in the accent, text and ring, and it keeps the ring
+-- when the pointer has been over it.
 local function paintChoice(btn, on)
-    if on then
-        btn.text:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
-        ns:SetBorderColor(btn, "fel")
-    else
-        btn.text:SetTextColor(C.text[1], C.text[2], C.text[3])
-        ns:SetBorderColor(btn, "border")
-    end
+    btn:SetSelected(on)
 end
 
 -- The last page's Reload now is a secure /reload: the game counts it as the
@@ -644,6 +640,13 @@ local function build()
         I:PlaceReload()
     end)
     ns:SetTemplate(f, "Default", { brackets = true })
+    -- Escape closes it the way its close button does: answers kept, the
+    -- rest asked at a later login. Only its own hiding counts; hiding the
+    -- whole interface (Alt-Z) leaves it shown underneath.
+    Chrome:CloseOnEscape(f)
+    f:SetScript("OnHide", function(self)
+        if not self:IsShown() and not run.finished then I:Finish(false) end
+    end)
     f.brand = ns:CreateText(f, 18, "LEFT", "NONE")
     f.brand:SetPoint("TOPLEFT", 18, -16)
     f.step = ns:CreateText(f, 11, "RIGHT", "NONE")
@@ -685,9 +688,9 @@ local function fill(f, page)
     local p = pages[page]
     f.brand:SetText(Chrome:TitleMarkup("Wick's UI"))
     f.step:SetText(("%d of %d"):format(page, #pages))
-    f.step:SetTextColor(C.muted[1], C.muted[2], C.muted[3])
+    ns:TextColor(f.step, "muted")
     f.title:SetText(p.title)
-    f.title:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+    ns:TextColor(f.title, "fel")
     f.text:SetText(type(p.text) == "string" and (p.text:gsub("|cff4FC778", Chrome:Esc("fel"))) or p.text)
     f.reloadAction:SetShown(p.done and true or false)
     local list = (type(p.choices) == "function" and p.choices()) or p.choices or {}

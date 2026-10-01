@@ -176,12 +176,11 @@ local function buildMeter()
     ns:HeadingFont(f.title, 12)
     f.title:SetPoint("TOPLEFT", 8, -6)
     if Chrome.SetHeadingText then Chrome:SetHeadingText(f.title, "Threat") else f.title:SetText("Threat") end
-    f.title:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
-    Chrome:Register(f.title, C.fel, "text")
+    ns:HeadingColor(f.title)
     f.target = ns:CreateText(f, 11, "RIGHT")
     f.target:SetPoint("TOPRIGHT", -8, -7)
     f.target:SetPoint("LEFT", f.title, "RIGHT", 8, 0)
-    f.target:SetTextColor(C.muted[1], C.muted[2], C.muted[3])
+    ns:TextColor(f.target, "muted")
     f.rows = {}
     f:Hide()
     ns:CreateMover(f, "threatmeter", "Threat meter", "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-10,300",

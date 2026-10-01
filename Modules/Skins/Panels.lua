@@ -60,10 +60,13 @@ PS.WINDOWS = {
     "LFDRoleCheckPopup", "RolePollPopup", "GuildInviteFrame", "PVPReadyDialog", "LFGInvitePopup",
     "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4",
     "ContainerFrame5", "ContainerFrame6", "CompactRaidFrameManager", "PetStableFrame",
+    "ClickBindingFrame", "LegacySystemFrame",
 }
 
 local done = setmetatable({}, { __mode = "k" })
 local extras = setmetatable({}, { __mode = "k" })
+-- What we added to a frame, read by the offline harness.
+function PS.extrasOf(f) return extras[f] end
 
 local function excluded(name)
     for _, n in ipairs(ns:List(db().exclude)) do if n == name then return true end end
@@ -503,6 +506,7 @@ local function styleBar(sb)
     end
     local r, g, b = sb:GetStatusBarColor()
     sb:SetStatusBarTexture(ns.Media:Statusbar())
+    ns:TrackStatusBar(sb)
     -- Bars whose colour was in their art come out white on a flat texture.
     -- They get the accent, deepened so the numbers Blizzard writes on the
     -- bar in white still read against it.
@@ -580,8 +584,7 @@ local function styleIconButton(b)
     end
     local ct = tex(b, "GetCheckedTexture")
     if ct then
-        ct:SetTexture(ns.Media.ring)
-        if ct.SetTextureSliceMargins then ct:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+        ns:SetRing(ct, icon or b)
         ct:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(ct, "fel", "vertex", 1)
         ct:SetAllPoints(icon or b)
@@ -700,8 +703,7 @@ local function styleListRow(b)
     local bd = backdrop(b, "Shadow", false, 2)
     bd:SetFrameLevel(math.max(0, lvl - 2))
     local sel = b.selectedTexture
-    sel:SetTexture(ns.Media.ring)
-    if sel.SetTextureSliceMargins then sel:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+    ns:SetRing(sel, bd)
     sel:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
     Chrome:Register(sel, "fel", "vertex", 1)
     sel:ClearAllPoints()
@@ -1637,8 +1639,7 @@ local function styleSidebarTabs()
                 bd:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
                 ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
                 local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
-                ring:SetTexture(ns.Media.ring)
-                if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+                ns:SetRing(ring, bd)
                 ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
                 Chrome:Register(ring, "fel", "vertex", 1)
                 ring:SetAllPoints(bd)
@@ -1786,7 +1787,7 @@ local function flatRankBar(bar)
         bd:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", -PAD, -PAD)
         e.track = bd
         local t = bar:CreateTexture(nil, "ARTWORK", nil, 3)
-        t:SetTexture(ns.Media:Statusbar())
+        ns:BarTexture(t)
         t:SetPoint("TOPLEFT", bd, "TOPLEFT", PAD, -PAD - ROW)
         t:SetPoint("BOTTOMLEFT", bd, "BOTTOMLEFT", PAD, PAD)
         e.bar = t
@@ -2040,8 +2041,7 @@ local function styleListButton(b)
                 any = true
                 local al = a:lower()
                 if al:find("select") then
-                    r:SetTexture(ns.Media.ring)
-                    if r.SetTextureSliceMargins then r:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+                    ns:SetRing(r, b)
                     r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
                     Chrome:Register(r, "fel", "vertex", 1)
                     r:ClearAllPoints()
@@ -2221,8 +2221,7 @@ local function styleSideTab(tab)
         e.tile = bd
         if icon then ns:CropIcon(icon) end
         local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
-        ring:SetTexture(ns.Media.ring)
-        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+        ns:SetRing(ring, bd)
         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(ring, "fel", "vertex", 1)
         ring:SetAllPoints(bd)
@@ -2438,8 +2437,7 @@ local function styleRightTab(tab)
         icon:SetPoint("TOPLEFT", tab, "TOPLEFT", 1, -1)
         icon:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -1, 1)
         local ring = tab:CreateTexture(nil, "OVERLAY", nil, 2)
-        ring:SetTexture(ns.Media.ring)
-        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+        ns:SetRing(ring, bd)
         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(ring, "fel", "vertex", 1)
         ring:SetAllPoints(bd)
@@ -2486,8 +2484,7 @@ PS.SPECIAL.CommunitiesFrame = function(frame)
                         bd:SetPoint("TOPLEFT", 6, -4)
                         bd:SetPoint("BOTTOMRIGHT", -6, 4)
                         local ring = row:CreateTexture(nil, "OVERLAY", nil, 2)
-                        ring:SetTexture(ns.Media.ring)
-                        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+                        ns:SetRing(ring, bd)
                         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
                         Chrome:Register(ring, "fel", "vertex", 1)
                         ring:SetAllPoints(bd)
@@ -2797,8 +2794,7 @@ local function stableSlotRing(b)
     local ct = b.GetCheckedTexture and b:GetCheckedTexture()
     if ct and not e.ringSet then
         e.ringSet = true
-        ct:SetTexture(ns.Media.ring)
-        if ct.SetTextureSliceMargins then ct:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+        ns:SetRing(ct, b)
         ct:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(ct, "fel", "vertex", 1)
         ct:ClearAllPoints()
@@ -2838,6 +2834,261 @@ PS.SPECIAL.PetStableFrame = function(frame)
     return "generic"
 end
 
+-- Click cast bindings (Blizzard_ClickBindingUI). The full skin: a grey
+-- window, the list on a black card, each binding a grey pill with its icon
+-- on a black tile, as the pet and mount lists are drawn. Blizzard's own
+-- markers are repainted rather than replaced, so they show and hide with
+-- its state by themselves: a new binding waiting for its click wears the
+-- accent ring, and so does each icon a held spell can go on. The empty
+-- slot's green plus is our mark. The talents and macros buttons in the
+-- corner are tiles, the accent ring on the one open beside the window.
+-- The tutorial that opens with it is a window of its own, its painting
+-- replaced by a small unit frame card of ours showing what it explains.
+-- Rows are pooled and filled as the list changes: they are looked over on
+-- every frame while the window shows, and refilled icons straight after
+-- Blizzard fills them. Pieces already ours are skipped.
+local EMPTY_SLOT = "clickcast-icon-add"
+
+local function bindingIcon(row)
+    local icon = row.Icon
+    if not icon then return end
+    if icon:GetAtlas() == EMPTY_SLOT then
+        -- Drawn smaller than the slot: the mark, not a picture.
+        icon:SetTexture(ns.Media:Glyph("plus"), "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        icon:SetTexCoord(-0.35, 1.35, -0.35, 1.35)
+        icon:SetVertexColor(C.muted[1], C.muted[2], C.muted[3], 1)
+    else
+        icon:SetVertexColor(1, 1, 1, 1)
+        -- A picture from a file is cropped; one from an atlas would be cut.
+        if not icon:GetAtlas() then ns:CropIcon(icon) end
+    end
+end
+PS.bindingIcon = bindingIcon
+
+local function styleBindingRow(row)
+    local e = extras[row] or {}
+    extras[row] = e
+    for _, k in ipairs({ "Background", "FrameHighlight" }) do
+        local t = row[k]
+        if t and t:GetAlpha() > 0 then t:SetAlpha(0) end
+    end
+    if e.binding then return end
+    e.binding = true
+    local lvl = row:GetFrameLevel()
+    local pill = backdrop(row, "Shadow", false, 0)
+    pill:SetFrameLevel(math.max(0, lvl - 2))
+    local h = row:CreateTexture(nil, "HIGHLIGHT")
+    h:SetAllPoints(pill)
+    ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.1)
+    local icon = row.Icon
+    if icon then
+        local tile = CreateFrame("Frame", nil, row)
+        tile:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
+        tile:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
+        tile:SetFrameLevel(math.max(0, lvl - 1))
+        ns:SetTemplate(tile, "Default", { alpha = 0.9, shadow = false })
+        e.tile = tile
+    end
+    local function accent(t, host)
+        ns:SetRing(t, host)
+        t:SetBlendMode("BLEND")
+        t:ClearAllPoints()
+        t:SetAllPoints(host)
+        t:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(t, "fel", "vertex", 1)
+    end
+    if row.NewOutline then accent(row.NewOutline, pill) end
+    if row.IconHighlight and e.tile then accent(row.IconHighlight, e.tile) end
+    local add = row.EmptySlotIconHighlight
+    if add and icon then
+        add:SetTexture(ns.Media:Glyph("plus"))
+        add:SetTexCoord(0, 1, 0, 1)
+        add:SetBlendMode("BLEND")
+        add:ClearAllPoints()
+        add:SetPoint("CENTER", icon, "CENTER", 0, 0)
+        add:SetSize(18, 18)
+        add:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(add, "fel", "vertex", 1)
+    end
+    if row.DeleteButton then ns:Glyph(row.DeleteButton, "close") end
+    bindingIcon(row)
+    if row.Init then hooksecurefunc(row, "Init", bindingIcon) end
+end
+
+-- The corner buttons: a tile each, the accent ring on the chosen one.
+local function stylePortraitButton(p)
+    local e = extras[p] or {}
+    extras[p] = e
+    if not e.portrait then
+        e.portrait = true
+        for _, r in ipairs({ p:GetRegions() }) do
+            if r:GetObjectType() == "Texture" and r ~= p.Portrait then r:SetAlpha(0) end
+        end
+        local tile = backdrop(p, "Default", false, 0)
+        ns:SetTemplate(tile, "Default", { alpha = 0.9, shadow = false })
+        local art = p.Portrait
+        if art then
+            art:ClearAllPoints()
+            art:SetPoint("TOPLEFT", 2, -2)
+            art:SetPoint("BOTTOMRIGHT", -2, 2)
+            if not art:GetAtlas() then ns:CropIcon(art) end
+        end
+        local ring = p:CreateTexture(nil, "OVERLAY", nil, 2)
+        ns:SetRing(ring, tile)
+        ring:SetAllPoints(tile)
+        ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(ring, "fel", "vertex", 1)
+        e.ring = ring
+        local hover = p:CreateTexture(nil, "HIGHLIGHT")
+        hover:SetAllPoints(tile)
+        ns:Fill(hover, 1, 1, 1, 0.12)
+    end
+    local un = p.UnselectedFrame
+    e.ring:SetShown(not (un and un:IsShown()))
+end
+
+-- The help button: Blizzard's ring and its big "i" go for a small tile
+-- with a question mark, inside the window's top edge where it already sits.
+local function styleHelpButton(b)
+    local e = extras[b] or {}
+    extras[b] = e
+    for _, k in ipairs({ "I", "Ring" }) do
+        if b[k] and b[k]:GetAlpha() > 0 then b[k]:SetAlpha(0) end
+    end
+    -- Its pulse is an animation on alpha, so these are hidden instead.
+    for _, k in ipairs({ "BigIPulse", "RingPulse" }) do
+        if b[k] and b[k]:IsShown() then b[k]:Hide() end
+    end
+    if e.help then return end
+    e.help = true
+    local hl = b.GetHighlightTexture and b:GetHighlightTexture()
+    if hl then hl:SetAlpha(0) end
+    local tile = CreateFrame("Frame", nil, b)
+    tile:SetPoint("CENTER", b, "CENTER", 0, 0)
+    tile:SetSize(20, 20)
+    tile:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
+    ns:SetTemplate(tile, "Default", { alpha = 0.9, shadow = false })
+    local q = ns:CreateText(tile, 13, "CENTER", "NONE")
+    q:SetPoint("CENTER", 0, 0)
+    q:SetText("?")
+    local hover = b:CreateTexture(nil, "HIGHLIGHT")
+    hover:SetAllPoints(tile)
+    ns:Fill(hover, C.fel[1], C.fel[2], C.fel[3], 0.18)
+end
+
+-- The tutorial: a window of ours, its words in the Wick type, and in
+-- place of the painting a unit frame card with a name, a bar and the
+-- accent's plus marks where you click.
+local function tutorialExample(tf)
+    local ex = CreateFrame("Frame", nil, tf)
+    ex:SetSize(172, 42)
+    ex:SetPoint("CENTER", tf, "CENTER", -118, -2)
+    ex:SetFrameLevel(tf:GetFrameLevel() + 1)
+    ns:SetTemplate(ex, "Default", { alpha = 0.9 })
+    local r, g, b = ns:ClassColor("SHAMAN")
+    local name = ns:CreateText(ex, 12, "LEFT")
+    name:SetPoint("TOPLEFT", 8, -6)
+    name:SetText(rawget(_G, "THRALL_NAME") or "Thrall")
+    ns:TextColor(name, { r, g, b })
+    local track = ex:CreateTexture(nil, "ARTWORK")
+    track:SetPoint("BOTTOMLEFT", 8, 8)
+    track:SetPoint("BOTTOMRIGHT", -8, 8)
+    track:SetHeight(8)
+    ns:Fill(track, 1, 1, 1, 0.07)
+    local fill = ex:CreateTexture(nil, "ARTWORK", nil, 1)
+    fill:SetPoint("TOPLEFT", track, "TOPLEFT", 0, 0)
+    fill:SetPoint("BOTTOMLEFT", track, "BOTTOMLEFT", 0, 0)
+    fill:SetWidth(100)
+    ns:BarTexture(fill)
+    fill:SetVertexColor(r, g, b, 1)
+    for i, s in ipairs({ 16, 11 }) do
+        local mark = ex:CreateTexture(nil, "OVERLAY")
+        mark:SetTexture(ns.Media:Glyph("plus"))
+        mark:SetSize(s, s)
+        mark:SetPoint("CENTER", ex, "RIGHT", i == 1 and -4 or 9, i == 1 and 6 or -9)
+        mark:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(mark, "fel", "vertex", 1)
+    end
+    return ex
+end
+
+local function styleTutorial(tf)
+    local e = extras[tf] or {}
+    extras[tf] = e
+    if e.tutorial then return end
+    e.tutorial = true
+    -- Its painting and panel go, and are not carded over as content.
+    for _, r in ipairs({ tf:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then noCard[r] = true; r:SetAlpha(0) end
+    end
+    for _, k in ipairs({ "Tutorial", "Bg" }) do
+        if tf[k] then noCard[tf[k]] = true; fade(tf[k]) end
+    end
+    fade(tf.NineSlice); fade(tf.PortraitContainer); fade(tf.TopTileStreaks)
+    local bd = backdrop(tf, "Shadow", db().brackets, 0)
+    ns:SetTemplate(bd, "Shadow", { shadow = true, brackets = db().brackets })
+    bd:SetFrameLevel(math.max(0, tf:GetFrameLevel() - 2))
+    local title = tf.TitleContainer and tf.TitleContainer.TitleText
+    styleText(title, 14, C.fel)
+    styleClose(tf.CloseButton)
+    styleText(tf.SummaryText, 16, C.text)
+    styleText(tf.InfoText, 13, C.text)
+    styleText(tf.AlternateText, 12, C.muted)
+    if tf.ThrallName then tf.ThrallName:SetAlpha(0) end
+    e.example = tutorialExample(tf)
+end
+PS.styleTutorial = styleTutorial
+
+local function clickBindingPass(f)
+    local sbb = f.ScrollBoxBackground
+    if sbb then
+        -- Its tooltip border goes; a black card takes the list.
+        fade(sbb.NineSlice)
+        card(sbb, "list", "TOPLEFT", sbb, "BOTTOMRIGHT", sbb)
+    end
+    local target = f.ScrollBox and f.ScrollBox.ScrollTarget
+    if target then
+        for _, row in ipairs({ target:GetChildren() }) do
+            if row:IsShown() then
+                if row.BindingText then
+                    styleBindingRow(row)
+                elseif row.Name then
+                    -- A section heading, in the accent like the window's own.
+                    styleText(row.Name, 12, C.fel)
+                end
+            end
+        end
+    end
+    for _, p in ipairs(f.FramePortraits or {}) do stylePortraitButton(p) end
+    if f.TutorialButton then styleHelpButton(f.TutorialButton) end
+    if f.TutorialFrame then styleTutorial(f.TutorialFrame) end
+end
+PS.clickBindingPass = clickBindingPass
+
+PS.SPECIAL.ClickBindingFrame = function(frame)
+    fullSkin(frame, clickBindingPass)
+    clickBindingPass(frame)
+    return "generic"
+end
+
+-- The Legacy window (Blizzard_LegacySystem, this client's own; the older
+-- builds' LegacyFrame stays on the list too). The common skin, with its
+-- three page tabs drawn as the side tabs elsewhere, which they are built
+-- from: styled before the common pass, so it leaves them be, and again on
+-- every frame, since Blizzard resets a chosen tab's icon. Its pages keep
+-- their own art until they have been seen in game.
+PS.SPECIAL.LegacySystemFrame = function(frame)
+    local function tabs(f)
+        for _, tab in ipairs(f.Tabs or {}) do
+            if tab.Icon and tab:IsShown() then styleSideTab(tab) end
+        end
+    end
+    tabs(frame)
+    local poll = CreateFrame("Frame", nil, frame)
+    poll:SetScript("OnUpdate", function() if db().enable then tabs(frame) end end)
+    return "generic"
+end
+
 -- The group finder's listing page (Looking For Group). Its category buttons
 -- lose their painted banners and gold frames for our tiles; in the looks
 -- the painted art sat apart from everything round it. The role picker
@@ -2863,7 +3114,6 @@ local function lfgTile(b, inset)
         bd:SetPoint("TOPLEFT", b, "TOPLEFT", inset, -inset)
         bd:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -inset, inset)
         ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
-        if bd.wuiShadow then bd.wuiShadow:Hide() end
     end
     return bd
 end
@@ -2906,8 +3156,7 @@ local function styleRoleButton(b, atlas)
         local w = b:GetWidth() or 64
         local bd = lfgTile(b, math.max(0, math.floor((w - 48) / 2)))
         local ring = b:CreateTexture(nil, "OVERLAY", nil, 2)
-        ring:SetTexture(ns.Media.ring)
-        if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+        ns:SetRing(ring, bd)
         ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(ring, "fel", "vertex", 1)
         ring:SetAllPoints(bd)
@@ -3192,26 +3441,29 @@ end
 
 -- Talent nodes: Blizzard's square frames (StateBorder, its hover twin,
 -- the drop shadow, the sheen that sweeps across, the glows) go. Each node
--- is a tile with a ring in its state's colour, read from the frame
--- Blizzard picked: maxed in the accent, spendable in green, open but not
--- yet affordable in a quiet grey, locked with no ring at all (Blizzard's
--- own dark overlay already dims those). Run every frame while the tab
--- shows, so a point spent recolours at once.
+-- is a tile with a ring for its state, read from the frame Blizzard
+-- picked. A look's accent can be any colour (a priest's is white, a
+-- hunter's green), so the states differ by weight, not by hue: one that
+-- can take a point has a heavy ring in the accent, a maxed one a quiet
+-- ring in the accent over a light accent wash, one open but not yet
+-- affordable a ring in the border colour, a locked one no ring at all
+-- (Blizzard's own dark overlay already dims those). Run every frame while
+-- the tab shows, so a point spent repaints at once.
 local NODE_FADE = { "StateBorder", "StateBorderHover", "Shadow", "BorderSheen", "Glow", "SelectableGlow" }
-local GREEN = { 0.35, 0.85, 0.45 }
-local function nodeColor(atlas)
+local function nodeState(atlas)
     atlas = atlas and atlas:lower() or ""
-    if atlas:find("yellow") or atlas:find("gold") then return C.fel end
-    if atlas:find("green") then return GREEN end
-    if atlas:find("gray") or atlas:find("grey") then return C.border end
+    if atlas:find("yellow") or atlas:find("gold") then return "maxed" end
+    if atlas:find("green") then return "spendable" end
+    if atlas:find("gray") or atlas:find("grey") then return "open" end
 end
+PS.nodeState = nodeState
 local function styleNodes(tf)
     local bp = tf.ButtonsParent
     if not bp then return end
     for _, b in ipairs({ bp:GetChildren() }) do
         local sb = b.StateBorder
         if sb and b.Icon and b:IsShown() then
-            local c = nodeColor(sb:GetAtlas())
+            local state = nodeState(sb:GetAtlas())
             for _, k in ipairs(NODE_FADE) do
                 local t = b[k]
                 if t and t:GetAlpha() > 0 then t:SetAlpha(0) end
@@ -3225,17 +3477,30 @@ local function styleNodes(tf)
                 bd:SetPoint("BOTTOMRIGHT", b.Icon, "BOTTOMRIGHT", 2, -2)
                 ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
                 local ring = b:CreateTexture(nil, "OVERLAY", nil, 1)
-                ring:SetTexture(ns.Media.ring)
-                if ring.SetTextureSliceMargins then ring:SetTextureSliceMargins(ns.Media.slice, ns.Media.slice, ns.Media.slice, ns.Media.slice) end
+                ns:SetRing(ring, bd)
                 ring:SetAllPoints(bd)
-                e.ring = ring
+                -- The heavy ring: a second one a pixel inside the first.
+                local inner = b:CreateTexture(nil, "OVERLAY", nil, 1)
+                ns:SetRing(inner, bd)
+                inner:SetPoint("TOPLEFT", bd, "TOPLEFT", 1, -1)
+                inner:SetPoint("BOTTOMRIGHT", bd, "BOTTOMRIGHT", -1, 1)
+                local wash = b:CreateTexture(nil, "OVERLAY", nil, 0)
+                wash:SetAllPoints(bd)
+                ns:Fill(wash, C.fel[1], C.fel[2], C.fel[3], 0.18)
+                e.ring, e.inner, e.wash = ring, inner, wash
             end
-            if c then
-                e.ring:SetVertexColor(c[1], c[2], c[3], 1)
-                e.ring:Show()
-            else
-                e.ring:Hide()
+            local f, g = C.fel, C.border
+            if state == "spendable" then
+                e.ring:SetVertexColor(f[1], f[2], f[3], 1)
+                e.inner:SetVertexColor(f[1], f[2], f[3], 1)
+            elseif state == "maxed" then
+                e.ring:SetVertexColor(f[1], f[2], f[3], 0.55)
+            elseif state == "open" then
+                e.ring:SetVertexColor(g[1], g[2], g[3], 1)
             end
+            e.ring:SetShown(state ~= nil)
+            e.inner:SetShown(state == "spendable")
+            e.wash:SetShown(state == "maxed")
         end
     end
 end
@@ -3754,8 +4019,8 @@ ns.Config:AddPage("panelskins", "Windows", function(L)
     L:DB(db)
     L:Note("The game's own windows (character, spellbook and talents, friends, the game menu, the map, vendors, mail, settings and the rest) in the Wick look. Only their art changes: nothing about how they work is touched. Switching this off fully takes a reload.")
     L:Toggle("Skin the windows", "enable")
-    L:Slider("Background alpha", "alpha", 0.3, 1, 0.05)
-    L:Toggle("Fel corners", "brackets", { tooltip = "Takes effect after a reload." })
+    L:Slider("Background opacity", "alpha", 0.3, 1, 0.05)
+    L:Toggle("Accent corners", "brackets", { tooltip = "Takes effect after a reload." })
     L:Toggle("Buttons", "buttons")
     L:Toggle("Tabs", "tabs")
     L:Toggle("Drag windows by their title", "moveWindows", { tooltip = "Character, quest log, talents, vendors and the rest stay where you leave them." })

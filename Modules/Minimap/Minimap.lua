@@ -178,20 +178,22 @@ end
 -- ============================================================
 -- Text on the map
 -- ============================================================
+-- A zone's PvP colour, or the text colour where it has none (which then
+-- follows a theme change).
 local function pvpColor()
     local pvp = GetZonePVPInfo and GetZonePVPInfo()
-    if pvp == "sanctuary" then return 0.41, 0.8, 0.94 end
-    if pvp == "friendly" then return 0.1, 1, 0.1 end
-    if pvp == "hostile" then return 1, 0.1, 0.1 end
-    if pvp == "contested" then return 1, 0.7, 0 end
-    return C.text[1], C.text[2], C.text[3]
+    if pvp == "sanctuary" then return { 0.41, 0.8, 0.94 } end
+    if pvp == "friendly" then return { 0.1, 1, 0.1 } end
+    if pvp == "hostile" then return { 1, 0.1, 0.1 } end
+    if pvp == "contested" then return { 1, 0.7, 0 } end
+    return "text"
 end
 
 function MM:UpdateZone()
     local z = self.zone
     if not z then return end
     z:SetText(GetMinimapZoneText and GetMinimapZoneText() or "")
-    z:SetTextColor(pvpColor())
+    ns:TextColor(z, pvpColor())
 end
 
 local function clockText()
@@ -398,7 +400,7 @@ end
 
 ns.Config:AddPage("minimap", "Minimap", function(L)
     L:DB(db)
-    L:Note("Move the minimap with Edit Mode. Its shape, ring and fill are kept for each style: set them in Wick Modern and in Wick OG, and each style comes back with its own.")
+    L:Note("Move the minimap with Edit Mode. Its shape, ring and fill are kept for each look: set them in Wick Modern and in Wick OG, and each look comes back with its own.")
     L:Toggle("Square", "square", { tooltip = "Off gives back Blizzard's round map and its ring." })
     L:Toggle("Ring around the round map", "ring", { tooltip = "Blizzard's gold ring and north marker, on the round map only. With the ring the map keeps Blizzard's size so the ring fits; without it the map fills the box." })
     L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. The round map keeps Blizzard's size, so its ring fits." })

@@ -325,12 +325,6 @@ local LAYOUT = {
         fadeIn = "combat,target,casting,mouseover",
         font = "Wick",
         fontOutline = "OUTLINE",
-        hotkeyColor = {
-            [1] = 0.83,
-            [2] = 0.78,
-            [3] = 0.63,
-            [4] = 1,
-        },
         hotkeySize = 12,
         keyDown = true,
         lockBars = false,
@@ -634,12 +628,6 @@ local LAYOUT = {
     },
     unitframes = {
         bgAlpha = 0.2,
-        castColor = {
-            [1] = 0.31,
-            [2] = 0.78,
-            [3] = 0.47,
-            [4] = 1,
-        },
         castLocked = {
             [1] = 0.45,
             [2] = 0.42,

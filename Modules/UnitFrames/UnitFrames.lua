@@ -18,7 +18,7 @@ local oUF = ns.oUF
 local Chrome = ns.Core.Chrome
 local C = Chrome.Colors
 
-local UF = ns:NewModule("unitframes", { title = "Unit Frames", order = 20 })
+local UF = ns:NewModule("unitframes", { title = "Unit frames", order = 20 })
 ns.UnitFrames = UF
 UF.frames = {}
 UF.PostStyle = {}
@@ -87,8 +87,9 @@ local defaults = {
     classBackdrop = true,          -- health background in the class colour, dim
     bgAlpha       = 0.25,
     colorStrength = 0.85,          -- 1 is the game's colour as it is
-    castColor     = { 0.31, 0.78, 0.47, 1 },
+    castColor     = nil,           -- nil: the look's accent (the class colour while the theme follows the class)
     castLocked    = { 0.45, 0.42, 0.50, 1 },
+    colorsMigrated = false,
     smooth        = true,
     rangeAlpha    = 0.45,
     targetBorder  = true,          -- fel border on the frame of whatever you target
@@ -158,6 +159,31 @@ end
 -- ============================================================
 -- Colours
 -- ============================================================
+-- The cast bar: the colour the player picked, or the look's accent, which
+-- is the class colour where the theme follows the class. Read as it is
+-- painted, so a theme change only has to paint again.
+function UF:CastColor()
+    return self:db().castColor or C.fel
+end
+
+function UF:PaintCast(cb)
+    if not cb then return end
+    local cc, lc = self:CastColor(), self:db().castLocked
+    cb:SetStatusBarColor(cc[1], cc[2], cc[3], 1)
+    if cb.wuiLocked then cb.wuiLocked:SetVertexColor(lc[1], lc[2], lc[3], 1) end
+end
+
+-- A profile keeps every default it was made with, so one made before the
+-- cast bar followed the look still holds the old copy of fel. That copy is
+-- let go once, per profile; a colour the player picked stays.
+local OLD_CAST = { 0.31, 0.78, 0.47 }
+function UF:MigrateColors()
+    local d = self:db()
+    if d.colorsMigrated then return end
+    if ns:SameColor(d.castColor, OLD_CAST) then d.castColor = nil end
+    d.colorsMigrated = true
+end
+
 function UF:ApplyColors()
     local d = self:db()
     local c = d.darkColor
@@ -244,9 +270,7 @@ local function newBar(parent, layer)
     sb:SetStatusBarTexture(ns.Media:Statusbar())
     local t = sb:GetStatusBarTexture()
     if t and t.SetSnapToPixelGrid then t:SetSnapToPixelGrid(false); t:SetTexelSnappingBias(0) end
-    ns.statusbars = ns.statusbars or setmetatable({}, { __mode = "k" })
-    ns.statusbars[sb] = true
-    return sb
+    return ns:TrackStatusBar(sb)
 end
 
 local function barBG(sb)
@@ -258,7 +282,7 @@ local function barBG(sb)
         if bg.SetTextureSliceMargins then bg:SetTextureSliceMargins(3, 3, 3, 3) end
         bg:SetVertexColor(1, 1, 1, 0.07)
     else
-        bg:SetTexture(ns.Media:Statusbar())
+        ns:BarTexture(bg)
         bg:SetVertexColor(C.void[1], C.void[2], C.void[3], 1)
     end
     sb.bg = bg
@@ -316,7 +340,7 @@ local function buildCastbar(self, key)
     -- The client sets this overlay's alpha from it, so we never read it.
     local locked = cb:CreateTexture(nil, "ARTWORK", nil, 1)
     locked:SetAllPoints(cb:GetStatusBarTexture())
-    locked:SetTexture(ns.Media:Statusbar())
+    ns:BarTexture(locked)
     locked:SetAlpha(0)
     cb.Shield = locked
     cb.wuiLocked = locked
@@ -815,9 +839,7 @@ function UF:Configure(self)
         ns.Media:SetFont(cb.Text, cs, g.fontOutline, g.font, true)
         ns.Media:SetFont(cb.Time, cs, g.fontOutline, g.font, true)
         cb.Spark:SetHeight(ch)
-        local cc, lc = g.castColor, g.castLocked
-        cb:SetStatusBarColor(cc[1], cc[2], cc[3], 1)
-        cb.wuiLocked:SetVertexColor(lc[1], lc[2], lc[3], 1)
+        UF:PaintCast(cb)
         if cb.SafeZone then cb.SafeZone:SetShown(cd.latency) end
         -- Modern: a thin line with the spell name and time above it.
         if ns:Modern() then
@@ -909,8 +931,7 @@ function UF:NameTag(fs, on, max, host)
         end
         p:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(p, C.fel, "texture")
-        fs:SetTextColor(C.fel[1], C.fel[2], C.fel[3], 1)
-        Chrome:Register(fs, C.fel, "text")
+        ns:TextColor(fs, "fel")
         fs.wuiNameMax = max
         fitName(fs)
         p:Show()
@@ -994,6 +1015,7 @@ function UF:ApplyEnabled(key, f)
 end
 
 function UF:Initialize()
+    self:MigrateColors()
     self:ApplyColors()
     oUF:RegisterStyle("WicksUI", style)
     oUF:SetActiveStyle("WicksUI")
@@ -1008,11 +1030,26 @@ function UF:Initialize()
 
     ns:On("PLAYER_TARGET_CHANGED", function() UF:UpdateBorders() end)
     ns:On("GROUP_ROSTER_UPDATE", function() UF:UpdateBorders() end)
+    -- A theme change repaints the frames in the new colours: the cast bar
+    -- in the accent, the health gradient that runs up to it, and the look's
+    -- own health colours. Colours, not layout, so this is safe mid-fight.
+    if Chrome.OnThemeChanged then
+        Chrome:OnThemeChanged(function()
+            UF:ApplyColors()
+            for f in pairs(UF.all) do
+                UF:PaintCast(rawget(f, "Castbar"))
+                local hb = rawget(f, "Health")
+                if hb and hb.ForceUpdate and f.IsElementEnabled and f:IsElementEnabled("Health") then pcall(hb.ForceUpdate, hb) end
+            end
+        end)
+    end
     self:Update()
 end
 
 function UF:Update()
     ns:AfterCombat("uf:update", function()
+        -- Another profile may still hold the old copies.
+        self:MigrateColors()
         self:ApplyColors()
         for _, key in ipairs(SINGLES) do
             local f = self.frames[key]

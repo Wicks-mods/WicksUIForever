@@ -164,6 +164,18 @@ end
 
 function ns:Copy(t) return ns.Core.copy(t) end
 
+-- Whether a saved colour is still the given one, to the precision a
+-- colour picker or a saved variable keeps.
+local RGB = { "r", "g", "b" }
+function ns:SameColor(c, ref)
+    if type(c) ~= "table" or type(ref) ~= "table" then return false end
+    for i = 1, 3 do
+        local v = c[i] or c[RGB[i]]
+        if type(v) ~= "number" or math.abs(v - ref[i]) > 0.002 then return false end
+    end
+    return true
+end
+
 -- Class colour, through WickCore so the player's colour-set choice holds.
 function ns:ClassColor(class)
     local Chrome = ns.Core.Chrome

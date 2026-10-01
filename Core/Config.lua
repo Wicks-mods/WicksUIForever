@@ -101,6 +101,17 @@ function Layout:Note(text)
     return self:Place(W:Note(self.content, text, COL_W * 2 + 24), 2)
 end
 
+-- Every control placed after this also greys out while fn() is true: a
+-- section whose Show is off, a frame that is switched off. nil ends it.
+function Layout:DisabledWhen(fn) self.when = fn end
+
+local function disabledFor(L, opts)
+    local own, when = opts.disabled, L.when
+    if not when then return own end
+    if not own then return when end
+    return function() return when() or own() end
+end
+
 -- opts.disabled = function() return true when the control should grey out
 -- opts.set = function(v) called after the value is stored
 function Layout:Toggle(text, key, opts)
@@ -108,38 +119,39 @@ function Layout:Toggle(text, key, opts)
     local get = opts.get or getter(self, key)
     local set = opts.setter or setter(self, key, opts.set)
     return self:Place(W:Check(self.content, text, function() return get() and true or false end, set,
-        { width = COL_W, disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
+        { width = COL_W, disabled = disabledFor(self, opts), tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:Slider(text, key, min, max, step, opts)
     opts = opts or {}
     return self:Place(W:Slider(self.content, text, min, max, step, opts.get or getter(self, key),
-        opts.setter or setter(self, key, opts.set), COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
+        opts.setter or setter(self, key, opts.set), COL_W, { disabled = disabledFor(self, opts), tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:Dropdown(text, key, values, opts)
     opts = opts or {}
     return self:Place(W:Dropdown(self.content, text, values, opts.get or getter(self, key),
-        opts.setter or setter(self, key, opts.set), COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
+        opts.setter or setter(self, key, opts.set), COL_W, { disabled = disabledFor(self, opts), tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:Color(text, key, opts)
     opts = opts or {}
     return self:Place(W:Color(self.content, text, opts.get or getter(self, key),
-        opts.setter or setter(self, key, opts.set), { width = COL_W, alpha = opts.alpha, disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
+        opts.setter or setter(self, key, opts.set), { width = COL_W, alpha = opts.alpha, disabled = disabledFor(self, opts),
+        tooltip = opts.tooltip, fallback = opts.fallback }), opts.span, key)
 end
 
 function Layout:Input(text, key, opts)
     opts = opts or {}
     return self:Place(W:Input(self.content, text, opts.get or getter(self, key),
-        opts.setter or setter(self, key, opts.set), opts.width or COL_W, { disabled = opts.disabled, tooltip = opts.tooltip }), opts.span, key)
+        opts.setter or setter(self, key, opts.set), opts.width or COL_W, { disabled = disabledFor(self, opts), tooltip = opts.tooltip }), opts.span, key)
 end
 
 function Layout:TextArea(text, key, opts)
     opts = opts or {}
     return self:Place(W:TextArea(self.content, text, opts.get or getter(self, key),
         opts.setter or setter(self, key, opts.set), COL_W * 2 + 24, opts.height or 60,
-        { disabled = opts.disabled, tooltip = opts.tooltip, default = opts.default }), 2, key)
+        { disabled = disabledFor(self, opts), tooltip = opts.tooltip, default = opts.default }), 2, key)
 end
 
 function Layout:Button(text, onClick, opts)
@@ -150,7 +162,7 @@ function Layout:Button(text, onClick, opts)
     local b = W:Button(holder, text, opts.width or 160, function(...)
         onClick(...)
         Config:Changed(page)
-    end, { disabled = opts.disabled, tooltip = opts.tooltip })
+    end, { disabled = disabledFor(self, opts), tooltip = opts.tooltip })
     -- Wide enough for its label, whatever the label is.
     b:SetWidth(math.min(COL_W, math.max(opts.width or 160, (b.text:GetStringWidth() or 0) + 24)))
     b:SetPoint("LEFT")
@@ -253,7 +265,7 @@ function Layout:CopyFrom(opts)
     local arrow = ns:CreateText(b, 12, "RIGHT", "NONE")
     arrow:SetPoint("RIGHT", -6, 0)
     arrow:SetText("v")
-    arrow:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+    ns:TextColor(arrow, "fel")
     b:SetScript("OnEnter", function() ns:SetBorderColor(b, "fel") end)
     b:SetScript("OnLeave", function() ns:SetBorderColor(b, "border") end)
     b:SetScript("OnClick", function()
@@ -272,9 +284,9 @@ function Layout:CopyFrom(opts)
     link.text = ns:CreateText(link, 11, "RIGHT", "NONE")
     link.text:SetPoint("RIGHT")
     link.text:SetText("copy from")
-    link.text:SetTextColor(C.muted[1], C.muted[2], C.muted[3])
-    link:SetScript("OnEnter", function() link.text:SetTextColor(C.fel[1], C.fel[2], C.fel[3]) end)
-    link:SetScript("OnLeave", function() link.text:SetTextColor(C.muted[1], C.muted[2], C.muted[3]) end)
+    ns:TextColor(link.text, "muted")
+    link:SetScript("OnEnter", function() ns:TextColor(link.text, "fel") end)
+    link:SetScript("OnLeave", function() ns:TextColor(link.text, "muted") end)
     link:SetScript("OnClick", function()
         local entry = link.entry
         if not entry then return end
@@ -408,12 +420,15 @@ local function drawNav()
             b:SetHeight(20)
             b.hl = b:CreateTexture(nil, "HIGHLIGHT")
             b.hl:SetAllPoints()
-            b.hl:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.15)
+            ns:Fill(b.hl, C.fel[1], C.fel[2], C.fel[3], 0.15)
+            -- The chosen page's mark: a bar too thin to round, kept flat,
+            -- in the accent of the theme in use.
             b.sel = b:CreateTexture(nil, "BACKGROUND")
             b.sel:SetPoint("TOPLEFT")
             b.sel:SetPoint("BOTTOMLEFT")
             b.sel:SetWidth(2)
             b.sel:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 1)
+            Chrome:Register(b.sel, "fel", "texture")
             b.text = ns:CreateText(b, 12, "LEFT", "NONE")
             nav.buttons[i] = b
         end
@@ -428,13 +443,7 @@ local function drawNav()
         b.text:SetText(mark .. p.title)
         local current = Config.current == p.key
         b.sel:SetShown(current)
-        if current then
-            b.text:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
-        elseif e.depth == 0 then
-            b.text:SetTextColor(C.text[1], C.text[2], C.text[3])
-        else
-            b.text:SetTextColor(C.muted[1], C.muted[2], C.muted[3])
-        end
+        ns:TextColor(b.text, (current and "fel") or (e.depth == 0 and "text") or "muted")
         b:SetScript("OnClick", function()
             if hasKids then Config.expanded[p.key] = not Config.expanded[p.key] or Config.current ~= p.key end
             Config:Show(p.key)
@@ -561,7 +570,7 @@ local function build()
     end)
     movers:SetPoint("RIGHT", close, "LEFT", -6, 0)
 
-    local keys = W:Button(header, "Keybinds", 90, function()
+    local keys = W:Button(header, "Keybind mode", 110, function()
         frame:Hide()
         if ns.Keybind then ns.Keybind:Activate() end
     end)
@@ -620,6 +629,7 @@ function Config:Show(key)
         ns:HeadingFont(title, 18)
         title:SetPoint("TOPLEFT", PAD, -PAD)
         if Chrome.SetHeadingText then Chrome:SetHeadingText(title, page.title) else title:SetText(page.title) end
+        if title.wickPlate then ns:HeadingColor(title) end
         L.y = -PAD - 30
         local ok, err = pcall(page.builder, L)
         page.buildError = not ok and tostring(err) or nil

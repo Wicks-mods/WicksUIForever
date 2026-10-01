@@ -57,12 +57,21 @@ function T:DecorateUnit(tt, unit)
 
     if db.tipClassColor and UnitIsPlayer(unit) then
         local _, token = UnitClass(unit)
-        local colors = rawget(_G, "RAID_CLASS_COLORS")
-        local c = token and colors and colors[token]
-        if c then
+        -- WickCore's class colours, so the player's choice of set (the
+        -- game's own or the Classic era one) holds here too.
+        local r, g, b
+        local Chrome = Core.Chrome
+        if token and Chrome and Chrome.ClassColor then
+            r, g, b = Chrome:ClassColor(token)
+        else
+            local colors = rawget(_G, "RAID_CLASS_COLORS")
+            local c = token and colors and colors[token]
+            if c then r, g, b = c.r, c.g, c.b end
+        end
+        if r then
             local name = UnitName(unit)
             local line = rawget(_G, "GameTooltipTextLeft1")
-            if name and line then line:SetTextColor(c.r, c.g, c.b) end
+            if name and line then line:SetTextColor(r, g, b) end
         end
     end
 

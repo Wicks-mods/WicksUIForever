@@ -345,6 +345,8 @@ local function skinSwing(f)
     clearTex(f.Border)
     clearTex(sb.TypeLabelShadow)
     e.backdrop = ns:CreateBackdrop(sb, "Default", ns.mult)
+    -- A bar texture picked in the settings reaches it at once.
+    ns:TrackStatusBar(sb)
     for _, fs in ipairs({ sb.TypeLabel, sb.TimeLabel }) do
         if fs and fs.GetFont then
             local _, size = fs:GetFont()

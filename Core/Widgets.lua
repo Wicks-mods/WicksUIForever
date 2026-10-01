@@ -28,11 +28,34 @@ local function label(parent, text, size)
     return fs
 end
 
+-- A box that greys out mid-edit drops what was typed: the setting it was
+-- for no longer applies.
+local function unfocus(p)
+    if p and p.HasFocus and p:HasFocus() then
+        p.wuiCancel = true
+        p:ClearFocus()
+    end
+end
+
+-- f.parts: what a control has beyond its main part (a slider's number box,
+-- a text area's Save and Default). They sit inside it, so its alpha greys
+-- them already; they stop taking the mouse and the keyboard with it.
 local function setEnabled(f, on)
     f.disabled = not on
     f:SetAlpha(on and 1 or 0.4)
     if f.EnableMouse then f:EnableMouse(on) end
-    if f.control and f.control.EnableMouse then f.control:EnableMouse(on) end
+    if f.control then
+        f.control.disabled = not on
+        if f.control.EnableMouse then f.control:EnableMouse(on) end
+    end
+    for _, p in ipairs(f.parts or {}) do
+        p.disabled = not on
+        if p.EnableMouse then p:EnableMouse(on) end
+    end
+    if not on then
+        unfocus(f.control)
+        for _, p in ipairs(f.parts or {}) do unfocus(p) end
+    end
 end
 
 local function refresh(f)
@@ -50,16 +73,81 @@ local function base(f, opts)
     return f
 end
 
+-- f.hint: a line on how to work the control (a slider's Shift and wheel),
+-- under its own tooltip, in the muted colour.
 local function tooltipOn(f, host)
     host = host or f
     host:HookScript("OnEnter", function()
-        if not f.tooltip then return end
+        if not f.tooltip and not f.hint then return end
         GameTooltip:SetOwner(host, "ANCHOR_RIGHT")
         GameTooltip:AddLine(f.labelText or "", C.fel[1], C.fel[2], C.fel[3])
-        GameTooltip:AddLine(f.tooltip, 1, 1, 1, true)
+        if f.tooltip then GameTooltip:AddLine(f.tooltip, 1, 1, 1, true) end
+        if f.hint then GameTooltip:AddLine(f.hint, C.muted[1], C.muted[2], C.muted[3], true) end
         GameTooltip:Show()
     end)
     host:HookScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+-- ============================================================
+-- Typing
+-- ============================================================
+-- A typed value is kept however the box is left: Enter, Tab, a click
+-- elsewhere, or its window closing. Escape puts back what was there.
+-- Tab and Shift-Tab move between the boxes of one window, in the order
+-- they were made, which is the order they read on a page.
+local boxes = {}
+
+local function windowOf(f)
+    local p = f
+    while p.GetParent and p:GetParent() and p:GetParent() ~= UIParent do p = p:GetParent() end
+    return p
+end
+
+local function tabFrom(self)
+    local here
+    for i, b in ipairs(boxes) do
+        if b == self then here = i; break end
+    end
+    if not here then return end
+    local step = IsShiftKeyDown() and -1 or 1
+    local win, n = windowOf(self), #boxes
+    for k = 1, n - 1 do
+        local b = boxes[(here - 1 + step * k) % n + 1]
+        if b:IsVisible() and not b.disabled and windowOf(b) == win then
+            self:ClearFocus()
+            b:SetFocus()
+            if b.HighlightText then b:HighlightText() end
+            return
+        end
+    end
+end
+W.TabFrom = tabFrom
+
+-- commit(text) runs when the box is left with its text changed; revert()
+-- puts the setting's own value back after Escape.
+local function typing(box, commit, revert)
+    boxes[#boxes + 1] = box
+    box:SetScript("OnEditFocusGained", function(self)
+        self.wuiStart = self:GetText()
+        ns:SetBorderColor(self, "fel")
+    end)
+    box:SetScript("OnEditFocusLost", function(self)
+        ns:SetBorderColor(self, "border")
+        local cancel = self.wuiCancel
+        self.wuiCancel = nil
+        if cancel then
+            if revert then revert() end
+        elseif commit and self:GetText() ~= self.wuiStart then
+            commit(self:GetText())
+        end
+        self.wuiStart = nil
+    end)
+    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnEscapePressed", function(self)
+        self.wuiCancel = true
+        self:ClearFocus()
+    end)
+    box:SetScript("OnTabPressed", tabFrom)
 end
 
 -- ============================================================
@@ -75,7 +163,13 @@ function W:Button(parent, text, width, onClick, opts)
     b.text:SetPoint("CENTER")
     b.text:SetJustifyH("CENTER")
     b:SetScript("OnEnter", function(self) if not self.disabled then ns:SetBorderColor(self, "fel") end end)
-    b:SetScript("OnLeave", function(self) ns:SetBorderColor(self, "border") end)
+    -- A chosen button (a setup answer) keeps its ring when the pointer leaves.
+    b:SetScript("OnLeave", function(self) ns:SetBorderColor(self, self.selected and "fel" or "border") end)
+    function b:SetSelected(on)
+        self.selected = on and true or nil
+        ns:SetBorderColor(self, on and "fel" or "border")
+        ns:TextColor(self.text, on and "fel" or "text")
+    end
     local reload = opts and opts.reload
     b:SetScript("OnClick", function(self, ...)
         if self.disabled then return end
@@ -157,8 +251,9 @@ function W:Slider(parent, text, min, max, step, get, set, width, opts)
     box:SetAutoFocus(false)
     box:SetJustifyH("CENTER")
     ns.Media:SetFont(box, 11, "NONE")
-    box:SetTextColor(C.text[1], C.text[2], C.text[3])
+    ns:TextColor(box, "text")
     ns:SetTemplate(box, "Shadow")
+    f.parts = { box }
 
     local function fmt(v)
         if (step or 1) < 1 then return ("%.2f"):format(v) end
@@ -175,35 +270,49 @@ function W:Slider(parent, text, min, max, step, get, set, width, opts)
             if f.onChange then f.onChange() end
         end
     end)
+    -- The wheel scrolls the page the slider sits on, so a page can be read
+    -- without changing what it passes over; Shift and the wheel turn the
+    -- slider. Where nothing scrolls (the mover panel), the wheel turns it.
     s:SetScript("OnMouseWheel", function(self, delta)
+        local page = not IsShiftKeyDown() and W.ScrollerOf(f)
+        if page then return page:GetScript("OnMouseWheel")(page, delta) end
         if f.disabled then return end
         local v = self:GetValue() + delta * (step or 1)
         self:SetValue(math.max(min, math.min(max, v)))
     end)
-    box:SetScript("OnEnterPressed", function(self)
-        local v = tonumber(self:GetText())
+    f.hint = "Drag it, type a number in the box, or hold Shift and turn the mouse wheel."
+    typing(box, function(text)
+        local v = tonumber(text)
         if v then
             -- Typed values may go past the slider's range on purpose,
             -- the way a player types 0.97 scale or a 2000 wide bar.
             set(v)
             if f.onChange then f.onChange() end
         end
-        self:ClearFocus()
         f:Refresh()
-    end)
-    box:SetScript("OnEscapePressed", function(self) self:ClearFocus(); f:Refresh() end)
+    end, function() f:Refresh() end)
 
     f.OnRefresh = function()
         local v = tonumber(get()) or min
         busy = true
         s:SetValue(math.max(min, math.min(max, v)))
         busy = false
-        box:SetText(fmt(v))
+        -- A refresh of the page while a number is being typed leaves it be.
+        if not box:HasFocus() then box:SetText(fmt(v)) end
     end
     base(f, opts)
     tooltipOn(f, s)
     f:Refresh()
     return f
+end
+
+-- The scrolling page a control sits on, if it sits on one.
+function W.ScrollerOf(f)
+    local p = f and f.GetParent and f:GetParent()
+    while p do
+        if p.GetObjectType and p:GetObjectType() == "ScrollFrame" and p:GetScript("OnMouseWheel") then return p end
+        p = p.GetParent and p:GetParent()
+    end
 end
 
 -- ============================================================
@@ -219,6 +328,9 @@ local function openMenu(owner, values, current, onPick)
         menu:SetFrameStrata("FULLSCREEN_DIALOG")
         menu:SetClampedToScreen(true)
         menu:EnableMouse(true)
+        -- Escape closes an open list too, rather than leaving it over the
+        -- game menu.
+        Chrome:CloseOnEscape(menu)
         ns:SetTemplate(menu, "Default")
         menu.buttons = {}
         -- Close on any click that lands outside the list.
@@ -229,14 +341,35 @@ local function openMenu(owner, values, current, onPick)
         end)
         menu.scroll = 0
         menu:EnableMouseWheel(true)
+        -- A list longer than the menu shows a slim bar down its right edge,
+        -- drawn like the settings' own scroll bar, so it is plain there is
+        -- more to wheel through.
+        menu.track = menu:CreateTexture(nil, "ARTWORK")
+        menu.track:SetPoint("TOPRIGHT", -3, -3)
+        menu.track:SetPoint("BOTTOMRIGHT", -3, 3)
+        menu.track:SetWidth(3)
+        ns:Fill(menu.track, C.border[1], C.border[2], C.border[3], 0.6)
+        menu.thumb = menu:CreateTexture(nil, "OVERLAY")
+        menu.thumb:SetWidth(3)
+        ns:Fill(menu.thumb, C.fel[1], C.fel[2], C.fel[3], 0.8)
     end
     local list = type(values) == "function" and values() or values
     local maxRows = 16
     local width = math.max(owner:GetWidth(), 120)
     for _, b in ipairs(menu.buttons) do b:Hide() end
+    local more = #list > maxRows
 
     local function draw()
         for _, b in ipairs(menu.buttons) do b:Hide() end
+        menu.track:SetShown(more)
+        menu.thumb:SetShown(more)
+        if more then
+            local th = maxRows * 18 - 4
+            local h = math.max(12, th * maxRows / #list)
+            menu.thumb:SetHeight(h)
+            menu.thumb:ClearAllPoints()
+            menu.thumb:SetPoint("TOPRIGHT", menu.track, "TOPRIGHT", 0, -(th - h) * menu.scroll / (#list - maxRows))
+        end
         for row = 1, math.min(#list, maxRows) do
             local i = row + menu.scroll
             local item = list[i]
@@ -247,7 +380,7 @@ local function openMenu(owner, values, current, onPick)
                 b:SetHeight(18)
                 b.hl = b:CreateTexture(nil, "HIGHLIGHT")
                 b.hl:SetAllPoints()
-                b.hl:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.25)
+                ns:Fill(b.hl, C.fel[1], C.fel[2], C.fel[3], 0.25)
                 b.text = label(b, "")
                 b.text:SetPoint("LEFT", 6, 0)
                 b.text:SetPoint("RIGHT", -6, 0)
@@ -255,7 +388,7 @@ local function openMenu(owner, values, current, onPick)
             end
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", 1, -1 - (row - 1) * 18)
-            b:SetPoint("TOPRIGHT", -1, -1 - (row - 1) * 18)
+            b:SetPoint("TOPRIGHT", more and -8 or -1, -1 - (row - 1) * 18)
             local text = item[2]
             if item[3] then ns.Media:SetFont(b.text, 12, "NONE", item[3]) else ns.Media:SetFont(b.text, 12, "NONE") end
             if item[1] == current then
@@ -299,7 +432,7 @@ function W:Dropdown(parent, text, values, get, set, width, opts)
     b.value:SetPoint("RIGHT", -18, 0)
     local arrow = label(b, "v")
     arrow:SetPoint("RIGHT", -6, 0)
-    arrow:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
+    ns:TextColor(arrow, "fel")
     f.control = b
 
     b:SetScript("OnEnter", function() if not f.disabled then ns:SetBorderColor(b, "fel") end end)
@@ -337,27 +470,23 @@ function W.Values(list, labels)
 end
 
 -- ============================================================
--- EditBox (single line, commits on Enter)
+-- EditBox (single line, kept when it is left, see Typing)
 -- ============================================================
+-- f.wuiRevert: what Escape puts back, set by whoever binds the box.
 function W:EditBox(parent, text, width, onCommit, opts)
     local f = CreateFrame("EditBox", nil, parent)
     f:SetSize(width or 120, 20)
     f:SetAutoFocus(false)
     ns.Media:SetFont(f, 12, "NONE")
-    f:SetTextColor(C.text[1], C.text[2], C.text[3])
+    ns:TextColor(f, "text")
     f:SetTextInsets(4, 4, 0, 0)
     ns:SetTemplate(f, "Shadow")
     if text and text ~= "" then
         f.text = label(f, text)
         f.text:SetPoint("RIGHT", f, "LEFT", -4, 0)
     end
-    f:SetScript("OnEnterPressed", function(self)
-        if onCommit then onCommit(self:GetText()) end
-        self:ClearFocus()
-    end)
-    f:SetScript("OnEscapePressed", function(self) self:ClearFocus(); if self.Refresh then self:Refresh() end end)
-    f:SetScript("OnEditFocusGained", function(self) ns:SetBorderColor(self, "fel") end)
-    f:SetScript("OnEditFocusLost", function(self) ns:SetBorderColor(self, "border") end)
+    typing(f, function(v) if onCommit then onCommit(v) end end,
+        function() if f.wuiRevert then f.wuiRevert() end end)
     base(f, opts)
     return f
 end
@@ -372,6 +501,7 @@ function W:Input(parent, text, get, set, width, opts)
     f.labelText = text
     local e = W:EditBox(f, nil, width, function(v) set(v); if f.onChange then f.onChange() end end)
     e:SetPoint("TOPLEFT", 0, -17)
+    e.wuiRevert = function() e:SetText(tostring(get() or "")) end
     f.control = e
     f.OnRefresh = function() if not e:HasFocus() then e:SetText(tostring(get() or "")) end end
     base(f, opts)
@@ -398,10 +528,10 @@ function W:TextArea(parent, text, get, set, width, height, opts)
     e:SetPoint("TOPLEFT", 4, -4)
     e:SetPoint("BOTTOMRIGHT", -4, 4)
     ns.Media:SetFont(e, 12, "NONE")
-    e:SetTextColor(C.text[1], C.text[2], C.text[3])
+    ns:TextColor(e, "text")
     e:SetScript("OnEscapePressed", function(self) self:ClearFocus(); f:Refresh() end)
     bg:EnableMouse(true)
-    bg:SetScript("OnMouseDown", function() e:SetFocus() end)
+    bg:SetScript("OnMouseDown", function() if not f.disabled then e:SetFocus() end end)
     local save = W:Button(f, "Save", 70, function()
         set(e:GetText())
         e:ClearFocus()
@@ -417,6 +547,7 @@ function W:TextArea(parent, text, get, set, width, height, opts)
     revert:SetPoint("RIGHT", save, "LEFT", -4, 0)
     revert:SetShown(opts and opts.default ~= nil)
     f.control = e
+    f.parts = { bg, save, revert }
     f.OnRefresh = function() if not e:HasFocus() then e:SetText(tostring(get() or "")) end end
     base(f, opts)
     tooltipOn(f, bg)
@@ -428,6 +559,9 @@ end
 -- Colour swatch
 -- ============================================================
 -- get returns { r, g, b, a } (array or keyed); set receives { r, g, b, a }.
+-- opts.fallback: for a colour that follows the look until one is picked.
+-- get() is nil then, and the swatch shows fallback() with the label saying
+-- so; a right-click lets a picked colour go again.
 local function rgba(c)
     if not c then return 1, 1, 1, 1 end
     return c[1] or c.r or 1, c[2] or c.g or 1, c[3] or c.b or 1, c[4] or c.a or 1
@@ -447,10 +581,28 @@ function W:Color(parent, text, get, set, opts)
     f.text:SetPoint("LEFT", sw, "RIGHT", 6, 0)
     f.labelText = text
     local hasAlpha = opts and opts.alpha
+    local fallback = opts and opts.fallback
+    local function current() return get() or (fallback and fallback()) end
+    if fallback then
+        f:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        if not opts.tooltip then
+            opts.tooltip = "Follows the look's colours until you pick one. Right-click to follow the look again."
+        end
+    end
 
-    f:SetScript("OnClick", function()
+    f:SetScript("OnClick", function(_, button)
         if f.disabled then return end
-        local r, g, b, a = rgba(get())
+        if button == "RightButton" then
+            if fallback and get() ~= nil then
+                set(nil)
+                f:Refresh()
+                if f.onChange then f.onChange() end
+            end
+            return
+        end
+        local r, g, b, a = rgba(current())
+        -- Cancelled while following the look, it goes on following it.
+        local following = get() == nil
         local function apply()
             local nr, ng, nb = ColorPickerFrame:GetColorRGB()
             local na = hasAlpha and (ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or 1) or 1
@@ -465,7 +617,7 @@ function W:Color(parent, text, get, set, opts)
             swatchFunc = apply,
             opacityFunc = apply,
             cancelFunc = function()
-                set({ r, g, b, a })
+                if following then set(nil) else set({ r, g, b, a }) end
                 f:Refresh()
                 if f.onChange then f.onChange() end
             end,
@@ -476,7 +628,13 @@ function W:Color(parent, text, get, set, opts)
     end)
     f:SetScript("OnEnter", function() ns:SetBorderColor(sw, "fel") end)
     f:SetScript("OnLeave", function() ns:SetBorderColor(sw, "border") end)
-    f.OnRefresh = function() fill:SetColorTexture(rgba(get())) end
+    f.OnRefresh = function()
+        fill:SetColorTexture(rgba(current()))
+        if fallback then
+            local following = get() == nil
+            f.text:SetText(following and (text .. "  " .. Chrome:Esc("muted") .. "the look's|r") or text)
+        end
+    end
     base(f, opts)
     tooltipOn(f)
     f:Refresh()
@@ -492,8 +650,8 @@ function W:Heading(parent, text, width)
     local fs = ns:CreateText(f, 14, "LEFT", "NONE")
     ns:HeadingFont(fs, 14)
     fs:SetPoint("BOTTOMLEFT", 0, 6)
-    fs:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
     if Chrome.SetHeadingText then Chrome:SetHeadingText(fs, text) else fs:SetText(text) end
+    ns:HeadingColor(fs)
     local line = f:CreateTexture(nil, "ARTWORK")
     line:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
     Chrome:Register(line, "border", "texture")
@@ -511,7 +669,7 @@ function W:Note(parent, text, width)
     fs:SetWordWrap(true)
     fs:SetWidth(width)
     fs:SetText(text)
-    fs:SetTextColor(C.muted[1], C.muted[2], C.muted[3])
+    ns:TextColor(fs, "muted")
     fs:SetPoint("TOPLEFT")
     f:SetSize(width, math.max(14, fs:GetStringHeight() + 4))
     f.Refresh = function() end
@@ -543,6 +701,28 @@ function W:Confirm(text, onYes, yesText, noText, opts)
         confirm.no = W:Button(confirm, "Cancel", 100, function() confirm:Hide() end)
         confirm.no:SetPoint("BOTTOMLEFT", confirm, "BOTTOM", 4, 12)
         Chrome:CloseOnEscape(confirm)
+        -- Enter says yes. The dialog listens to the keyboard while it shows
+        -- but passes every other key on, so moving and casting still work.
+        -- Holding a key back is refused to addons in a fight, so there
+        -- Enter goes on to the game as well.
+        local function keyboard(on)
+            if InCombatLockdown() then return end
+            confirm:EnableKeyboard(on)
+            confirm:SetPropagateKeyboardInput(true)
+        end
+        confirm:SetScript("OnKeyDown", function(self, key)
+            if InCombatLockdown() then return end
+            local enter = key == "ENTER" or key == "NUMPADENTER"
+            self:SetPropagateKeyboardInput(not enter)
+            if enter then
+                local yes = self.yes:IsShown() and self.yes or self.yesReload
+                yes:Click()
+            end
+        end)
+        -- A new frame starts shown, so its first showing fires no OnShow:
+        -- the keyboard is switched on by W:Confirm itself, each time.
+        confirm.keyboard = keyboard
+        confirm:SetScript("OnHide", function() keyboard(false) end)
     end
     confirm.text:SetText(text)
     local reload = opts and opts.reload
@@ -553,5 +733,6 @@ function W:Confirm(text, onYes, yesText, noText, opts)
     confirm.no.text:SetText(noText or "Cancel")
     confirm.fn = onYes
     confirm:SetHeight(math.max(110, confirm.text:GetStringHeight() + 60))
+    confirm.keyboard(true)
     confirm:Show()
 end

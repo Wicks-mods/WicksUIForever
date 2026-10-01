@@ -15,21 +15,22 @@ local POINTS = {
 }
 local SIDES = { { "TOP", "Above" }, { "BOTTOM", "Below" }, { "LEFT", "Left" }, { "RIGHT", "Right" } }
 
-ns.Config:AddPage("unitframes", "Unit Frames", function(L)
+ns.Config:AddPage("unitframes", "Unit frames", function(L)
     L:DB(function() return UF:db() end)
     L:Heading("Colours")
     L:Dropdown("Health bars", "healthColor", {
         { "class", "Class and reaction" }, { "dark", "Dark" }, { "gradient", "Red to green by health" },
         { "look", "The look's colours" },
     }, { set = function() if ns.HealthChosen then ns:HealthChosen() end end,
-         tooltip = "The gradient is worked out by the client from your health, which this client keeps from addons, so it still follows health in combat. Every look but Wick Modern and Wick OG has colours of its own, one for friends and one for enemies, and uses them unless you pick something else here while in it. Each style keeps its own choice." })
+         tooltip = "The gradient is worked out by the client from your health, which this client keeps from addons, so it still follows health in combat. Every look but Wick Modern and Wick OG has colours of its own, one for friends and one for enemies, and uses them unless you pick something else here while in it. Each look keeps its own choice." })
     L:Color("Dark colour", "darkColor", { disabled = function() return UF:db().healthColor ~= "dark" end })
     L:Toggle("Class colour behind the bar", "classBackdrop", { tooltip = "The empty part of the health bar in a dim class colour, so a dark bar still says who it is." })
-    L:Slider("Behind the bar, strength", "bgAlpha", 0, 1, 0.05, { disabled = function() return not UF:db().classBackdrop end })
+    L:Slider("Colour behind the bar, strength", "bgAlpha", 0, 1, 0.05, { disabled = function() return not UF:db().classBackdrop end })
     L:Slider("Colour strength", "colorStrength", 0.4, 1, 0.05, {
         tooltip = "How bright the class and reaction colours are on the bars. 1 is the game's colour as it is; lower keeps the hue and takes the glare off pale ones like hunter and priest.",
     })
-    L:Color("Cast bar", "castColor")
+    L:Color("Cast bar", "castColor", { fallback = function() return UF:CastColor() end,
+        tooltip = "Until you pick one, the look's accent: your class colour while the theme follows your class. Right-click to follow the look again." })
     L:Color("Cast bar, cannot interrupt", "castLocked")
 
     L:Heading("Behaviour")
@@ -56,18 +57,22 @@ ns.Config:AddPage("unitframes", "Unit Frames", function(L)
         end,
         tooltip = "Sets the text on every unit frame at once: names and health at this size, power and cast bars a little smaller. Each frame's own page can still change one text afterwards.",
     })
-    L:Toggle("Fel border on your target", "targetBorder", { tooltip = "Whichever party or raid frame belongs to what you are targeting gets a fel border." })
-    L:Slider("Out of range alpha", "rangeAlpha", 0.1, 1, 0.05)
+    L:Toggle("Accent border on your target", "targetBorder", { tooltip = "Whichever party or raid frame belongs to what you are targeting gets a border in the look's accent." })
+    L:Slider("Out of range, opacity", "rangeAlpha", 0.1, 1, 0.05)
     L:Button("Preview group frames", function()
         if ns.UnitGroups then ns.UnitGroups:SetTestMode(not ns.UnitGroups.testing) end
     end, { tooltip = "Shows the party and raid frames with you in them, so they can be moved and sized without a group. Click again to stop." })
 end, { onChange = update, order = 20 })
 
-local function textSection(L, key, slot, title)
+-- off: whether the whole frame is switched off. A section's settings grey
+-- out with it, and with the section's own Show.
+local function textSection(L, key, slot, title, off)
     local function td() return UF:UnitDB(key).texts[slot] end
     L:Heading(title)
     L:DB(td)
+    L:DisabledWhen(off)
     L:Toggle("Show", "enable")
+    L:DisabledWhen(function() return off() or not td().enable end)
     L:Dropdown("Shows", "tag", ns.TagList, { tooltip = "Pick one, or type your own tag string in the box beside." })
     L:Input("Tag string", "tag", { tooltip = "Any oUF tags, for example  [wui:level] [name]  or  [wui:perhp]. The wui: tags are safe with this client's secret health." })
     L:Dropdown("Position", "point", POINTS)
@@ -76,10 +81,12 @@ local function textSection(L, key, slot, title)
     L:Slider("Size", "size", 6, 24, 1)
 end
 
-local function auraSection(L, key, which, title)
+local function auraSection(L, key, which, title, off)
     L:Heading(title)
     L:DB(function() return UF:UnitDB(key)[which] end)
+    L:DisabledWhen(off)
     L:Toggle("Show", "enable")
+    L:DisabledWhen(function() return off() or not UF:UnitDB(key)[which].enable end)
     L:Toggle("Only mine", "onlyMine")
     L:Dropdown("Side", "attach", SIDES)
     -- Starting from the right grows the row to the left, and from the left
@@ -117,8 +124,11 @@ local function unitPage(key, order)
             table = function(other) return UF:UnitDB(other) end,
             skip = { enable = true, visibility = true },
         })
+        -- With the frame switched off, everything below Enable greys out.
+        local function off() return not d().enable end
         L:Heading("Frame")
         L:Toggle("Enable", "enable")
+        L:DisabledWhen(off)
         L:Toggle("Fade out of range", "rangeFade")
         L:Slider("Width", "width", 40, 500, 1)
         L:Slider("Height", "height", 10, 120, 1)
@@ -143,23 +153,25 @@ local function unitPage(key, order)
             end
             L:Heading("For healers")
             L:Toggle("A debuff you can dispel, in the middle", "centerDebuff", { tooltip = "Drawn by the client, so it works in combat. Takes effect after a reload." })
-            L:Slider("Its size", "centerSize", 10, 40, 1)
+            L:Slider("Its size", "centerSize", 10, 40, 1, { disabled = function() return not d().centerDebuff end })
             L:Toggle("Your own heals over time, top right", "myHots", { tooltip = "Up to three of your buffs on them. Takes effect after a reload." })
-            L:Slider("Their size", "hotSize", 6, 20, 1)
+            L:Slider("Their size", "hotSize", 6, 20, 1, { disabled = function() return not d().myHots end })
             L:TextArea("Visibility", "visibility", {
                 tooltip = "When the frames show, as a macro condition.",
                 default = function() return ns.defaults.profile.unitframes.units[key].visibility end,
             })
         end
 
-        textSection(L, key, "left", "Left text")
-        textSection(L, key, "right", "Right text")
-        textSection(L, key, "power", "Power text")
+        textSection(L, key, "left", "Left text", off)
+        textSection(L, key, "right", "Right text", off)
+        textSection(L, key, "power", "Power text", off)
 
         if d().castbar then
             L:Heading("Cast bar")
             L:DB(function() return d().castbar end)
+            L:DisabledWhen(off)
             L:Toggle("Show", "enable")
+            L:DisabledWhen(function() return off() or not d().castbar.enable end)
             L:Toggle("Icon", "icon")
             L:Slider("Width", "width", 40, 600, 1)
             L:Slider("Height", "height", 6, 60, 1)
@@ -169,11 +181,12 @@ local function unitPage(key, order)
             if key == "player" then L:Toggle("Latency", "latency", { tooltip = "The red end of the bar is your latency: past it, the next cast can already be queued." }) end
         end
 
-        if d().buffs then auraSection(L, key, "buffs", "Buffs") end
-        if d().debuffs then auraSection(L, key, "debuffs", "Debuffs") end
+        if d().buffs then auraSection(L, key, "buffs", "Buffs", off) end
+        if d().debuffs then auraSection(L, key, "debuffs", "Debuffs", off) end
 
         L:Heading("Icons")
         L:DB(d)
+        L:DisabledWhen(off)
         L:Toggle("Raid marker", "raidIcon")
         L:Toggle("Leader and assistant", "leader")
         if key == "player" then
@@ -195,6 +208,8 @@ local function unitPage(key, order)
         L:Toggle("Being resurrected", "resurrect")
         L:Toggle("Being summoned", "summon")
 
+        -- A switched-off frame can still be put back to its defaults.
+        L:DisabledWhen(nil)
         L:Button("Reset this frame", function()
             W:Confirm(("Put every setting for the %s frame back to its default?"):format(UF.LABELS[key]), function()
                 local fresh = ns:Copy(ns.defaults.profile.unitframes.units[key])

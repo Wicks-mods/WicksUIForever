@@ -108,6 +108,7 @@ function TT:StyleHealthBar()
     local e = extras[bar] or {}
     extras[bar] = e
     bar:SetStatusBarTexture(ns.Media:Statusbar())
+    ns:TrackStatusBar(bar)
     bar:SetHeight(5)
     bar:ClearAllPoints()
     bar:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 1, -3)
