@@ -138,7 +138,7 @@ function Layout:Color(text, key, opts)
     opts = opts or {}
     return self:Place(W:Color(self.content, text, opts.get or getter(self, key),
         opts.setter or setter(self, key, opts.set), { width = COL_W, alpha = opts.alpha, disabled = disabledFor(self, opts),
-        tooltip = opts.tooltip, fallback = opts.fallback }), opts.span, key)
+        tooltip = opts.tooltip, fallback = opts.fallback, follows = opts.follows }), opts.span, key)
 end
 
 function Layout:Input(text, key, opts)

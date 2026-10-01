@@ -601,6 +601,17 @@ end
 local glyphs = setmetatable({}, { __mode = "k" })
 ns.glyphs = glyphs
 
+-- A glyph button the game switches off (a page arrow on the last page, the
+-- stack split at its smallest) reads as off, its mark faded. Followed
+-- through the game's own switches; never on a protected button.
+local function glyphEnabled(b)
+    local g = glyphs[b]
+    if not (g and g.mark) then return end
+    local on = not (b.IsEnabled and not b:IsEnabled())
+    g.mark:SetAlpha(on and 1 or 0.35)
+end
+ns.GlyphEnabled = glyphEnabled
+
 function ns:Glyph(b, name, opts)
     if not b then return end
     opts = opts or {}
@@ -637,7 +648,13 @@ function ns:Glyph(b, name, opts)
         hover:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(hover, "fel", "vertex", 1)
         g.hover = hover
+        if not (b.IsProtected and b:IsProtected()) then
+            for _, m in ipairs({ "Enable", "Disable", "SetEnabled" }) do
+                if type(b[m]) == "function" then hooksecurefunc(b, m, glyphEnabled) end
+            end
+        end
     end
+    glyphEnabled(b)
     if g.name ~= name then
         g.name = name
         g.mark:SetTexture(ns.Media:Glyph(name))

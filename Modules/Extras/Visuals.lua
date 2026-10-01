@@ -152,12 +152,15 @@ end, { onChange = function() VX:Apply() end, order = 91 })
 -- Combat text
 -- ============================================================
 -- The game's floating combat text: the numbers over what you hit, and the
--- scrolling text around your own character. Most of it the game's own
--- settings leave out. Every control here reads and writes the game's own
--- setting, so the choices are account-wide and hold without Wick's UI; a
--- setting this client locks shows greyed out.
--- The game reads these through a cache that an addon's change does not
--- clear, so every change here shows after a reload, and asks for one.
+-- scrolling text around your own character. Which lines show, and how the
+-- numbers move, are the game's own settings, most of them left out of its
+-- options: every control for those reads and writes the game's setting,
+-- so the choices are account-wide and hold without Wick's UI; a setting
+-- this client locks shows greyed out. The game reads them through a cache
+-- that an addon's change does not clear, so they show after a reload, and
+-- ask for one.
+-- Your own text as Wick's UI draws it (Modules/Extras/CombatText.lua) has
+-- settings of the profile's, which change at once.
 local function askReload(text)
     local Chrome = ns.Core.Chrome
     if Chrome.ReloadPrompt then Chrome:ReloadPrompt(text or "Combat text changes show after a reload.") end
@@ -176,6 +179,7 @@ local function cvNum(name) return function() return tonumber(get(name) or "") or
 local function cvSetNum(name) return function(v) if usable(name) then set(name, tostring(v)); askReload() end end end
 local function locked(name) return function() return not usable(name) end end
 local SELF = "enableFloatingCombatText"
+local FLOAT = "floatingCombatTextFloatMode_v2"
 
 -- Blizzard's own combat text is an addon of its own. It loads at startup
 -- when this is on, or when it is switched through the game's settings,
@@ -202,18 +206,153 @@ local function selfToggle(L, label, name, tip)
         disabled = selfOff(name), tooltip = tip,
     })
 end
+local function cvSlider(L, label, name, lo, hi, step, tip)
+    L:Slider(label, name, lo, hi, step, {
+        get = cvNum(name), setter = cvSetNum(name), disabled = locked(name), tooltip = tip,
+    })
+end
+
+-- How the numbers over what you hit move, each with the game's own value
+-- (this client's console list) for when it cannot say.
+local NUMBERS = {
+    WorldTextScale_v2 = "1",
+    floatingCombatTextCombatDamageDirectionalScale_v2 = "0",
+    floatingCombatTextCombatDamageDirectionalOffset_v2 = "1",
+    WorldTextGravity_v2 = "0.5",
+    WorldTextRandomXY_v2 = "0",
+    WorldTextStartPosRandomness_v2 = "1",
+    WorldTextNonRandomZ_v2 = "2",
+    WorldTextMinAlpha_v2 = "0.5",
+    WorldTextScreenY_v2 = "0",
+    WorldTextCritScreenY_v2 = "0",
+}
+VX.NUMBERS = NUMBERS
+
+function VX:ResetNumbers()
+    for name, value in pairs(NUMBERS) do
+        if usable(name) then
+            local game
+            if CV and CV.GetCVarDefault then
+                local ok, v = pcall(CV.GetCVarDefault, name)
+                if ok and type(v) == "string" then game = v end
+            end
+            set(name, game or value)
+        end
+    end
+    askReload()
+end
+
+-- Your own text's direction is ours while Wick's UI draws it, the game's
+-- otherwise. Ours is set with the game's, so the game runs the same way if
+-- it draws again.
+local DIRS = { "up", "down", "arc" }
+local DIR_NUM = { up = 1, down = 2, arc = 3 }
+local function drawn() return ns.CombatText and ns.CombatText:Drawing() end
+
+local function fontValues()
+    local out = {}
+    for _, name in ipairs(ns.Media:List("font")) do out[#out + 1] = { name, name, name } end
+    return out
+end
 
 ns.Config:AddPage("combattext", "Combat text", function(L)
-    L:Note("The game's floating combat text. These are the game's own settings, so they are account-wide and hold with Wick's UI switched off. Changes show after a reload.")
-    L:Toggle("In the look's font", "combatTextFont", {
+    local CT = ns.CombatText
+    local W = ns.Widgets
+    local notOurs = function() return ns:G().combatTextFont == false end
+    local selfIsOff = function() return get(SELF) ~= "1" end
+
+    L:Note("The game's floating combat text: the numbers over what you hit, and the text round your own character. Which lines show and how the numbers move are the game's own settings, so they are account-wide, hold with Wick's UI switched off and show after a reload. Your own text as Wick's UI draws it changes at once.")
+    L:Toggle("Wick's UI keeps the combat text", "combatTextFont", {
         get = function() return ns:G().combatTextFont ~= false end,
         setter = function(v)
             ns:G().combatTextFont = v and true or false
             if ns.Media and ns.Media.WorldFonts then ns.Media:WorldFonts() end
             ns.A:Print("the numbers over what you hit change font after a relog; your own combat text changes now.")
         end,
-        tooltip = "The numbers and your own scrolling text in the look's font. Off leaves them to the game, or to a combat text addon.",
+        tooltip = "Your own combat text drawn by Wick's UI, and the numbers over what you hit in the font picked below. Off leaves both to the game, or to a combat text addon.",
     })
+
+    L:Heading("Your own combat text")
+    L:Toggle("Show it", SELF, {
+        get = cvOn(SELF), setter = setSelf, disabled = locked(SELF),
+        tooltip = "The text that scrolls round your character: what hits you, heals you and happens to you. Wick's UI draws it from the game's, so it needs this on.",
+    })
+    L:Toggle("Drawn by Wick's UI", "drawn", {
+        get = function() return CT:db().enable ~= false end,
+        setter = function(v) CT:db().enable = v and true or false end,
+        disabled = function() return notOurs() or selfIsOff() end,
+        tooltip = "Where you put it, in the font, size and colours below. Off leaves it to the game, in the middle of the screen in its own font and colours.",
+    })
+    L:Dropdown("Direction", FLOAT, { { 1, "Up" }, { 2, "Down" }, { 3, "Arc" } }, {
+        get = function()
+            if drawn() then return DIR_NUM[CT:db().direction] or 1 end
+            return cvNum(FLOAT)()
+        end,
+        setter = function(v)
+            if drawn() then
+                CT:db().direction = DIRS[v] or "up"
+                if usable(FLOAT) then set(FLOAT, tostring(v)) end
+            else
+                cvSetNum(FLOAT)(v)
+            end
+        end,
+        disabled = selfOff(FLOAT),
+        tooltip = "Which way your text runs. Drawn by Wick's UI it changes at once; left to the game, after a reload.",
+    })
+    L:DB(function() return CT:db() end)
+    L:DisabledWhen(function() return not drawn() or selfIsOff() end)
+    L:Toggle("Spread damage sideways", "stagger", {
+        tooltip = "Damage lines start a little apart from side to side, as the game draws them.",
+    })
+    L:Dropdown("Font", "font", fontValues, { tooltip = "Wick is the look's own." })
+    L:Dropdown("Outline", "outline", W.Values(ns.Media.outlines, ns.Media.outlineLabels))
+    L:Slider("Text size", "size", 10, 36, 1)
+    L:Slider("Crit size", "critSize", 12, 48, 1, {
+        tooltip = "A crit pops out larger for a moment, then holds at this size where it landed.",
+    })
+    L:Slider("Scale", "scale", 0.5, 2, 0.05, { tooltip = "All of it at once: the text, how far it travels and the gaps." })
+    L:Slider("Distance it travels", "distance", 60, 500, 10)
+    L:Slider("Time on screen", "duration", 0.5, 5, 0.1, { tooltip = "Seconds. The game's own is 1.9." })
+    L:Slider("Fades over its last", "fade", 0.1, 5, 0.1, {
+        tooltip = "Seconds. The game's own is 0.6. It can be no longer than the time on screen.",
+    })
+    L:Button("Show a sample", function() CT:Sample() end, {
+        tooltip = "A line of each kind, to see your settings without a fight.",
+    })
+    L:Button("Move it", function() ns.Config:Hide(); ns.Movers:Unlock() end, {
+        tooltip = "Unlocks the frames. Drag the box marked Your combat text; the text runs inside it, and a sample plays while it is unlocked.",
+    })
+    L:Heading("Colours of your own text")
+    for _, k in ipairs(CT.KINDS) do
+        L:Color(k.label, k.key, {
+            get = function() local c = CT:db().colors; return c and c[k.key] end,
+            setter = function(v)
+                local d = CT:db()
+                d.colors = d.colors or {}
+                d.colors[k.key] = v
+            end,
+            fallback = function() return CT:GameColor(k.key) end,
+            follows = "the game's",
+            tooltip = k.tip .. " Right-click to go back to the game's colour.",
+        })
+    end
+    L:DisabledWhen(nil)
+
+    L:Heading("What your own text shows")
+    selfToggle(L, "Dodges, parries and misses", "floatingCombatTextDodgeParryMiss_v2")
+    selfToggle(L, "Damage reduction", "floatingCombatTextDamageReduction_v2", "Resists, blocks and absorbs of what hits you.")
+    selfToggle(L, "Auras gained and lost", "floatingCombatTextAuras_v2")
+    selfToggle(L, "Entering and leaving combat", "floatingCombatTextCombatState_v2")
+    selfToggle(L, "Low health and mana", "floatingCombatTextLowManaHealth_v2")
+    selfToggle(L, "Power gains", "floatingCombatTextEnergyGains_v2", "Mana, rage and energy you gain.")
+    selfToggle(L, "Power gains over time", "floatingCombatTextPeriodicEnergyGains_v2", "Mana and energy that comes in ticks.")
+    selfToggle(L, "Spell alerts", "floatingCombatTextReactives_v2", "When an ability that needs a moment (Execute, Overpower) becomes usable.")
+    selfToggle(L, "Combo points", "floatingCombatTextComboPoints_v2")
+    selfToggle(L, "Heals from others", "floatingCombatTextFriendlyHealers_v2", "Who healed you, not only how much.")
+    selfToggle(L, "Shields put on you", "floatingCombatTextCombatHealingAbsorbSelf_v2")
+    selfToggle(L, "Reputation", "floatingCombatTextRepChanges_v2")
+    selfToggle(L, "Honor", "floatingCombatTextHonorGains_v2")
+
     L:Heading("Numbers over what you hit")
     cvToggle(L, "Damage", "floatingCombatTextCombatDamage_v2", "Your damage over the creatures and players you hit.")
     cvToggle(L, "Damage over time", "floatingCombatTextCombatLogPeriodicSpells_v2", "The ticks of your periodic spells.")
@@ -221,38 +360,33 @@ ns.Config:AddPage("combattext", "Combat text", function(L)
     cvToggle(L, "Every auto attack", "floatingCombatTextCombatDamageAllAutos_v2", "Off shows only the auto attacks worth noticing.")
     cvToggle(L, "Healing", "floatingCombatTextCombatHealing_v2", "Your healing over the one you heal.")
     cvToggle(L, "Shields you put up", "floatingCombatTextCombatHealingAbsorbTarget_v2")
-    L:Slider("Size", "WorldTextScale_v2", 0.5, 2.5, 0.05, {
-        get = cvNum("WorldTextScale_v2"), setter = cvSetNum("WorldTextScale_v2"), disabled = locked("WorldTextScale_v2"),
-        tooltip = "How big the numbers are.",
-    })
-    L:Slider("Numbers fly outward", "floatingCombatTextCombatDamageDirectionalScale_v2", 0, 3, 0.1, {
-        get = cvNum("floatingCombatTextCombatDamageDirectionalScale_v2"),
-        setter = cvSetNum("floatingCombatTextCombatDamageDirectionalScale_v2"),
-        disabled = locked("floatingCombatTextCombatDamageDirectionalScale_v2"),
-        tooltip = "How far the numbers travel away from where they land. 0 keeps them rising straight up.",
-    })
     cvToggle(L, "Float the way Classic did", "classicStyleWorldText", "The older way the numbers rise and fade.")
     cvToggle(L, "Threat changes", "threatWorldText", "The threat notes that float up in a fight.")
-
-    L:Heading("Your own combat text")
-    L:Toggle("Show it", SELF, {
-        get = cvOn(SELF), setter = setSelf, disabled = locked(SELF),
-        tooltip = "The text that scrolls round your character: what hits you, heals you and happens to you.",
+    L:Dropdown("Font", "numbersFont", fontValues, {
+        get = function() return CT:db().numbersFont or "Wick" end,
+        setter = function(v)
+            CT:db().numbersFont = v
+            if ns.Media and ns.Media.WorldFonts then ns.Media:WorldFonts() end
+            ns.A:Print("the numbers over what you hit change font after a relog.")
+        end,
+        disabled = notOurs,
+        tooltip = "Wick is the look's own. A new font shows after a relog, not a reload: the game reads it once, at login.",
     })
-    L:Dropdown("Direction", "floatingCombatTextFloatMode_v2", { { 1, "Up" }, { 2, "Down" }, { 3, "Arc" } }, {
-        get = cvNum("floatingCombatTextFloatMode_v2"), setter = cvSetNum("floatingCombatTextFloatMode_v2"),
-        disabled = selfOff("floatingCombatTextFloatMode_v2"),
+    L:Break()
+    cvSlider(L, "Size", "WorldTextScale_v2", 0.5, 2.5, 0.05, "How big the numbers are.")
+    cvSlider(L, "Numbers fly outward", "floatingCombatTextCombatDamageDirectionalScale_v2", 0, 3, 0.1,
+        "How far the numbers travel away from where they land. 0 keeps them rising straight up.")
+    cvSlider(L, "Start further out", "floatingCombatTextCombatDamageDirectionalOffset_v2", 0, 3, 0.1,
+        "How far from where they land the outward numbers start. Only while they fly outward.")
+    cvSlider(L, "Gravity", "WorldTextGravity_v2", 0, 2, 0.05, "How hard the numbers are pulled back down as they rise.")
+    cvSlider(L, "Scatter sideways", "WorldTextRandomXY_v2", 0, 3, 0.1, "How far apart the numbers drift from side to side.")
+    cvSlider(L, "Start spread", "WorldTextStartPosRandomness_v2", 0, 3, 0.1,
+        "How far from one spot the numbers start. 0 starts each one in the same place.")
+    cvSlider(L, "How high they rise", "WorldTextNonRandomZ_v2", 0, 6, 0.1, "How far up the numbers go before they fade.")
+    cvSlider(L, "Faintest before they go", "WorldTextMinAlpha_v2", 0, 1, 0.05, "How faint the numbers fade to before they go.")
+    cvSlider(L, "Higher on the screen", "WorldTextScreenY_v2", -0.5, 0.5, 0.01, "Moves the numbers up the screen, or down below 0.")
+    cvSlider(L, "Crits higher on the screen", "WorldTextCritScreenY_v2", -0.5, 0.5, 0.01, "The same for crits alone.")
+    L:Button("Put back the game's numbers", function() VX:ResetNumbers() end, {
+        tooltip = "Size and movement back to the game's own. Which numbers show is kept.",
     })
-    selfToggle(L, "Dodges, parries and misses", "floatingCombatTextDodgeParryMiss_v2")
-    selfToggle(L, "Damage reduction", "floatingCombatTextDamageReduction_v2", "Resists, blocks and absorbs of what hits you.")
-    selfToggle(L, "Auras gained and lost", "floatingCombatTextAuras_v2")
-    selfToggle(L, "Entering and leaving combat", "floatingCombatTextCombatState_v2")
-    selfToggle(L, "Low health and mana", "floatingCombatTextLowManaHealth_v2")
-    selfToggle(L, "Power gains", "floatingCombatTextEnergyGains_v2", "Mana, rage and energy you gain.")
-    selfToggle(L, "Spell alerts", "floatingCombatTextReactives_v2", "When an ability that needs a moment (Execute, Overpower) becomes usable.")
-    selfToggle(L, "Combo points", "floatingCombatTextComboPoints_v2")
-    selfToggle(L, "Heals from others", "floatingCombatTextFriendlyHealers_v2", "Who healed you, not only how much.")
-    selfToggle(L, "Shields put on you", "floatingCombatTextCombatHealingAbsorbSelf_v2")
-    selfToggle(L, "Reputation", "floatingCombatTextRepChanges_v2")
-    selfToggle(L, "Honor", "floatingCombatTextHonorGains_v2")
-end, { order = 92 })
+end, { order = 92, onChange = function() if ns.CombatText then ns.CombatText:Refresh() end end })

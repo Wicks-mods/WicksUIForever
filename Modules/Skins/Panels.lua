@@ -60,7 +60,7 @@ PS.WINDOWS = {
     "LFDRoleCheckPopup", "RolePollPopup", "GuildInviteFrame", "PVPReadyDialog", "LFGInvitePopup",
     "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4",
     "ContainerFrame5", "ContainerFrame6", "CompactRaidFrameManager", "PetStableFrame",
-    "ClickBindingFrame", "LegacySystemFrame",
+    "ClickBindingFrame", "LegacySystemFrame", "StackSplitFrame",
 }
 
 local done = setmetatable({}, { __mode = "k" })
@@ -133,6 +133,20 @@ local function styleText(fs, size, color)
 end
 
 local textButtons = setmetatable({}, { __mode = "k" })
+
+-- A button the game has switched off (Complete Quest before the items are
+-- in your bags, Add Binding while one waits) reads as off: its pill
+-- dimmed and its text faded. Blizzard's disabled art goes with the rest,
+-- and the grey of its disabled text alone read like the buttons beside it.
+-- Painted when styled, then after each of Blizzard's own switches.
+local function paintEnabled(b)
+    local e = extras[b]
+    local on = not (b.IsEnabled and not b:IsEnabled())
+    if e and e.backdrop then e.backdrop:SetAlpha(on and 1 or 0.4) end
+    local fs = b.Text or (b.GetFontString and b:GetFontString())
+    if fs and fs.SetAlpha then fs:SetAlpha(on and 1 or 0.6) end
+end
+
 local function styleButton(b)
     if not b or done[b] or not db().buttons then return end
     done[b] = true
@@ -161,7 +175,12 @@ local function styleButton(b)
     backdrop(b, "Shadow", false, 1)
     local text = b.Text or (b.GetFontString and b:GetFontString())
     styleText(text)
+    paintEnabled(b)
+    for _, m in ipairs({ "Enable", "Disable", "SetEnabled" }) do
+        if type(b[m]) == "function" then hooksecurefunc(b, m, paintEnabled) end
+    end
 end
+PS.styleButton = styleButton
 
 -- The small X in the corner, redrawn as ours.
 -- Its own guard: the scanner may already have greyed it as an arrow.
@@ -2007,6 +2026,52 @@ local function styleSpinner(f)
     styleStepper(f.IncrementButton, ">")
 end
 
+-- The stack split (shift-click a stack): its box, border and number well
+-- are one old money-frame texture, swapped for a larger one when a vendor
+-- sells by the stack. Both go for the look's panel, with the number in a
+-- well of ours between the arrow marks and pill buttons under it. The game
+-- lays it out again each time it opens, one number or the stacks over a
+-- total, and the well follows.
+local function placeSplitWell(frame)
+    local e = extras[frame]
+    local w = e and e.well
+    local l, r = frame.LeftButton, frame.RightButton
+    if not (w and l and r) then return end
+    w:ClearAllPoints()
+    -- By the stack, the count of stacks sits a line above the arrows.
+    w:SetPoint("TOPLEFT", l, "TOPRIGHT", 3, frame.isMultiStack and 15 or 3)
+    w:SetPoint("BOTTOMRIGHT", r, "BOTTOMLEFT", -3, -3)
+end
+PS.placeSplitWell = placeSplitWell
+
+PS.SPECIAL.StackSplitFrame = function(frame)
+    fadeRegions(frame)
+    backdrop(frame, "Default", db().brackets)
+    local e = extras[frame]
+    local l, r = frame.LeftButton, frame.RightButton
+    if l and r and not e.well then
+        local well = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+        ns:Fill(well, C.void[1], C.void[2], C.void[3], 0.9)
+        local ring = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+        ring:SetPoint("TOPLEFT", well)
+        ring:SetPoint("BOTTOMRIGHT", well)
+        ns:SetRing(ring, frame)
+        ring:SetVertexColor(C.border[1], C.border[2], C.border[3], 1)
+        Chrome:Register(ring, "border", "vertex")
+        e.well, e.wellRing = well, ring
+        placeSplitWell(frame)
+        if type(frame.ChooseFrameType) == "function" then
+            hooksecurefunc(frame, "ChooseFrameType", placeSplitWell)
+        end
+    end
+    styleText(frame.StackSplitText, 16, C.text)
+    styleText(frame.StackItemCountText, 12, C.muted)
+    styleStepper(l, "<")
+    styleStepper(r, ">")
+    styleButton(frame.OkayButton)
+    styleButton(frame.CancelButton)
+end
+
 -- Settings headings carry Blizzard's Options_CategoryHeader bars; fading
 -- them each pass (they are redrawn as the list scrolls) and saying so.
 local function optionsHeader(f)
@@ -3192,11 +3257,50 @@ PS.SPECIAL.LFGListingFrame = function(frame)
     return "generic"
 end
 
+-- The reward you have chosen. Blizzard marks it by moving one highlight
+-- frame onto it, painted with a gold glow that the art pass takes away
+-- with the rest of the parchment's art, so nothing showed. The chosen
+-- reward wears the accent ring round its icon and an accent wash behind
+-- its name instead, read from Blizzard's own choice on every frame.
+local function markRewardChoice()
+    local rf = rawget(_G, "QuestInfoRewardsFrame")
+    if not (rf and rf:IsVisible()) then return end
+    local qi = rawget(_G, "QuestInfoFrame")
+    local choice = qi and qi.itemChoice
+    for _, b in ipairs(rf.RewardButtons or {}) do
+        local icon = b.Icon
+        if icon and b:IsShown() then
+            local e = extras[b] or {}
+            extras[b] = e
+            if not e.choiceRing then
+                local ring = b:CreateTexture(nil, "OVERLAY", nil, 7)
+                ns:SetRing(ring, b)
+                ring:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
+                ring:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
+                ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                Chrome:Register(ring, "fel", "vertex", 1)
+                -- Behind the name, over Blizzard's name plate.
+                local wash = b:CreateTexture(nil, "BORDER", nil, -8)
+                wash:SetPoint("TOPLEFT", icon, "TOPRIGHT", 2, 0)
+                wash:SetPoint("BOTTOM", icon, "BOTTOM", 0, 0)
+                wash:SetPoint("RIGHT", b, "RIGHT", -2, 0)
+                ns:Fill(wash, C.fel[1], C.fel[2], C.fel[3], 0.18)
+                e.choiceRing, e.choiceWash = ring, wash
+            end
+            local chosen = b.type == "choice" and type(choice) == "number" and choice > 0 and b:GetID() == choice
+            e.choiceRing:SetShown(chosen)
+            e.choiceWash:SetShown(chosen)
+        end
+    end
+end
+PS.markRewardChoice = markRewardChoice
+
 -- The talking windows: one black card over the content (the Inset), the
 -- parchment's pieces stripped without cards of their own.
 for _, name in ipairs({ "GossipFrame", "QuestFrame", "QuestLogPopupDetailFrame", "ItemTextFrame" }) do
     PS.SPECIAL[name] = function(frame)
         fullSkin(frame, function(f)
+            if name == "QuestFrame" then markRewardChoice() end
             local host = f.Inset or f
             if host:IsVisible() then
                 local c

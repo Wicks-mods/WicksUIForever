@@ -1,5 +1,41 @@
 # Wick's UI
 
+## 0.9.2 (2026-10-01)
+
+### Combat text
+
+- Your own combat text, the lines round your character, is drawn by
+  Wick's UI where you put it. It has a box of its own among the frames
+  you move, with a sample running in it while they are unlocked.
+- Its font, outline, text size, crit size and scale are yours, and so are
+  which way it runs (up, down or in an arc), how far, how long it stays
+  and how it fades. Crits pop and hold where they land, as the game's do.
+- Each kind of line keeps the game's colour until you pick one: damage,
+  spell damage, heals, power, reputation, spell alerts and the rest.
+  Right-click a colour to go back to the game's. Show a sample plays a
+  line of each.
+- The numbers over what you hit can take a font of their own, and their
+  gravity, scatter, start spread, rise, fade and place on the screen can
+  be set. A button puts the game's own back.
+- Power gains that come in ticks can be shown.
+
+### Windows
+
+- The stack split, when you shift-click a stack to split it, is dressed
+  in the look: the number in a well between the arrow marks, and Okay and
+  Cancel as pills.
+
+### Fixes
+
+- The quest reward you choose is marked again, with the accent ring
+  round its icon and a wash behind its name. The game's own marker had
+  gone with the window's old art.
+- A button the game has switched off is dimmed, so you can tell whether
+  you can click it. The quest giver's Continue stays dim until the items
+  the quest needs are in your bags.
+- Arrow buttons the game switches off are faded too: the page arrows on
+  the last page, the stack split's arrows at either end.
+
 ## 0.9.1 (2026-09-30)
 
 ### Nameplates

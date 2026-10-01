@@ -161,7 +161,8 @@ end
 -- The text the game draws over the world in the look's fonts:
 --   names over units and the damage numbers over enemies: two globals
 --     the client reads at login (a relog shows a change, a reload does
---     not); Blizzard's own code only ever sets them.
+--     not); Blizzard's own code only ever sets them. The numbers take the
+--     font picked under Combat text, the look's until one is.
 --   the zone name as you enter (in the look's heading face, it is a title),
 --     the subzone, the PvP line under them and your own scrolling combat
 --     text: shared font objects, so the text using them follows at once.
@@ -189,6 +190,15 @@ local function combatTextOurs()
     local g = A and A.db and A.db.profile and A.db.profile.general
     return not g or g.combatTextFont ~= false
 end
+-- The numbers' own font, picked under Combat text; the Wick font is the
+-- look's.
+local function numbersFont(body)
+    local A = ns.A
+    local ct = A and A.db and A.db.profile and A.db.profile.combattext
+    local name = ct and ct.numbersFont
+    if not name or name == "Wick" then return body end
+    return M:Font(name)
+end
 function M:WorldFonts()
     if not LATIN[(GetLocale and GetLocale()) or "enUS"] then return end
     local Chrome = ns.Core and ns.Core.Chrome
@@ -201,7 +211,8 @@ function M:WorldFonts()
     face("PVPInfoTextFont", body)
     local ct = rawget(_G, "CombatTextFont")
     if combatTextOurs() then
-        DAMAGE_TEXT_FONT, oursDamage = body, body
+        local numbers = numbersFont(body)
+        DAMAGE_TEXT_FONT, oursDamage = numbers, numbers
         face("CombatTextFont", body)
         oursCombat = body
     else

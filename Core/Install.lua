@@ -85,7 +85,7 @@ local CONFLICTS = {
       get = function(p) return p.threat.enable ~= false and p.threat.meter ~= false end,
       set = function(p, on) p.threat.meter = on; if on then p.threat.enable = true end end },
     { key = "combattext", title = "Combat text", what = "the combat text", page = "Combat text",
-      ours = "Wick's UI sets the game's own combat text in the look's font, with its settings under Combat text.",
+      ours = "Wick's UI draws your own combat text where you put it, in the font, size and colours you pick, and sets the numbers over what you hit in the look's font. Its settings are under Combat text.",
       addons = { { "MikScrollingBattleText", "MSBT" }, { "xCT+", "xCT+" }, { "Parrot", "Parrot" },
                  { "NameplateSCT", "NameplateSCT" }, { "sct", "SCT" } },
       get = function(p) return p.general.combatTextFont ~= false end,

@@ -561,7 +561,8 @@ end
 -- get returns { r, g, b, a } (array or keyed); set receives { r, g, b, a }.
 -- opts.fallback: for a colour that follows the look until one is picked.
 -- get() is nil then, and the swatch shows fallback() with the label saying
--- so; a right-click lets a picked colour go again.
+-- so; a right-click lets a picked colour go again. opts.follows names what
+-- it follows on the label ("the game's"), the look's when not given.
 local function rgba(c)
     if not c then return 1, 1, 1, 1 end
     return c[1] or c.r or 1, c[2] or c.g or 1, c[3] or c.b or 1, c[4] or c.a or 1
@@ -582,6 +583,7 @@ function W:Color(parent, text, get, set, opts)
     f.labelText = text
     local hasAlpha = opts and opts.alpha
     local fallback = opts and opts.fallback
+    local follows = (opts and opts.follows) or "the look's"
     local function current() return get() or (fallback and fallback()) end
     if fallback then
         f:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -632,7 +634,7 @@ function W:Color(parent, text, get, set, opts)
         fill:SetColorTexture(rgba(current()))
         if fallback then
             local following = get() == nil
-            f.text:SetText(following and (text .. "  " .. Chrome:Esc("muted") .. "the look's|r") or text)
+            f.text:SetText(following and (text .. "  " .. Chrome:Esc("muted") .. follows .. "|r") or text)
         end
     end
     base(f, opts)
