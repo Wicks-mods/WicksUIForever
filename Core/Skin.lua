@@ -225,6 +225,9 @@ function ns:SetTemplate(f, template, opts)
     end
     if t.bg then
         paint(f.wuiBG, t.bg, opts.alpha or t.alpha)
+        -- A flat look can be see-through (Crisp): its panels, not its
+        -- tiles and buttons, which stay solid on them.
+        f.wuiBG:SetAlpha((template ~= "Shadow" and Chrome.GlassAlpha) and Chrome:GlassAlpha(1) or 1)
         f.wuiBG:Show()
     else
         f.wuiBG:Hide()
