@@ -1013,6 +1013,40 @@ local function windowPos(n)
     return type(all) == "table" and all[n] or nil
 end
 
+-- A page that fills a window, such as the group finder's Browse and
+-- Listing pages inside LFGParentFrame, is not a window of its own. Its
+-- title bar drags the window it sits in, and the spot is kept under that
+-- window's name. Dragging a page on its own pulled it out of the window:
+-- it lost the anchors that size it to the window, came back at its own
+-- spot each time, and left the window standing empty beside it. In the
+-- client's own layout the listed frames parented to another listed window
+-- are all pages of this kind (Statistics in the character window, Browse
+-- and Listing in the group finder), each set to fill its window.
+local isWindow
+local function windowOf(n, frame)
+    if not isWindow then
+        isWindow = {}
+        for _, w in ipairs(PS.WINDOWS) do isWindow[w] = true end
+    end
+    local parent = frame.GetParent and frame:GetParent()
+    local pn = parent and parent ~= UIParent and parent.GetName and parent:GetName()
+    if pn and isWindow[pn] and _G[pn] == parent then return pn, parent end
+    return n, frame
+end
+
+-- A page dragged loose by an earlier version goes back into its window,
+-- and the spot saved for it is dropped.
+local function seatPage(n, page, window)
+    local all = db().windowPos
+    if type(all) == "table" then all[n] = nil end
+    if InCombatLockdown() then return end
+    local _, rel = page:GetPoint(1)
+    if page:GetNumPoints() ~= 2 or rel ~= window then
+        page:ClearAllPoints()
+        page:SetAllPoints(window)
+    end
+end
+
 local function applyWindowPos(n, frame)
     local pos = windowPos(n)
     if not pos or InCombatLockdown() then return end
@@ -1031,6 +1065,9 @@ local function windowMover(n, frame)
     local e = extras[frame] or {}
     extras[frame] = e
     if e.mover then return e.mover end
+    -- The frame that moves, and the name its spot is kept under: the
+    -- window itself, or for a page, the window round it.
+    local tn, target = windowOf(n, frame)
     local bf = frame.BorderFrame or frame
     local title = bf.TitleContainer
     -- Our own strip over the title bar, clear of the close and size
@@ -1048,22 +1085,22 @@ local function windowMover(n, frame)
     m:EnableMouse(true)
     m:SetScript("OnMouseDown", function(_, button)
         if button ~= "LeftButton" or InCombatLockdown() or not db().moveWindows then return end
-        frame:SetMovable(true)
-        frame:SetClampedToScreen(true)
-        frame:StartMoving()
+        target:SetMovable(true)
+        target:SetClampedToScreen(true)
+        target:StartMoving()
         m.moving = true
     end)
     m:SetScript("OnMouseUp", function()
         if not m.moving then return end
         m.moving = false
-        frame:StopMovingOrSizing()
+        target:StopMovingOrSizing()
         -- Ours to remember, not the client's layout cache.
-        if frame.SetUserPlaced then pcall(frame.SetUserPlaced, frame, false) end
-        local left, top = frame:GetLeft(), frame:GetTop()
+        if target.SetUserPlaced then pcall(target.SetUserPlaced, target, false) end
+        local left, top = target:GetLeft(), target:GetTop()
         if not (left and top) then return end
-        local s = frame:GetEffectiveScale()
+        local s = target:GetEffectiveScale()
         if type(db().windowPos) ~= "table" then db().windowPos = {} end
-        db().windowPos[n] = { left * s, top * s }
+        db().windowPos[tn] = { left * s, top * s }
     end)
     e.mover = m
     return m
@@ -1075,7 +1112,9 @@ function PS.holdWindow(n, frame)
     local m = windowMover(n, frame)
     local on = db().moveWindows and true or false
     if m:IsShown() ~= on then m:SetShown(on) end
-    if on and not m.moving then applyWindowPos(n, frame) end
+    local tn, target = windowOf(n, frame)
+    if tn ~= n then seatPage(n, frame, target) end
+    if on and not m.moving then applyWindowPos(tn, target) end
 end
 
 -- Straight after Blizzard lays its windows out, before they are drawn.
@@ -1086,7 +1125,9 @@ function PS.restoreWindows()
     for n in pairs(all) do
         local f = rawget(_G, n)
         local e = f and extras[f]
-        if f and f.IsShown and f:IsShown() and not (e and e.mover and e.mover.moving) and movable(n) then
+        -- A page's spot is never laid on the page (holdWindow drops it).
+        if f and f.IsShown and f:IsShown() and not (e and e.mover and e.mover.moving) and movable(n)
+            and windowOf(n, f) == n then
             applyWindowPos(n, f)
         end
     end
@@ -3748,6 +3789,15 @@ function PS:Skin(frame)
     if screenSized(frame) then return end
     local name = frame:GetName()
     if name and excluded(name) then return end
+    -- On a client whose windows are the old Classic kind (TBC Anniversary),
+    -- a window without the portrait template's parts has nothing the pass
+    -- below undresses, and a backdrop cut to its full rect would stand
+    -- proud of its art. Those keep Blizzard's art until the Classic pass
+    -- teaches this module their shapes; the few portrait-template windows
+    -- that client does have (mail, gossip, macros, trade) are skinned.
+    if ns.Core.Client.classicWindows and not (frame.NineSlice or frame.PortraitContainer or frame.TitleContainer) then
+        return
+    end
     done[frame] = true
     local d = db()
     if name and PS.SPECIAL[name] then
