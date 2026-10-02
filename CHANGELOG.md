@@ -34,6 +34,14 @@
   windows built on the portrait template keep the pass every window
   gets, and the old widgets inside them are looked over too.
 
+### Movers
+
+- The other Wick addons' bars, buttons and counters are movers too, in
+  the Wick addons group of /wui move, starting where you had them. An
+  addon hands its frame to WickCore; once Wick's UI has it, the addon's
+  own drag stands down and its move and reset commands point here.
+  Quest Key does so now; the rest follow as they move onto WickCore.
+
 ### Fixes
 
 - The group finder no longer comes apart. Dragging it by its title could

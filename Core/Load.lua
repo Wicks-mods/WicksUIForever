@@ -294,6 +294,7 @@ function A:OnEnable()
         ns:UpdatePixel()
         ns:ApplyScale()
         ns:InitializeModules()
+        ns.Movers:AdoptSuite()
         ns.Movers:PlaceAll()
     end, function(e) return tostring(e) .. "\n" .. (debugstack and debugstack(2, 6, 0) or "") end)
     if not ok then

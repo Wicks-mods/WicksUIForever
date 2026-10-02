@@ -458,7 +458,35 @@ ns.groupLabels = {
     auras      = "Buffs",
     misc       = "Everything else",
     datatexts  = "Info panels",
+    suite      = "Wick addons",
 }
+
+-- ============================================================
+-- The other Wick addons' frames
+-- ============================================================
+-- A bar, button or counter another Wick addon registers with WickCore
+-- (Chrome:RegisterMovable) takes a mover here, in the Wick addons group,
+-- so /wui move lists the whole suite. Once claimed, the addon's own drag
+-- stands down and this profile keeps the spot; the first default is
+-- wherever the addon had it. Frames registered after this runs are taken
+-- as they come.
+local function suiteName(e) return "suite_" .. e.key end
+function Movers:AdoptSuite()
+    if self.adopting then return end
+    local Chrome = ns.Core.Chrome
+    if not (Chrome and Chrome.WatchMovables) then return end
+    self.adopting = true
+    Chrome:WatchMovables(function(e)
+        local name = suiteName(e)
+        if not Movers.list[name] then
+            ns:CreateMover(e.frame, name, e.title, e.default, { groups = "suite" })
+        end
+        Chrome:ClaimMovable(e.key)
+        if unlocked then Movers:Resize(name) end
+    end, function(e)
+        Movers:Resize(suiteName(e))
+    end)
+end
 
 function Movers:ShowNudge(m)
     local n = self.nudge
