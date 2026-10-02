@@ -79,7 +79,7 @@ local function Update(self, event, unit)
 				status = 'FFA'
 			else
 				local factionGroup = UnitFactionGroup(unit)
-				if(unit == 'player' and UnitIsMercenary(unit)) then
+				if(unit == 'player' and UnitIsMercenary and UnitIsMercenary(unit)) then
 					if(factionGroup == 'Horde') then
 						factionGroup = 'Alliance'
 					elseif(factionGroup == 'Alliance') then
@@ -110,7 +110,7 @@ local function Update(self, event, unit)
 		end
 	else
 		local factionGroup = UnitFactionGroup(unit) or 'Neutral'
-		if(unit == 'player' and UnitIsMercenary(unit)) then
+		if(unit == 'player' and UnitIsMercenary and UnitIsMercenary(unit)) then
 			if(factionGroup == 'Horde') then
 				factionGroup = 'Alliance'
 			elseif(factionGroup == 'Alliance') then
@@ -130,8 +130,10 @@ local function Update(self, event, unit)
 			element:Show()
 
 			local honorRewardInfo
-			local honorLevel = UnitHonorLevel(unit)
-			if(not issecretvalue(honorLevel)) then
+			-- Honor levels and their badges are Mainline's; a client without
+			-- them (TBC Anniversary) shows the faction icon.
+			local honorLevel = UnitHonorLevel and UnitHonorLevel(unit)
+			if(honorLevel and not issecretvalue(honorLevel) and C_PvP and C_PvP.GetHonorRewardInfo) then
 				honorRewardInfo = C_PvP.GetHonorRewardInfo(honorLevel)
 			end
 
@@ -192,7 +194,9 @@ local function Enable(self)
 		element.ForceUpdate = ForceUpdate
 
 		self:RegisterEvent('UNIT_FACTION', Path)
-		self:RegisterEvent('HONOR_LEVEL_UPDATE', Path, true)
+		if(UnitHonorLevel) then
+			self:RegisterEvent('HONOR_LEVEL_UPDATE', Path, true)
+		end
 		self:RegisterEvent('PLAYER_REGEN_ENABLED', Path, true)
 
 		return true
@@ -209,7 +213,9 @@ local function Disable(self)
 		end
 
 		self:UnregisterEvent('UNIT_FACTION', Path)
-		self:UnregisterEvent('HONOR_LEVEL_UPDATE', Path)
+		if(UnitHonorLevel) then
+			self:UnregisterEvent('HONOR_LEVEL_UPDATE', Path)
+		end
 		self:UnregisterEvent('PLAYER_REGEN_ENABLED', Path)
 	end
 end
