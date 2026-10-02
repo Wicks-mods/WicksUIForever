@@ -55,6 +55,7 @@ Modules\Comforts\Glow.lua
 Modules\Comforts\Fixes.lua
 Modules\Skins\Skins.lua
 Modules\Skins\Panels.lua
+Modules\Skins\PanelsClassic.lua
 
 Core\Install.lua
 Core\Inspect.lua

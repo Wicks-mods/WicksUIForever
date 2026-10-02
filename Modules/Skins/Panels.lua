@@ -3784,6 +3784,17 @@ local function screenSized(f)
 end
 PS.screenSized = screenSized
 
+-- The pieces the Classic window pass (PanelsClassic.lua) builds on, shared
+-- here rather than copied there, so a look's change to a button or a tab
+-- reaches both kinds of window.
+PS.H = {
+    done = done, extras = extras, noCard = noCard,
+    fade = fade, fadeRegions = fadeRegions, backdrop = backdrop, card = card,
+    styleText = styleText, styleButton = styleButton, styleClose = styleClose, styleEditBox = styleEditBox,
+    styleItemButton = styleItemButton, styleSlot = styleSlot, paintSlots = paintSlots,
+    scanButtons = scanButtons, recolorText = recolorText, isIcon = isIcon, isOwn = isOwn,
+}
+
 function PS:Skin(frame)
     if not frame or done[frame] or (frame.IsForbidden and frame:IsForbidden()) then return end
     if screenSized(frame) then return end
@@ -3792,11 +3803,14 @@ function PS:Skin(frame)
     -- On a client whose windows are the old Classic kind (TBC Anniversary),
     -- a window without the portrait template's parts has nothing the pass
     -- below undresses, and a backdrop cut to its full rect would stand
-    -- proud of its art. Those keep Blizzard's art until the Classic pass
-    -- teaches this module their shapes; the few portrait-template windows
-    -- that client does have (mail, gossip, macros, trade) are skinned.
+    -- proud of its art. The Classic pass (PanelsClassic.lua) knows those
+    -- windows' shapes and takes them whole. A dialog (a border or a
+    -- background piece that fills its rect) is the same shape on every
+    -- client and takes the pass below; anything else of the old kind keeps
+    -- Blizzard's art.
     if ns.Core.Client.classicWindows and not (frame.NineSlice or frame.PortraitContainer or frame.TitleContainer) then
-        return
+        if PS.Classic and PS.Classic:Claim(frame, name) then done[frame] = true return end
+        if not (frame.Border or frame.BG or frame.Bg or frame.Center) then return end
     end
     done[frame] = true
     local d = db()
@@ -3834,6 +3848,10 @@ function PS:Skin(frame)
 
     styleClose(frame.CloseButton or frame.ClosePanelButton or (name and _G[name .. "CloseButton"]))
     for _, t in ipairs(tabsOf(frame)) do styleTab(t) end
+    -- On a client whose windows are the old kind, the portrait-template
+    -- windows still hold old widgets (named tab pieces, scroll bars, text
+    -- boxes): the Classic pass looks those over, before the scan below.
+    if PS.Classic and ns.Core.Client.classicWindows then PS.Classic:Attach(frame) end
     scanButtons(frame, 1)
     if frame.buttons and type(frame.buttons) == "table" then
         for _, b in ipairs(frame.buttons) do styleButton(b) end

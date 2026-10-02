@@ -21,6 +21,13 @@
 - The retired ElvUI theme plugin kept its settings under this UI's name
   in the TBC folder; they are cleared once, with a line saying so, and
   the setup opens.
+- The windows of the old kind (character, spellbook, talents, quest log,
+  trainer, professions, bank, stable, flight master, battlegrounds,
+  auction house, guild bank, scoreboard, key bindings, bags) take the
+  look: our panel cut to the painted art, with their tabs, scroll bars,
+  text boxes, spell and item slots and list rows redrawn as ours. The
+  windows built on the portrait template keep the pass every window
+  gets, and the old widgets inside them are looked over too.
 
 ### Fixes
 
