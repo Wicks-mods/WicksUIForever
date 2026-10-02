@@ -1013,9 +1013,16 @@ do
 				-- to be any downsides to be parented there than to the unit frame within,
 				-- and this is the easier solution (no need to actively reparent and show/hide
 				-- the stock unit frame object)
-				nameplate.UnitFrame.WidgetContainer:SetParent(nameplate)
-				nameplate.UnitFrame.WidgetContainer:SetPoint('TOP', nameplate, 'BOTTOM')
-				nameplate.UnitFrame.SoftTargetFrame:SetParent(nameplate)
+				local blizzard = nameplate.UnitFrame
+				if(blizzard and not blizzard:IsForbidden()) then
+					if(blizzard.WidgetContainer) then
+						blizzard.WidgetContainer:SetParent(nameplate)
+						blizzard.WidgetContainer:SetPoint('TOP', nameplate, 'BOTTOM')
+					end
+					if(blizzard.SoftTargetFrame) then
+						blizzard.SoftTargetFrame:SetParent(nameplate)
+					end
+				end
 			end
 
 			if(UnitNameplateShowsWidgetsOnly(unit) or UnitIsGameObject(unit)) then

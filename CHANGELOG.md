@@ -14,6 +14,12 @@
   element with the same options, icons, counts, time left and dispel
   colours, built from C_UnitAuras. Cancelling a buff by click is not
   part of it; the buff display below is a secure header for that.
+- The game's own player, pet, target and focus frames, and its own
+  nameplates, are hidden on a client without role sets (what hides
+  them on Forever). They had stayed on screen under ours, as still
+  copies.
+- Where the game has no damage meter of its own, the bags clear a
+  Details window instead.
 - Your buffs and debuffs on such a client sit on two secure aura
   headers: the client's own secure code sorts them and places a
   button per aura, in combat too, and a right-click cancels a buff.

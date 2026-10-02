@@ -11,7 +11,21 @@ local isArenaHooked = false
 local isBossHooked = false
 local isPartyHooked = false
 
-local function handleFrame(baseName)
+-- Role sets keep a Mainline frame from ever showing. A client without them
+-- (TBC Anniversary) has the old way: the frame hidden and moved under a
+-- frame that never shows. Blizzard brings a nameplate's own frame back on
+-- every reuse, so those are hidden again whenever they show, and left
+-- where they are (the nameplate owns them).
+local hiddenParent = CreateFrame('Frame', nil, UIParent)
+hiddenParent:SetAllPoints()
+hiddenParent:Hide()
+
+local rehidden = setmetatable({}, { __mode = 'k' })
+local function hideAgain(frame)
+	frame:Hide()
+end
+
+local function handleFrame(baseName, doNotReparent)
 	local frame
 	if(type(baseName) == 'string') then
 		frame = _G[baseName]
@@ -21,7 +35,19 @@ local function handleFrame(baseName)
 
 	if(frame) then
 		frame:UnregisterAllEvents()
-		if(frame.SetRolesets) then frame:SetRolesets('alwaysBlocked') end
+		if(frame.SetRolesets) then
+			frame:SetRolesets('alwaysBlocked')
+		else
+			frame:Hide()
+			if(doNotReparent) then
+				if(not rehidden[frame]) then
+					rehidden[frame] = true
+					frame:HookScript('OnShow', hideAgain)
+				end
+			else
+				frame:SetParent(hiddenParent)
+			end
+		end
 
 		local health = frame.healthBar or frame.healthbar or frame.HealthBar or (frame.HealthBarsContainer and frame.HealthBarsContainer.healthBar)
 		if(health) then
@@ -133,6 +159,9 @@ function oUF:DisableBlizzard(unit)
 		end
 	elseif(unit:match('nameplate%d?%d?%d?$')) then
 		local frame = C_NamePlate.GetNamePlateForUnit(unit)
-		handleFrame(frame.UnitFrame)
+		local unitFrame = frame and frame.UnitFrame
+		if(unitFrame and not unitFrame:IsForbidden()) then
+			handleFrame(unitFrame, true)
+		end
 	end
 end

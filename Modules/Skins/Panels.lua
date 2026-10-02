@@ -3505,17 +3505,23 @@ end
 -- can move.
 local BAG_WINDOWS = { "ContainerFrameCombinedBags", "ContainerFrame1", "ContainerFrame2", "ContainerFrame3",
     "ContainerFrame4", "ContainerFrame5", "ContainerFrame6" }
+-- The game's own meter windows, and Details' where a client has no meter
+-- of its own (TBC Anniversary); a Details window wears a title bar above
+-- its base frame.
+local METERS = { "DamageMeterSessionWindow1", "DamageMeterSessionWindow2", "DamageMeterSessionWindow3",
+    "DetailsBaseFrame1", "DetailsBaseFrame2", "DetailsBaseFrame3", "DetailsBaseFrame4" }
 local function meterTopUnder(f)
     local fl, fr = f:GetLeft(), f:GetRight()
     if not (fl and fr) then return end
     local fs = f:GetEffectiveScale()
     local best
-    for i = 1, 3 do
-        local win = rawget(_G, "DamageMeterSessionWindow" .. i)
+    for _, name in ipairs(METERS) do
+        local win = rawget(_G, name)
         if win and win:IsVisible() then
             local l, r, t = win:GetLeft(), win:GetRight(), win:GetTop()
             if l and r and t then
                 local ms = win:GetEffectiveScale()
+                if name:find("^Details") then t = t + 20 end
                 if not (r * ms < fl * fs or l * ms > fr * fs) then
                     best = math.max(best or 0, t * ms)
                 end
