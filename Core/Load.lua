@@ -76,18 +76,21 @@ local function presetFor(key)
 end
 
 -- Each style keeps the player's own sizes, unit frame text sizes (one
--- look's face runs larger than another's), frame positions, health colours
--- and the minimap's shape (round
+-- look's face runs larger than another's), frame positions, the shape of
+-- each bar (buttons, buttons per row, which way it grows), the power and
+-- cast bar sizes, health colours and the minimap's shape (round
 -- suits one style, square the other): leaving a style saves what it had
 -- (general settings are per profile), and coming back to it puts them
--- back. A style met for the first time keeps what the profile has; a
--- style's own spacing is only laid on on request, and never touches the
--- minimap.
+-- back. A style met for the first time keeps what the profile has, unless
+-- the shipped layout carries a snapshot for it (Crisp's own layout), which
+-- the defaults hand every profile; a style's own spacing is only laid on
+-- on request, and never touches the minimap. Which bars are switched on
+-- is the player's and stays the same in every look.
 local MINIMAP_KEYS = { "square", "ring", "fill" }
 local function takeSizes(prof)
     local out = { bars = {}, units = {} }
     for id, d in pairs(prof.actionbars and prof.actionbars.bars or {}) do
-        out.bars[id] = { size = d.size, spacing = d.spacing }
+        out.bars[id] = { size = d.size, spacing = d.spacing, perRow = d.perRow, buttons = d.buttons, growth = d.growth }
     end
     for key, u in pairs(prof.unitframes and prof.unitframes.units or {}) do
         local texts
@@ -95,7 +98,9 @@ local function takeSizes(prof)
             texts = {}
             for slot, t in pairs(u.texts) do texts[slot] = t.size end
         end
-        out.units[key] = { width = u.width, height = u.height, texts = texts }
+        local cb = type(u.castbar) == "table" and u.castbar or nil
+        out.units[key] = { width = u.width, height = u.height, texts = texts, powerHeight = u.powerHeight,
+            castbar = cb and { width = cb.width, height = cb.height } or nil }
     end
     out.healthColor = prof.unitframes and prof.unitframes.healthColor
     -- Where the frames sit: a style's shadows and borders can need a frame
@@ -115,12 +120,23 @@ end
 local function putSizes(prof, saved)
     for id, s in pairs(saved.bars or {}) do
         local d = prof.actionbars and prof.actionbars.bars and prof.actionbars.bars[id]
-        if d then d.size, d.spacing = s.size, s.spacing end
+        if d then
+            d.size, d.spacing = s.size, s.spacing
+            -- Snapshots from before shapes were kept leave them as they are.
+            if s.perRow then d.perRow = s.perRow end
+            if s.buttons then d.buttons = s.buttons end
+            if s.growth then d.growth = s.growth end
+        end
     end
     for key, s in pairs(saved.units or {}) do
         local u = prof.unitframes and prof.unitframes.units and prof.unitframes.units[key]
         if u then
             u.width, u.height = s.width or u.width, s.height or u.height
+            if s.powerHeight then u.powerHeight = s.powerHeight end
+            if s.castbar and type(u.castbar) == "table" then
+                u.castbar.width = s.castbar.width or u.castbar.width
+                u.castbar.height = s.castbar.height or u.castbar.height
+            end
             -- A snapshot from before texts were kept leaves them as they are.
             if s.texts and u.texts then
                 for slot, size in pairs(s.texts) do

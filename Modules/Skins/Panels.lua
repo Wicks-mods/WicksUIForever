@@ -37,6 +37,7 @@ ns.defaults.profile.panelskins = {
     mapPos = false,         -- where the windowed map was dragged: { left, top } on screen
     moveWindows = true,     -- drag a window by its title bar
     bagsClearMeter = true,  -- the game's bags sit above the damage meter, not over it
+    qualityGlow = true,     -- a soft halo in the item's quality colour round each gear slot
     windowPos = {},         -- window name -> { left, top } on screen, where it was dragged
 }
 
@@ -1481,7 +1482,8 @@ end
 
 -- Gear slots: the slot frame goes, the icon gets our corners, and the
 -- quality the game drew as a coloured frame becomes a rounded ring in that
--- colour, read while the window is open.
+-- colour, read while the window is open, with a soft halo of the same
+-- colour fading out round the slot (green and up).
 local SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Shirt", "Tabard", "Wrist", "Hands", "Waist",
     "Legs", "Feet", "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo" }
 
@@ -1497,7 +1499,17 @@ local function styleSlot(b)
     fade(b.IconOverlay)
     local icon = b.icon or b.Icon or _G[name .. "IconTexture"]
     if icon then ns:CropIcon(icon) end
-    backdrop(b, "Default", false, 0)
+    local bd = backdrop(b, "Default", false, 0)
+    -- The halo is ours, on our backdrop: under the icon, reaching past the
+    -- slot's edge into the gaps between slots, clear in the middle.
+    local e = extras[b]
+    local g = bd:CreateTexture(nil, "BACKGROUND", nil, -7)
+    g:SetTexture(ns.Media.glow)
+    if g.SetTextureSliceMargins then g:SetTextureSliceMargins(20, 20, 20, 20) end
+    g:SetPoint("TOPLEFT", bd, "TOPLEFT", -8, 8)
+    g:SetPoint("BOTTOMRIGHT", bd, "BOTTOMRIGHT", 8, -8)
+    g:Hide()
+    e.qualityGlow = g
 end
 
 local function paintSlots()
@@ -1520,8 +1532,13 @@ local function paintSlots()
             if q and q >= 2 and C_Item and C_Item.GetItemQualityColor then
                 local r, g, bl = C_Item.GetItemQualityColor(q)
                 ns:SetBorderColor(e.backdrop, { r, g, bl })
+                if e.qualityGlow then
+                    e.qualityGlow:SetVertexColor(r, g, bl, 0.55)
+                    e.qualityGlow:SetShown(db().qualityGlow ~= false)
+                end
             else
                 ns:SetBorderColor(e.backdrop, "border")
+                if e.qualityGlow then e.qualityGlow:Hide() end
             end
         end
     end
@@ -4127,6 +4144,7 @@ ns.Config:AddPage("panelskins", "Windows", function(L)
     L:Toggle("Accent corners", "brackets", { tooltip = "Takes effect after a reload." })
     L:Toggle("Buttons", "buttons")
     L:Toggle("Tabs", "tabs")
+    L:Toggle("Quality glow on gear", "qualityGlow", { tooltip = "A soft halo in each item's quality colour round its slot in the character window, from green up." })
     L:Toggle("Drag windows by their title", "moveWindows", { tooltip = "Character, quest log, talents, vendors and the rest stay where you leave them." })
     L:Toggle("Keep the game's bags above the damage meter", "bagsClearMeter", { tooltip = "The game's bag windows stack up from the bottom right corner. With this on, they start just above the damage meter instead of covering it." })
     L:Button("Put windows back", function()
