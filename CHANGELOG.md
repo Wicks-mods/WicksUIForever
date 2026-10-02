@@ -1,17 +1,36 @@
 # Wick's UI
 
-## 0.9.3 (unreleased)
+## 0.9.3 (2026-10-01)
+
+### Looks
+
+- Crisp, the ninth look, comes with WickCore 0.10.1: see-through dark
+  grey, one black pixel round everything, square corners and your class
+  colour as the accent. The windows Wick's UI reskins go see-through
+  with it, while tiles and buttons stay solid.
+- Each look keeps the shape of every bar as well as its size: how many
+  buttons, how many to a row and which way it grows. It keeps the power
+  bar height and the cast bar size of each unit frame too. Setting up
+  one look no longer changes another.
 
 ### Unit frames
 
 - Resting shows as a crescent moon in the look's accent, on a small tile
   at the corner of your frame, in place of the game's yellow Zzz.
 
+### Windows
+
+- Gear in the character window glows softly in its quality colour, from
+  green up, fading out round each slot. Switch it off with Quality glow
+  on gear, under Windows.
+
 ### Fixes
 
 - An incoming heal on the unit frames stops at the end of the health
   bar. At full health, the heal you were casting ran out past the edge
   of the frame.
+- In Crisp, the text of a quest taken from an object, such as a console
+  or a wanted poster, was dark on the dark panel. It reads again.
 
 ## 0.9.2 (2026-10-01)
 
