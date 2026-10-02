@@ -70,16 +70,18 @@ local POWER_TYPE_SOUL_FRAGMENTS = 'SOUL_FRAGMENTS' -- fake, but it's present in 
 local POWER_TYPE_SOUL_SHARDS = 'SOUL_SHARDS'
 local POWER_TYPE_TIP_OF_THE_SPEAR = 'TIP_OF_THE_SPEAR' -- fake
 
-local SPELL_DARK_HEART = Constants.UnitPowerSpellIDs.DARK_HEART_SPELL_ID or 1225789
+-- The constants group is Mainline FrameXML; a Classic client may lack it.
+local POWER_SPELL_IDS = (Constants and Constants.UnitPowerSpellIDs) or {}
+local SPELL_DARK_HEART = POWER_SPELL_IDS.DARK_HEART_SPELL_ID or 1225789
 local SPELL_ICICLES = 205473
 local SPELL_ICICLES_TALENT = 1246832
 local SPELL_MAELSTROM_WEAPON = 344179
 local SPELL_MAELSTROM_WEAPON_TALENT = 187880
 local SPELL_CAT_FORM = 768
-local SPELL_SILENCE_THE_WHISPERS = Constants.UnitPowerSpellIDs.SILENCE_THE_WHISPERS_SPELL_ID or 1227702
+local SPELL_SILENCE_THE_WHISPERS = POWER_SPELL_IDS.SILENCE_THE_WHISPERS_SPELL_ID or 1227702
 local SPELL_TIP_OF_THE_SPEAR = 260286
 local SPELL_TIP_OF_THE_SPEAR_TALENT = 260285
-local SPELL_VOID_METAMORPHOSIS = Constants.UnitPowerSpellIDs.VOID_METAMORPHOSIS_SPELL_ID or 1217607
+local SPELL_VOID_METAMORPHOSIS = POWER_SPELL_IDS.VOID_METAMORPHOSIS_SPELL_ID or 1217607
 
 local SOUL_FRAGMENTS_NO_META_INDEX = 1
 local SOUL_FRAGMENTS_META_INDEX = 2
@@ -101,7 +103,8 @@ local function GetGenericPowerColor(element, powerType)
 end
 
 local function GetComboPoints(unit)
-	return UnitPower(unit, Enum.PowerType.ComboPoints), GetUnitChargedPowerPoints(unit)
+	-- Charged combo points arrived with Shadowlands; a Classic client has none.
+	return UnitPower(unit, Enum.PowerType.ComboPoints), GetUnitChargedPowerPoints and GetUnitChargedPowerPoints(unit) or nil
 end
 
 local function GetComboPointsMax(unit)
@@ -563,7 +566,11 @@ local function Enable(self, unit)
 		STATE[element] = {}
 
 		self:RegisterEvent('PLAYER_LEVEL_UP', VisibilityPath, true)
-		self:RegisterEvent('TRAIT_CONFIG_UPDATED', VisibilityPath, true)
+		-- Trait loadouts, and the event that announces them, belong to the
+		-- class talent system; a client without it has neither.
+		if(C_ClassTalents) then
+			self:RegisterEvent('TRAIT_CONFIG_UPDATED', VisibilityPath, true)
+		end
 		self:RegisterEvent('UNIT_DISPLAYPOWER', VisibilityPath)
 
 		element.ClassPowerEnable = ClassPowerEnable
@@ -589,7 +596,9 @@ local function Disable(self)
 		ClassPowerDisable(self)
 
 		self:UnregisterEvent('PLAYER_LEVEL_UP', VisibilityPath)
-		self:UnregisterEvent('TRAIT_CONFIG_UPDATED', VisibilityPath)
+		if(C_ClassTalents) then
+			self:UnregisterEvent('TRAIT_CONFIG_UPDATED', VisibilityPath)
+		end
 		self:UnregisterEvent('UNIT_DISPLAYPOWER', VisibilityPath)
 	end
 end

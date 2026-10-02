@@ -755,9 +755,9 @@ do
 		local isPetHeader = template:match('PetHeader')
 		local name = overrideName or generateName(nil, ...)
 		local header = Mixin(CreateFrame('Frame', name, UIParent, template), headerMixin)
-		header:SetRolesets('unitFrames')
+		if(header.SetRolesets) then header:SetRolesets('unitFrames') end
 
-		header:SetAttribute('template', 'SecureUnitButtonTemplate, SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate, PingableUnitFrameTemplate')
+		header:SetAttribute('template', 'SecureUnitButtonTemplate, SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate' .. Private.pingTemplate)
 
 		if(...) then
 			if(type(...) == 'table') then
@@ -844,13 +844,15 @@ function oUF:Spawn(unit, overrideName)
 	unit = unit:lower()
 
 	local name = overrideName or generateName(unit)
-	local object = CreateFrame('Button', name, UIParent, 'SecureUnitButtonTemplate, PingableUnitFrameTemplate')
+	local object = CreateFrame('Button', name, UIParent, 'SecureUnitButtonTemplate' .. Private.pingTemplate)
 	Private.UpdateUnits(object, unit)
 
-	if(unit:match('arena%d?')) then
-		object:SetRolesets('arenaFrames')
-	else
-		object:SetRolesets('unitFrames')
+	if(object.SetRolesets) then
+		if(unit:match('arena%d?')) then
+			object:SetRolesets('arenaFrames')
+		else
+			object:SetRolesets('unitFrames')
+		end
 	end
 
 	self:DisableBlizzard(unit)
@@ -998,7 +1000,7 @@ do
 			if(not nameplate.unitFrame) then
 				nameplate.style = self.style
 
-				nameplate.unitFrame = CreateFrame('Button', self.prefix .. nameplate:GetName(), nameplate, 'PingableUnitFrameTemplate')
+				nameplate.unitFrame = CreateFrame('Button', self.prefix .. nameplate:GetName(), nameplate, Private.hasPing and 'PingableUnitFrameTemplate' or nil)
 				nameplate.unitFrame:EnableMouse(false)
 				nameplate.unitFrame:SetAllPoints()
 				nameplate.unitFrame.isNamePlate = true

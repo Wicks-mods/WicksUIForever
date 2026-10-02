@@ -83,6 +83,15 @@ function DB:UpdateRep()
     if not b then return end
     local d = db()
     local data = C_Reputation and C_Reputation.GetWatchedFactionData and C_Reputation.GetWatchedFactionData()
+    if not data and rawget(_G, "GetWatchedFactionInfo") then
+        -- The older call, on a client without C_Reputation: the same facts
+        -- as separate returns.
+        local name, reaction, lo, hi, val = GetWatchedFactionInfo()
+        if name then
+            data = { name = name, reaction = reaction, currentReactionThreshold = lo,
+                     nextReactionThreshold = hi, currentStanding = val }
+        end
+    end
     local show = d.rep.enable and data and data.name
     b:SetShown(show and true or false)
     if not show then return end

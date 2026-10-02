@@ -1048,8 +1048,11 @@ function UF:Initialize()
         self:DisableBlizzard(key)
         self:SpawnSingle(key)
     end
-    self:DisableBlizzard("boss")
-    self:SpawnBoss()
+    -- Boss units are Mainline's; TBC Anniversary has no boss frames to replace.
+    if ns.Core.Client.hasBossFrames then
+        self:DisableBlizzard("boss")
+        self:SpawnBoss()
+    end
     if ns.UnitGroups then ns.UnitGroups:Initialize() end
 
     ns:On("PLAYER_TARGET_CHANGED", function() UF:UpdateBorders() end)

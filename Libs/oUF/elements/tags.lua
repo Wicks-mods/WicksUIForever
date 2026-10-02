@@ -219,7 +219,7 @@ local tagStrings = {
 		if(IsInRaid()) then
 			for index = 1, GetNumGroupMembers() do
 				local raidUnit = 'raid' .. index
-				if(C_Secrets.CanCompareUnitTokens(unit, raidUnit) and UnitIsUnit(unit, raidUnit)) then
+				if((not C_Secrets or not C_Secrets.CanCompareUnitTokens or C_Secrets.CanCompareUnitTokens(unit, raidUnit)) and UnitIsUnit(unit, raidUnit)) then
 					local _, _, group = GetRaidRosterInfo(index)
 					return group
 				end

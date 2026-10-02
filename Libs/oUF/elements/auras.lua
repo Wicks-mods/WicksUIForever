@@ -91,6 +91,9 @@ local oUF = ns.oUF
 local Private = oUF.Private
 local argcheck = Private.argcheck
 
+-- A client without the AuraContainer intrinsic gets auras_classic.lua instead.
+if(not Private.hasAuraContainer) then return end
+
 local STATE = {}
 
 local function CreateButton(element, options, button)

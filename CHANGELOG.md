@@ -1,5 +1,27 @@
 # Wick's UI
 
+## 0.10.0 (unreleased)
+
+### TBC Classic Anniversary
+
+- Wick's UI loads on TBC Classic Anniversary 2.5.6 as well as Forever,
+  from one folder and one version, on WickCore 0.11.0. The client is the
+  same engine generation as Forever with the Classic interface on top,
+  so the bars, unit frames, nameplates, chat, minimap, tooltips and info
+  panels are the same code; what the client lacks is detected at load
+  rather than assumed from the flavour.
+- Auras on a client without the aura container: a plain-frame aura
+  element with the same options, icons, counts, time left and dispel
+  colours, built from C_UnitAuras. Cancelling a buff by click is not
+  part of it; a protected action needs a secure header.
+- No boss frames, and no boss page, on a client without boss units.
+- The talent info panel shows points per tree where there are no trait
+  loadouts, and opens the talent window.
+- The reputation bar reads the watched faction on either client.
+- The retired ElvUI theme plugin kept its settings under this UI's name
+  in the TBC folder; they are cleared once, with a line saying so, and
+  the setup opens.
+
 ## 0.9.3 (2026-10-01)
 
 ### Looks

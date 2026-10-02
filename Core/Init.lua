@@ -132,6 +132,15 @@ end
 -- ============================================================
 -- The WickCore addon object
 -- ============================================================
+-- The TBC folder of this name used to hold an ElvUI theme plugin with the
+-- same saved variable. Its table has no profiles and keeps the plugin's
+-- own keys; it is cleared once so WickCore starts this UI fresh there.
+if type(WicksUIDB) == "table" and WicksUIDB.profiles == nil
+    and (WicksUIDB.brackets ~= nil or WicksUIDB.theme ~= nil or WicksUIDB.questlog ~= nil) then
+    WicksUIDB = nil
+    ns.replacedPluginDB = true
+end
+
 local A = Core:NewAddon(ADDON, {
     title    = ns.title,
     version  = ns.version,
@@ -140,6 +149,11 @@ local A = Core:NewAddon(ADDON, {
 })
 ns.A = A
 _G.WicksUI = ns   -- for /dump and the offline harness
+if ns.replacedPluginDB then
+    A:On("PLAYER_LOGIN", function()
+        A:Print("The old ElvUI plugin's settings were cleared; this is the full Wick's UI now. The setup opens in a moment.")
+    end)
+end
 
 -- Settings, general section.
 function ns:G() return (A.db and A.db.profile.general) or ns.defaults.profile.general end

@@ -200,17 +200,36 @@ DT:Register("zone", {
     text = function() return GetMinimapZoneText() or "" end,
 })
 
+-- Points per tree, the way a Classic build is said: "41/20/0".
+local function talentTrees()
+    local tabInfo = (C_SpecializationInfo and C_SpecializationInfo.GetTalentTabInfo) or rawget(_G, "GetTalentTabInfo")
+    local numTabs = (C_SpecializationInfo and C_SpecializationInfo.GetNumTalentTabs) or rawget(_G, "GetNumTalentTabs")
+    if not (tabInfo and numTabs) then return nil end
+    local out = {}
+    for i = 1, (numTabs() or 0) do
+        local a, _, c = tabInfo(i)
+        local points = (type(a) == "table") and (a.pointsSpent or 0) or (c or 0)
+        out[#out + 1] = tostring(points)
+    end
+    return #out > 0 and table.concat(out, "/") or nil
+end
+
 DT:Register("loadout", {
-    label = "Talent loadout", events = { "TRAIT_CONFIG_UPDATED", "ACTIVE_COMBAT_CONFIG_CHANGED", "PLAYER_TALENT_UPDATE" },
+    label = "Talent loadout", events = { "TRAIT_CONFIG_UPDATED", "ACTIVE_COMBAT_CONFIG_CHANGED", "PLAYER_TALENT_UPDATE", "CHARACTER_POINTS_CHANGED" },
     text = function()
         local CT = rawget(_G, "C_ClassTalents")
-        local id = CT and CT.GetLastSelectedSavedConfigID and CT.GetLastSelectedSavedConfigID(PlayerUtil and PlayerUtil.GetCurrentSpecID and PlayerUtil.GetCurrentSpecID() or 0)
+        if not CT then
+            -- No trait loadouts on this client: the trees instead.
+            return "Talents " .. hl(talentTrees() or "none")
+        end
+        local id = CT.GetLastSelectedSavedConfigID and CT.GetLastSelectedSavedConfigID(PlayerUtil and PlayerUtil.GetCurrentSpecID and PlayerUtil.GetCurrentSpecID() or 0)
         local info = id and C_Traits and C_Traits.GetConfigInfo and C_Traits.GetConfigInfo(id)
         return "Talents " .. hl(info and info.name or "default")
     end,
     click = function()
         if InCombatLockdown() then return end
-        if PlayerSpellsUtil and PlayerSpellsUtil.ToggleClassTalentFrame then pcall(PlayerSpellsUtil.ToggleClassTalentFrame) end
+        if PlayerSpellsUtil and PlayerSpellsUtil.ToggleClassTalentFrame then pcall(PlayerSpellsUtil.ToggleClassTalentFrame)
+        elseif rawget(_G, "ToggleTalentFrame") then pcall(ToggleTalentFrame) end
     end,
 })
 

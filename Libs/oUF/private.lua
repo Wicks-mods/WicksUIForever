@@ -31,8 +31,26 @@ function Private.unitExists(unit)
 end
 
 function Private.unitIsUnit(unit1, unit2)
-	return C_Secrets.CanCompareUnitTokens(unit1, unit2) and UnitIsUnit(unit1, unit2)
+	-- A client without the comparison API (no secret unit tokens) can
+	-- always compare.
+	if(C_Secrets and C_Secrets.CanCompareUnitTokens and not C_Secrets.CanCompareUnitTokens(unit1, unit2)) then
+		return false
+	end
+	return UnitIsUnit(unit1, unit2)
 end
+
+-- What the client ships, read off the templates it knows. TBC Anniversary
+-- 2.5.6 has the 12.x engine but neither Blizzard_AuraContainer nor
+-- Blizzard_PingUI, so the aura intrinsic and the pingable template are
+-- missing there while everything else oUF leans on is present.
+local function hasTemplate(name)
+	if(not (C_XMLUtil and C_XMLUtil.GetTemplateInfo)) then return false end
+	local ok, info = pcall(C_XMLUtil.GetTemplateInfo, name)
+	return ok and info ~= nil
+end
+Private.hasAuraContainer = hasTemplate('CustomAuraContainerTemplate')
+Private.hasPing = hasTemplate('PingableUnitFrameTemplate')
+Private.pingTemplate = Private.hasPing and ', PingableUnitFrameTemplate' or ''
 
 local validator = CreateFrame('Frame')
 

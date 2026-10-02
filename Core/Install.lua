@@ -106,6 +106,8 @@ local KITS = {
     { "WicksPoisonsAndThings", "Wick's Poisons and Things", "ROGUE" },
     { "WicksStancesAndThings", "Wick's Stances and Things", "WARRIOR" },
     { "WicksTotemsAndThings", "Wick's Totems and Things", "SHAMAN" },
+    -- TBC Anniversary's class tools carry the same rule.
+    { "WicksTravelForm", "Wick's Travel Form", "DRUID" },
 }
 I.KITS = KITS
 

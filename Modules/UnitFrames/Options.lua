@@ -225,6 +225,12 @@ local function unitPage(key, order)
 end
 
 UF.PAGE_ORDER = { "player", "target", "targettarget", "focus", "focustarget", "pet", "boss", "party", "raid" }
+-- A client without boss units has no boss page.
+if not ns.Core.Client.hasBossFrames then
+    for i = #UF.PAGE_ORDER, 1, -1 do
+        if UF.PAGE_ORDER[i] == "boss" then table.remove(UF.PAGE_ORDER, i) end
+    end
+end
 for i, key in ipairs(UF.PAGE_ORDER) do
     unitPage(key, i)
 end
