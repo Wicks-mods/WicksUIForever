@@ -106,8 +106,10 @@ function T:Init()
     if self.hooked then return end
     self.hooked = true
 
+    -- The processor exists on TBC Anniversary too, and never runs there:
+    -- its tooltips carry no data table. WickCore says which kind this is.
     local TDP = rawget(_G, "TooltipDataProcessor")
-    if TDP and TDP.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+    if TDP and TDP.AddTooltipPostCall and Enum and Enum.TooltipDataType and Core.Client.hasTooltipData then
         TDP.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tt, data)
             if tt ~= GameTooltip and tt ~= rawget(_G, "ItemRefTooltip") then return end
             local _, link = tt:GetItem()

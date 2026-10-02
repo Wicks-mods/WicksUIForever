@@ -34,8 +34,13 @@ ns.defaults.profile.minimap = {
 }
 
 local SQUARE = "Interface\\BUTTONS\\WHITE8X8"
--- This client's own round mask (the Classic path draws no map at all).
-local ROUND = "Interface\\Masks\\CircleMaskScalable"
+-- Each client's own round mask: Forever's scalable circle, and the portrait
+-- mask the Classic layout has always used. Forever ships the compass ring;
+-- its absence means the Classic layout.
+local function roundMask()
+    if rawget(_G, "MinimapCompassTexture") then return "Interface\\Masks\\CircleMaskScalable" end
+    return "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+end
 local function db() return MM:db() end
 
 local function ringArt()
@@ -143,7 +148,7 @@ function MM:Shape()
         for _, t in ipairs(ringArt()) do t:SetAlpha(0) end
     else
         -- Round again, Blizzard's own mask and ring back, at once.
-        if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, ROUND) end
+        if Minimap.SetMaskTexture then pcall(Minimap.SetMaskTexture, Minimap, roundMask()) end
         blob(1)
         for _, t in ipairs(ringArt()) do t:SetAlpha(d.ring and 1 or 0) end
     end
@@ -152,7 +157,7 @@ function MM:Shape()
         if d.square then
             self.bandMask:SetTexture(ns.Media.roundmask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         else
-            self.bandMask:SetTexture(ROUND, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            self.bandMask:SetTexture(roundMask(), "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         end
     end
     -- Our text shows on either shape; the corner brackets only suit the
@@ -168,6 +173,27 @@ function MM:Shape()
     for _, b in pairs(zoom) do if b then b:SetAlpha(d.hideZoom and 0 or 1); b:EnableMouse(not d.hideZoom) end end
     local zt = MinimapCluster and MinimapCluster.ZoneTextButton
     if zt then zt:SetAlpha(d.hideBlizzardText and 0 or 1); zt:EnableMouse(not d.hideBlizzardText) end
+    -- The Classic layout keeps its pieces as globals placed round the old
+    -- ring: the zone text, the mail icon, and the buttons. On the square
+    -- they move to the map's corners, under our own "+" and mail marks.
+    local czt = rawget(_G, "MinimapZoneTextButton")
+    if czt then czt:SetAlpha(d.hideBlizzardText and 0 or 1); czt:EnableMouse(not d.hideBlizzardText) end
+    local bmail = rawget(_G, "MiniMapMailFrame")
+    if bmail then bmail:SetAlpha(d.mail and 0 or 1); bmail:EnableMouse(not d.mail) end
+    if d.square then
+        local function pin(name, point, x, y)
+            local b = rawget(_G, name)
+            if not b then return end
+            b:ClearAllPoints()
+            b:SetPoint(point, Minimap, point, x, y)
+        end
+        pin("MiniMapTracking", "TOPLEFT", 2, -22)
+        pin("GameTimeFrame", "TOPRIGHT", -2, -24)
+        pin("MiniMapBattlefieldFrame", "BOTTOMLEFT", 2, 2)
+        -- The world map is a key and a micro button; the ring's copy goes.
+        local wm = rawget(_G, "MiniMapWorldMapButton")
+        if wm then wm:SetAlpha(0); wm:EnableMouse(false) end
+    end
     -- This client draws its own coordinates under the map; ours replace them.
     local bc = MinimapCluster and MinimapCluster.MinimapContainer and MinimapCluster.MinimapContainer.PlayerCoords
     if bc then bc:SetAlpha((d.coords and d.hideBlizzardText) and 0 or 1) end

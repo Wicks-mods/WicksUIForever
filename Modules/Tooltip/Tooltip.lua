@@ -149,18 +149,42 @@ function TT:Initialize()
         end)
     end
     local TDP = rawget(_G, "TooltipDataProcessor")
-    if TDP and TDP.AddTooltipPostCall and Enum.TooltipDataType then
+    if ns.Core.Client.hasTooltipData and TDP and TDP.AddTooltipPostCall and Enum.TooltipDataType then
         TDP.AddTooltipPostCall(Enum.TooltipDataType.Unit, onUnit)
         TDP.AddTooltipPostCall(Enum.TooltipDataType.Item, onItem)
-    end
-    -- Everything that is not a unit or an item gets the plain border.
-    -- Through the tooltip data callbacks rather than HookScript: hooking a
-    -- script on GameTooltip would make Blizzard's own handler run tainted.
-    if TDP and TDP.AddTooltipPostCall and TDP.AllTypes then
-        TDP.AddTooltipPostCall(TDP.AllTypes, function(tt, data)
-            local t = data and data.type
-            if t ~= Enum.TooltipDataType.Unit and t ~= Enum.TooltipDataType.Item then setBorder(tt) end
-        end)
+        -- Everything that is not a unit or an item gets the plain border.
+        -- Through the tooltip data callbacks rather than HookScript: hooking a
+        -- script on GameTooltip would make Blizzard's own handler run tainted.
+        if TDP.AllTypes then
+            TDP.AddTooltipPostCall(TDP.AllTypes, function(tt, data)
+                local t = data and data.type
+                if t ~= Enum.TooltipDataType.Unit and t ~= Enum.TooltipDataType.Item then setBorder(tt) end
+            end)
+        end
+    else
+        -- A client whose tooltips carry no data table (TBC Anniversary: the
+        -- processor exists and never runs). Script hooks are the way there,
+        -- and safe: nothing in a tooltip is secret, so a tainted handler
+        -- costs nothing. Cleared puts the plain border back before the next
+        -- unit or item colours it.
+        for _, n in ipairs(TIPS) do
+            local tt = _G[n]
+            if tt and tt.HookScript and tt.HasScript then
+                if tt:HasScript("OnTooltipCleared") then
+                    tt:HookScript("OnTooltipCleared", function(t) setBorder(t) end)
+                end
+                if tt:HasScript("OnTooltipSetUnit") then
+                    tt:HookScript("OnTooltipSetUnit", function(t) onUnit(t) end)
+                end
+                if tt:HasScript("OnTooltipSetItem") then
+                    tt:HookScript("OnTooltipSetItem", function(t)
+                        local _, link = t:GetItem()
+                        local id = link and tonumber(link:match("item:(%d+)"))
+                        onItem(t, id and { id = id } or nil)
+                    end)
+                end
+            end
+        end
     end
     self:StyleHealthBar()
 end

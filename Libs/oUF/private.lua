@@ -90,9 +90,12 @@ end
 function Private.unitSelectionType(unit, considerHostile)
 	if(considerHostile and UnitThreatSituation('player', unit)) then
 		return 0
-	else
+	elseif(UnitSelectionType) then
 		return validSelectionTypes[UnitSelectionType(unit, true)]
 	end
+	-- No selection types on this client (TBC Anniversary); callers fall
+	-- back to reaction colours.
+	return nil
 end
 
 local interface = select(4, GetBuildInfo())

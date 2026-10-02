@@ -207,9 +207,15 @@ local function talentTrees()
     if not (tabInfo and numTabs) then return nil end
     local out = {}
     for i = 1, (numTabs() or 0) do
-        local a, _, c = tabInfo(i)
-        local points = (type(a) == "table") and (a.pointsSpent or 0) or (c or 0)
-        out[#out + 1] = tostring(points)
+        -- Three shapes: a table (C_SpecializationInfo), the original
+        -- (name, icon, pointsSpent), and 2.5.6's (id, name, description,
+        -- icon, pointsSpent, ...), told apart by the first return.
+        local a, _, c, _, e = tabInfo(i)
+        local points
+        if type(a) == "table" then points = a.pointsSpent
+        elseif type(a) == "number" then points = e
+        else points = c end
+        out[#out + 1] = tostring(points or 0)
     end
     return #out > 0 and table.concat(out, "/") or nil
 end

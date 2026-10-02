@@ -437,7 +437,7 @@ local function Visibility(self, event, unit)
 	if(UnitHasVehicleUI('player')) then
 		unit = 'vehicle'
 
-		if(PlayerVehicleHasComboPoints()) then
+		if(PlayerVehicleHasComboPoints and PlayerVehicleHasComboPoints()) then
 			powerType = POWER_TYPE_COMBO_POINTS
 		end
 	else
@@ -522,7 +522,10 @@ do
 			self:RegisterEvent('UNIT_POWER_UPDATE', Path)
 
 			-- according to Blizz any class may receive this event due to specific spell auras
-			self:RegisterEvent('UNIT_POWER_POINT_CHARGE', Path)
+			-- Charged combo points, and their event, arrived with Shadowlands.
+			if(GetUnitChargedPowerPoints) then
+				self:RegisterEvent('UNIT_POWER_POINT_CHARGE', Path)
+			end
 		end
 
 		self:RegisterEvent('SPELLS_CHANGED', ColorPath, true)
@@ -541,7 +544,9 @@ do
 		self:UnregisterEvent('UNIT_AURA', Path)
 		self:UnregisterEvent('UNIT_POWER_UPDATE', Path)
 		self:UnregisterEvent('UNIT_MAXPOWER', Path)
-		self:UnregisterEvent('UNIT_POWER_POINT_CHARGE', Path)
+		if(GetUnitChargedPowerPoints) then
+			self:UnregisterEvent('UNIT_POWER_POINT_CHARGE', Path)
+		end
 		self:UnregisterEvent('SPELLS_CHANGED', ColorPath)
 
 		if(not unregisterOnly) then
