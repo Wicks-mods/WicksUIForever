@@ -22,6 +22,14 @@
   in the TBC folder; they are cleared once, with a line saying so, and
   the setup opens.
 
+### Fixes
+
+- The group finder no longer comes apart. Dragging it by its title could
+  pull the page you were on out of the window, leaving the window empty
+  beside it and the page cut short, back in the same split every time it
+  opened. Its title now drags the whole window, and a page already
+  pulled out goes back in the next time it opens.
+
 ## 0.9.3 (2026-10-01)
 
 ### Looks
