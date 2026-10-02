@@ -35,6 +35,7 @@ Modules\UnitFrames\Groups.lua
 Modules\UnitFrames\Options.lua
 
 Modules\Nameplates\Nameplates.lua
+Modules\Auras\AuraButton.xml
 Modules\Auras\Auras.lua
 Modules\Chat\Chat.lua
 Modules\Minimap\Minimap.lua

@@ -13,7 +13,12 @@
 - Auras on a client without the aura container: a plain-frame aura
   element with the same options, icons, counts, time left and dispel
   colours, built from C_UnitAuras. Cancelling a buff by click is not
-  part of it; a protected action needs a secure header.
+  part of it; the buff display below is a secure header for that.
+- Your buffs and debuffs on such a client sit on two secure aura
+  headers: the client's own secure code sorts them and places a
+  button per aura, in combat too, and a right-click cancels a buff.
+  Weapon enchants show among the buffs. The buttons are ours, drawn
+  like the rest, with the time left on them.
 - No boss frames, and no boss page, on a client without boss units.
 - The talent info panel shows points per tree where there are no trait
   loadouts, and opens the talent window.

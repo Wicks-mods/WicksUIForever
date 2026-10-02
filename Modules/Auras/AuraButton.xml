@@ -1,0 +1,19 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<!-- Wick's UI: one aura on the secure aura headers Auras.lua builds on a
+	     client without the aura container. The header makes these itself, in
+	     combat too; a right-click cancels through the client's protected
+	     cancelaura action, which reads the index and filter the header sets.
+	     Everything drawn on it is made by WicksUI_AuraButtonMixin (Auras.lua). -->
+	<Button name="WicksUI_AuraButtonTemplate" inherits="SecureActionButtonTemplate" mixin="WicksUI_AuraButtonMixin" registerForClicks="RightButtonUp" virtual="true">
+		<Attributes>
+			<Attribute name="type" value="cancelaura"/>
+		</Attributes>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+			<OnAttributeChanged method="OnAttributeChanged"/>
+			<OnUpdate method="OnUpdate"/>
+			<OnEnter method="OnEnter"/>
+			<OnLeave method="OnLeave"/>
+		</Scripts>
+	</Button>
+</Ui>
