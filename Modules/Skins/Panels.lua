@@ -372,7 +372,11 @@ local function lum(r, g, b) return r * 0.3 + g * 0.59 + b * 0.11 end
 -- A colour that is one of the theme's own (a heading in the accent, a
 -- muted note) is never parchment ink, however dark a custom theme makes
 -- it: lightening it fought whatever paints it, and the text flickered.
-local PALETTE = { "fel", "text", "muted", "border", "shadow", "void" }
+-- The colours our own text is drawn in, which the dark-ink pass leaves
+-- alone: the light ones, and the darks we set on accent pills. Never the
+-- border: no text is drawn in it, and a look whose border is pure black
+-- (Crisp) would otherwise take the game's black ink for its own.
+local PALETTE = { "fel", "text", "muted", "shadow", "void" }
 local function inPalette(r, g, b)
     for _, k in ipairs(PALETTE) do
         local c = C[k]
