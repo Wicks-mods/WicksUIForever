@@ -209,11 +209,22 @@ local function walkMeter(f, depth)
 end
 -- The bars in the look's colours (ns:MeterBarColor), where the theme is not
 -- the class colours. Blizzard paints a bar only when its colour changes
--- (it keeps the last one), so ours stays on; a post-hook on the bar's
--- texture puts it back whenever Blizzard paints, in a fight too. Method
--- calls only: nothing is written into the meter's own rows.
+-- (it keeps the last one), so ours stays on; ns:Follow watches the bar's
+-- colour and puts ours back whenever Blizzard paints, in a fight too.
+-- Method calls only: nothing is written into the meter's own rows.
 local meterBars = setmetatable({}, { __mode = "k" })
 local painting = false
+
+-- The bar's colour as one number, for ns:Follow; nil while any part of
+-- it is a secret.
+local function barColour(entry)
+    local tex = entry.GetStatusBarTexture and entry:GetStatusBarTexture()
+    if not tex then return nil end
+    local r, g, b = tex:GetVertexColor()
+    if type(r) ~= "number" or type(g) ~= "number" or type(b) ~= "number" then return nil end
+    if issecretvalue and (issecretvalue(r) or issecretvalue(g) or issecretvalue(b)) then return nil end
+    return math.floor(r * 255 + 0.5) * 65536 + math.floor(g * 255 + 0.5) * 256 + math.floor(b * 255 + 0.5)
+end
 local function paintBar(entry, tex)
     if painting then return end
     local mine = entry.isLocalPlayer
@@ -229,7 +240,7 @@ local function hookBar(entry)
     if not tex then return end
     if not meterBars[tex] then
         meterBars[tex] = entry
-        hooksecurefunc(tex, "SetVertexColor", function(t) paintBar(meterBars[t] or entry, t) end)
+        ns:Follow(entry, barColour, function(e) paintBar(e, e:GetStatusBarTexture()) end)
     end
     paintBar(entry, tex)
 end
@@ -306,8 +317,9 @@ end
 -- bring a faded texture back. The bar takes our texture in the look's
 -- accent (the off hand a darker shade of it, so the two read apart) over
 -- a panel of ours that dims with it; the labels take the look's font and
--- keep Blizzard's out-of-range colour. Method calls on their regions, and
--- post-hooks on their own methods.
+-- keep Blizzard's out-of-range colour. Method calls on their regions;
+-- the bar's texture and alpha, which Blizzard sets again as it lays the
+-- bar out and as you go in and out of range, are followed with ns:Follow.
 local SWING = { "SwingTimerMainHandFrame", "SwingTimerOffHandFrame", "SwingTimerRangedFrame" }
 local swingDone = setmetatable({}, { __mode = "k" })
 
@@ -354,10 +366,12 @@ local function skinSwing(f)
         end
     end
     swingColour(f)
-    -- Blizzard sets the bar's texture again when it lays the bar out, and
-    -- dims it when you are out of range.
-    if f.InitializeBarPresentation then hooksecurefunc(f, "InitializeBarPresentation", swingColour) end
-    if f.ApplyRangePresentation then hooksecurefunc(f, "ApplyRangePresentation", swingDim) end
+    ns:Follow(f, function(fr)
+        local bar = fr.StatusBar
+        local t = bar and bar.GetStatusBarTexture and bar:GetStatusBarTexture()
+        return t and t.GetTexture and t:GetTexture() or nil
+    end, swingColour)
+    ns:Follow(f, function(fr) return fr.StatusBar and fr.StatusBar:GetAlpha() or nil end, swingDim)
     swingDim(f)
 end
 

@@ -2120,9 +2120,8 @@ PS.SPECIAL.StackSplitFrame = function(frame)
         Chrome:Register(ring, "border", "vertex")
         e.well, e.wellRing = well, ring
         placeSplitWell(frame)
-        if type(frame.ChooseFrameType) == "function" then
-            hooksecurefunc(frame, "ChooseFrameType", placeSplitWell)
-        end
+        -- The game picks one of two layouts each time the box opens.
+        ns:Follow(frame, function(f) return f.isMultiStack and true or false end, placeSplitWell)
     end
     styleText(frame.StackSplitText, 16, C.text)
     styleText(frame.StackItemCountText, 12, C.muted)
@@ -2982,10 +2981,20 @@ end
 -- Blizzard fills them. Pieces already ours are skipped.
 local EMPTY_SLOT = "clickcast-icon-add"
 
+-- What the row's icon shows, for ns:Follow: the game sets it again each
+-- time the row is given a binding.
+local function bindingFace(row)
+    local icon = row.Icon
+    return icon and (icon:GetAtlas() or icon:GetTexture()) or nil
+end
+
 local function bindingIcon(row)
     local icon = row.Icon
     if not icon then return end
-    if icon:GetAtlas() == EMPTY_SLOT then
+    -- Our own mark, already drawn for an empty slot, counts as empty.
+    local plus = ns.Media:Glyph("plus")
+    local tex = icon:GetTexture()
+    if icon:GetAtlas() == EMPTY_SLOT or tex == plus or tostring(tex) == tostring(plus) then
         -- Drawn smaller than the slot: the mark, not a picture.
         icon:SetTexture(ns.Media:Glyph("plus"), "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         icon:SetTexCoord(-0.35, 1.35, -0.35, 1.35)
@@ -3045,7 +3054,7 @@ local function styleBindingRow(row)
     end
     if row.DeleteButton then ns:Glyph(row.DeleteButton, "close") end
     bindingIcon(row)
-    if row.Init then hooksecurefunc(row, "Init", bindingIcon) end
+    ns:Follow(row, bindingFace, bindingIcon)
 end
 
 -- The corner buttons: a tile each, the accent ring on the chosen one.
@@ -3404,8 +3413,9 @@ end
 -- Tabs on Blizzard's newer tab system (the friends window's Friends and
 -- Recent Allies): the chosen tab's font object is set from a field on the
 -- tab each time one is chosen, which would undo a font set on its text.
--- After Blizzard's own choice (a post-hook), ours: the accent for the
--- chosen tab, the muted colour for the rest.
+-- The chosen tab is the one switched off; ns:Follow sees the switch and
+-- ours go on after: the accent for the chosen tab, the muted colour for
+-- the rest.
 local sysTabs = setmetatable({}, { __mode = "k" })
 local function systemTabFonts(tab, selected)
     if selected == nil then selected = tab.IsEnabled and not tab:IsEnabled() end
@@ -3419,7 +3429,7 @@ end
 local function styleSystemTab(tab)
     if not tab or sysTabs[tab] or not tab.SetTabSelected then return end
     sysTabs[tab] = true
-    hooksecurefunc(tab, "SetTabSelected", function(t, sel) systemTabFonts(t, sel) end)
+    ns:Follow(tab, ns.EnabledOf, function(t) systemTabFonts(t) end)
     systemTabFonts(tab)
 end
 PS.styleSystemTab = styleSystemTab
@@ -4201,12 +4211,19 @@ function PS:Initialize()
         hooksecurefunc("PanelTemplates_SelectTab", function(tab) markTab(tab, true) end)
         hooksecurefunc("PanelTemplates_DeselectTab", function(tab) markTab(tab, false) end)
     end
-    -- The game menu rebuilds its buttons every time it opens.
+    -- The game menu rebuilds its buttons every time it opens; while it is
+    -- open, any button not yet ours is styled.
     local gm = rawget(_G, "GameMenuFrame")
-    if gm and gm.InitButtons then
-        hooksecurefunc(gm, "InitButtons", function(self)
+    if gm then
+        ns:Follow(gm, function(g)
+            local n = 0
+            for _, b in ipairs(g.buttons or {}) do
+                if not done[b] then n = n + 1 end
+            end
+            return n
+        end, function(g)
             if not db().enable then return end
-            for _, b in ipairs(self.buttons or {}) do styleButton(b) end
+            for _, b in ipairs(g.buttons or {}) do styleButton(b) end
         end)
     end
 end

@@ -57,12 +57,14 @@
   pulled out goes back in the next time it opens.
 - No more "attempt to call a nil value" errors from the game's own
   windows on Forever: the Settings window's Apply button, the quest
-  log's Abandon button, the raid markers and the floating combat text.
-  The game's code failed when it called a button or frame method that
-  Wick's UI had hooked to restyle it. A button the game switches off is
-  now followed by a light check while its window is open, and your
-  combat text reads each new line off the game's own instead of hooking
-  it. Nothing changes in how either looks.
+  log's Abandon button, the raid markers, the stack split box and the
+  floating combat text. The game's code failed when it called a button
+  or frame method that Wick's UI had hooked to restyle it. Wick's UI no
+  longer hooks any of them: a widget the game switches (a button turned
+  off, a layout chosen, a bar laid out or dimmed, a meter bar painted,
+  the game menu's buttons, a click binding row filled) is followed by a
+  light check while it is on screen, and your combat text reads each
+  new line off the game's own. Nothing changes in how any of it looks.
 
 ## 0.9.3 (2026-10-01)
 
