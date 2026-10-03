@@ -55,6 +55,14 @@
   beside it and the page cut short, back in the same split every time it
   opened. Its title now drags the whole window, and a page already
   pulled out goes back in the next time it opens.
+- No more "attempt to call a nil value" errors from the game's own
+  windows on Forever: the Settings window's Apply button, the quest
+  log's Abandon button, the raid markers and the floating combat text.
+  The game's code failed when it called a button or frame method that
+  Wick's UI had hooked to restyle it. A button the game switches off is
+  now followed by a light check while its window is open, and your
+  combat text reads each new line off the game's own instead of hooking
+  it. Nothing changes in how either looks.
 
 ## 0.9.3 (2026-10-01)
 

@@ -139,7 +139,7 @@ local textButtons = setmetatable({}, { __mode = "k" })
 -- in your bags, Add Binding while one waits) reads as off: its pill
 -- dimmed and its text faded. Blizzard's disabled art goes with the rest,
 -- and the grey of its disabled text alone read like the buttons beside it.
--- Painted when styled, then after each of Blizzard's own switches.
+-- Painted when styled, then whenever ns:Follow sees Blizzard switch it.
 local function paintEnabled(b)
     local e = extras[b]
     local on = not (b.IsEnabled and not b:IsEnabled())
@@ -177,9 +177,7 @@ local function styleButton(b)
     local text = b.Text or (b.GetFontString and b:GetFontString())
     styleText(text)
     paintEnabled(b)
-    for _, m in ipairs({ "Enable", "Disable", "SetEnabled" }) do
-        if type(b[m]) == "function" then hooksecurefunc(b, m, paintEnabled) end
-    end
+    ns:Follow(b, ns.EnabledOf, paintEnabled)
 end
 PS.styleButton = styleButton
 
@@ -2774,7 +2772,7 @@ end
 -- The party and raid manager on the left edge. Its panel art goes for
 -- ours; the marker grid sits on a card, a tile per marker. Blizzard shows
 -- a marker's state (applied, selected, disabled) with the button's
--- background art, which is faded here and followed with a post-hook, so
+-- background art, which is faded here and followed with ns:Follow, so
 -- the tile's border carries the state instead. The Unit and Ground tabs,
 -- the arrow that folds the panel and the leave buttons are ours; the
 -- marker icons and the icon buttons stay as they are.
@@ -2782,11 +2780,15 @@ local MARKER_STATE = {
     ["GM-button-marker-applied"] = "fel", ["GM-button-marker-appliedSelected"] = "fel",
     ["GM-button-marker-selected"] = "text", ["GM-button-marker-pressed"] = "text",
 }
+local function markerAtlas(b)
+    local bg = b.backgroundTexture
+    return bg and bg.GetAtlas and bg:GetAtlas() or ""
+end
+
 local function markerState(b)
     local e = extras[b]
     if not (e and e.backdrop) then return end
-    local bg = b.backgroundTexture
-    local atlas = bg and bg.GetAtlas and bg:GetAtlas() or ""
+    local atlas = markerAtlas(b)
     ns:SetBorderColor(e.backdrop, MARKER_STATE[atlas] or "border")
     local off = atlas == "GM-button-marker-disabled"
     e.backdrop:SetAlpha(off and 0.45 or 1)
@@ -2806,7 +2808,7 @@ local function styleMarker(b)
         ns:Fill(h, 1, 1, 1, 0.12)
         e.hover = h
     end
-    if b.backgroundTexture then hooksecurefunc(b.backgroundTexture, "SetAtlas", function() markerState(b) end) end
+    if b.backgroundTexture then ns:Follow(b, markerAtlas, markerState) end
     markerState(b)
 end
 
@@ -2828,9 +2830,13 @@ local function tabFont(which)
     return f
 end
 
-local function tabState(tab)
+local function tabAtlas(tab)
     local nt = tab.GetNormalTexture and tab:GetNormalTexture()
-    local on = nt and nt.GetAtlas and nt:GetAtlas() == "GM-tab-selected"
+    return nt and nt.GetAtlas and nt:GetAtlas() or ""
+end
+
+local function tabState(tab)
+    local on = tabAtlas(tab) == "GM-tab-selected"
     local e = extras[tab]
     if e and e.backdrop then ns:SetBorderColor(e.backdrop, on and "fel" or "border") end
     local normal, hover = tabFont(on and "on" or "off"), tabFont(on and "on" or "hover")
@@ -2844,7 +2850,7 @@ local function styleMarkerTab(tab)
     local nt = tab:GetNormalTexture()
     if nt then
         nt:SetAlpha(0)
-        hooksecurefunc(nt, "SetAtlas", function() tabState(tab) end)
+        ns:Follow(tab, tabAtlas, tabState)
     end
     backdrop(tab, "Shadow", false, 0)
     tabState(tab)

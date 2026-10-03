@@ -594,6 +594,51 @@ end
 -- ============================================================
 -- Glyph buttons
 -- ============================================================
+-- The game switching one of its own widgets (a button turned off, a texture
+-- given another atlas) is followed by a poll on a frame of ours, never by a
+-- post-hook on the widget's method. On the Forever client a widget method
+-- hooked with hooksecurefunc fails when Blizzard's own code calls it
+-- ("attempt to call a nil value" from the Settings window's Apply, the
+-- quest log's Abandon and the raid markers, 2026-10-02). The poll frame is
+-- a child of the widget, so it runs only while the widget is on screen.
+-- read(frame) gives the state; paint(frame) runs when it changes. One poll
+-- per frame, however many skins follow it.
+local follows = setmetatable({}, { __mode = "k" })
+ns.follows = follows
+function ns:Follow(frame, read, paint)
+    if not frame then return end
+    local list = follows[frame]
+    if not list then
+        list = {}
+        follows[frame] = list
+        local poll = CreateFrame("Frame", nil, frame)
+        list.poll = poll
+        local acc = 0.15
+        poll:SetScript("OnUpdate", function(_, e)
+            acc = acc + e
+            if acc < 0.15 then return end
+            acc = 0
+            for _, w in ipairs(list) do
+                local now = w.read(frame)
+                if not (issecretvalue and issecretvalue(now)) and now ~= w.last then
+                    w.last = now
+                    w.paint(frame)
+                end
+            end
+        end)
+    end
+    for _, w in ipairs(list) do
+        if w.paint == paint then return end
+    end
+    list[#list + 1] = { read = read, paint = paint }
+end
+
+-- Whether a button is switched on, for ns:Follow.
+function ns.EnabledOf(b)
+    return not (b.IsEnabled and not b:IsEnabled())
+end
+
+-- ============================================================
 -- Blizzard's small buttons (page arrows, dropdown arrows, minimise, gear)
 -- carry their mark inside a bevelled square of their own art; on our tiles
 -- that reads as a box in a box. glyph() puts the button's art away and
@@ -605,8 +650,8 @@ local glyphs = setmetatable({}, { __mode = "k" })
 ns.glyphs = glyphs
 
 -- A glyph button the game switches off (a page arrow on the last page, the
--- stack split at its smallest) reads as off, its mark faded. Followed
--- through the game's own switches; never on a protected button.
+-- stack split at its smallest) reads as off, its mark faded. The game's own
+-- switches are followed with ns:Follow; never on a protected button.
 local function glyphEnabled(b)
     local g = glyphs[b]
     if not (g and g.mark) then return end
@@ -651,11 +696,7 @@ function ns:Glyph(b, name, opts)
         hover:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
         Chrome:Register(hover, "fel", "vertex", 1)
         g.hover = hover
-        if not (b.IsProtected and b:IsProtected()) then
-            for _, m in ipairs({ "Enable", "Disable", "SetEnabled" }) do
-                if type(b[m]) == "function" then hooksecurefunc(b, m, glyphEnabled) end
-            end
-        end
+        if not (b.IsProtected and b:IsProtected()) then ns:Follow(b, ns.EnabledOf, glyphEnabled) end
     end
     glyphEnabled(b)
     if g.name ~= name then

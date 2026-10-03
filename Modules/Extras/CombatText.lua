@@ -282,11 +282,11 @@ end
 -- Its lines go on running, unseen: the frame they sit on is faded. Hidden,
 -- it would stop: it drops every line while it is not visible. Only ours to
 -- fade, so only put back if we faded it.
-local hooked, faded
+local watching, faded
 local function fadeGame()
     local bz = rawget(_G, "CombatText")
     if not (bz and bz.SetAlpha) then return end
-    if hooked and frame and CT:Drawing() then
+    if watching and frame and CT:Drawing() then
         bz:SetAlpha(0)
         faded = true
     elseif faded then
@@ -296,13 +296,40 @@ local function fadeGame()
 end
 CT.FadeGame = fadeGame
 
+-- The game's lines are read off its own frame every frame, not taken from a
+-- post-hook on CombatText:AddMessage. On the Forever client the game's own
+-- call through that hook fails ("attempt to call a nil value" at
+-- CombatText.lua, 2026-10-02), and its lines carry secret text. AddMessage
+-- puts each line on a pooled font string, sets its scrollTime to 0 and adds
+-- it to activeFontStrings, so a font string not seen before, or one whose
+-- time has gone back, holds a new line. Nothing is written onto the game's
+-- font strings; what was seen is kept here.
+local seen = setmetatable({}, { __mode = "k" })
+local function readGame()
+    local bz = rawget(_G, "CombatText")
+    local list = bz and bz.activeFontStrings
+    if type(list) ~= "table" then return end
+    local at = bz.textLocations
+    for _, fs in ipairs(list) do
+        local t = fs.scrollTime
+        if type(t) == "number" then
+            local last = seen[fs]
+            if last == nil or t < last then
+                local r, g, b = fs:GetTextColor()
+                local kind = (fs.isCrit and "crit") or (at and fs.endY == at.startY and "sticky") or nil
+                CT:Add(fs:GetText(), r, g, b, kind, at and fs.startX ~= at.startX)
+            end
+            seen[fs] = t
+        end
+    end
+end
+CT.ReadGame = readGame
+
 function CT:Hook()
     local bz = rawget(_G, "CombatText")
-    if hooked or not (bz and type(bz.AddMessage) == "function") then return end
-    hooked = true
-    hooksecurefunc(bz, "AddMessage", function(_, message, _, r, g, b, displayType, isStaggered)
-        CT:Add(message, r, g, b, displayType, isStaggered)
-    end)
+    if watching or not (bz and type(bz.activeFontStrings) == "table") then return end
+    watching = CreateFrame("Frame")
+    watching:SetScript("OnUpdate", readGame)
 end
 
 -- ============================================================
