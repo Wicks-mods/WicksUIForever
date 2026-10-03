@@ -6,9 +6,10 @@
 -- look: a square mask, our border and brackets in place of the ring, and zone, clock,
 -- coordinates and mail drawn by us on top.
 --
--- Addon minimap buttons (anything LibDBIcon made) are gathered into a
--- small flyout so they stop crowding the edge. Those are other addons'
--- frames, not Blizzard's, so moving them taints nothing of the game's.
+-- Addon minimap buttons (LibDBIcon's, the suite's own, hand-made ones) are
+-- gathered into a small flyout so they stop crowding the edge. Those are
+-- other addons' frames, not Blizzard's, so moving them taints nothing of
+-- the game's.
 
 local ADDON, ns = ...
 
@@ -334,8 +335,162 @@ end
 -- ============================================================
 -- Button collector
 -- ============================================================
+-- Every named button parented to the map is gathered, except Blizzard's
+-- own pieces, ours, and the pins addons draw on the map itself.
+local KEEP = {
+    MinimapBackdrop = true, MinimapZoomIn = true, MinimapZoomOut = true, MinimapToggleButton = true,
+    MinimapZoneTextButton = true, MiniMapMailFrame = true, MiniMapBattlefieldFrame = true, MiniMapLFGFrame = true,
+    LFGMinimapFrame = true, MiniMapWorldMapButton = true, MiniMapTracking = true, MiniMapTrackingButton = true,
+    MiniMapTrackingFrame = true, GameTimeFrame = true, TimeManagerClockButton = true, MiniMapInstanceDifficulty = true,
+    GuildInstanceDifficulty = true, MiniMapChallengeMode = true, MiniMapVoiceChatFrame = true,
+    QueueStatusMinimapButton = true, QueueStatusButton = true, GarrisonLandingPageMinimapButton = true,
+    ExpansionLandingPageMinimapButton = true, AddonCompartmentFrame = true,
+    WickCoreMinimapButton = true,
+}
+local PINS = { "^WicksUI_", "^Minimap", "^MiniMap", "^QuestieFrame", "^HandyNotes", "^GatherMate", "^GatherNote",
+    "^Gatherer", "^MapNotes", "^Routes", "^TomTom", "^Archy", "^DugisArrow", "^FWGMinimapPOI", "^poiMinimap",
+    "^MiniNotePOI", "^RecipeRadar", "^Cartographer", "^NxMap", "^WestPointer", "^ZGVMarker", "^Spy_MapNoteList",
+    "^Nauticus", "^GuildMap3Mini", "^TDial_", "^ZOrbMinimap", "^MBB_", "^MinimapButtonBag" }
+-- Other collectors; two would pull the same buttons apart.
+local COLLECTORS = { "MBB", "MinimapButtonButton", "SexyMap", "MinimapButtonBag" }
+-- The round border, backdrop and highlight LibDBIcon and most hand-made
+-- buttons draw, by path and by file id.
+local RING = {
+    [136430] = true, ["interface\\minimap\\minimap-trackingborder"] = true,
+    [136467] = true, ["interface\\minimap\\ui-minimap-background"] = true,
+    [136477] = true, ["interface\\minimap\\ui-minimap-zoombutton-highlight"] = true,
+}
+local CELL, TILE, PER_ROW = 28, 24, 8
+
+local function otherCollector()
+    local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    if not loaded then return false end
+    for _, name in ipairs(COLLECTORS) do
+        if loaded(name) then return true end
+    end
+    return false
+end
+
+local function wanted(child)
+    local name = child.GetName and child:GetName()
+    if not name or KEEP[name] then return false end
+    for _, p in ipairs(PINS) do
+        if name:find(p) then return false end
+    end
+    if child.IsForbidden and child:IsForbidden() then return false end
+    if child.IsProtected and child:IsProtected() then return false end
+    local kind = child:GetObjectType()
+    if kind == "Button" or kind == "CheckButton" then return true end
+    -- A plain frame standing in for a button: small, takes the mouse, has art.
+    if kind == "Frame" and child.IsMouseEnabled and child:IsMouseEnabled() then
+        local w = child:GetWidth() or 0
+        if w > 0 and w <= 48 then
+            for _, r in ipairs({ child:GetRegions() }) do
+                if r:GetObjectType() == "Texture" then return true end
+            end
+        end
+    end
+    return false
+end
+
+local function artOf(r)
+    local t = r:GetTexture()
+    if type(t) == "string" then return t:lower() end
+    return t
+end
+
+local function defaultCoords(r)
+    local ulx, uly, llx, lly, urx, ury, lrx, lry = r:GetTexCoord()
+    return ulx == 0 and uly == 0 and llx == 0 and lly == 1 and urx == 1 and ury == 0 and lrx == 1 and lry == 1
+end
+
+function MM:Place(button)
+    local st = self.collected[button]
+    if not st or not st.index then return end
+    st.placing = true
+    button:ClearAllPoints()
+    button:SetPoint("TOPLEFT", self.flyout, "TOPLEFT",
+        4 + ((st.index - 1) % PER_ROW) * CELL, -4 - math.floor((st.index - 1) / PER_ROW) * CELL)
+    st.placing = false
+end
+
+function MM:Layout()
+    local bar = self.flyout
+    if not bar then return end
+    local order = {}
+    for b in pairs(self.collected) do order[#order + 1] = b end
+    table.sort(order, function(a, b) return (a:GetName() or "") < (b:GetName() or "") end)
+    local n = 0
+    for _, b in ipairs(order) do
+        local st = self.collected[b]
+        if b:IsShown() then
+            n = n + 1
+            st.index = n
+            self:Place(b)
+        else
+            st.index = nil
+        end
+    end
+    local rows = math.max(1, math.ceil(n / PER_ROW))
+    bar:SetSize(8 + math.min(math.max(n, 1), PER_ROW) * CELL, 8 + rows * CELL)
+    self.toggle:SetShown(n > 0)
+    if n == 0 then bar:Hide() end
+end
+
+-- A gathered button loses its round border and backdrop, fills a square
+-- tile with its icon, takes the look's border, and stands its own drag
+-- down: the flyout places it.
+function MM:Dress(button)
+    local st = self.collected[button]
+    if not st or st.dressed then return end
+    st.dressed = true
+    for _, r in ipairs({ button:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local art = artOf(r)
+            if art and RING[art] then
+                r:SetAlpha(0)
+            elseif r:GetDrawLayer() ~= "HIGHLIGHT" then
+                r:ClearAllPoints()
+                r:SetPoint("TOPLEFT", button, "TOPLEFT", 2, -2)
+                r:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+                -- Squared off, unless the addon cut its own coordinates.
+                if defaultCoords(r) then r:SetTexCoord(0.1, 0.9, 0.1, 0.9) end
+            end
+        end
+    end
+    button:SetSize(TILE, TILE)
+    if button.SetHighlightTexture then
+        button:SetHighlightTexture(SQUARE)
+        local hl = button:GetHighlightTexture()
+        if hl then
+            hl:SetAllPoints()
+            hl:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 0.25)
+            Chrome:Register(hl, C.fel, "vertex", 0.25)
+        end
+    end
+    ns:SetTemplate(button, "Default")
+    if button.RegisterForDrag then button:RegisterForDrag() end
+    button:SetScript("OnDragStart", nil)
+    button:SetScript("OnDragStop", nil)
+    -- An addon that puts its button back on the map's edge (LibDBIcon does
+    -- on every refresh) is answered by putting it back in its cell.
+    hooksecurefunc(button, "SetPoint", function(b)
+        if not st.placing then MM:Place(b) end
+    end)
+    hooksecurefunc(button, "SetParent", function(b, p)
+        if p ~= MM.flyout and not st.placing then
+            st.placing = true
+            b:SetParent(MM.flyout)
+            st.placing = false
+            MM:Layout()
+        end
+    end)
+    button:HookScript("OnShow", function() MM:Layout() end)
+    button:HookScript("OnHide", function() MM:Layout() end)
+end
+
 function MM:Collect()
-    if not db().collect then return end
+    if not db().collect or otherCollector() then return end
     local bar = self.flyout
     if not bar then
         local toggle = W:Button(self.chrome, "+", 16, function() MM.flyout:SetShown(not MM.flyout:IsShown()) end)
@@ -350,27 +505,25 @@ function MM:Collect()
         bar:Hide()
         self.flyout = bar
         self.collected = {}
+        -- LibDBIcon says when it makes a button; the rest are caught by
+        -- the passes after entering the world.
+        local lib = LibStub and LibStub("LibDBIcon-1.0", true)
+        if lib and lib.RegisterCallback then
+            pcall(lib.RegisterCallback, self, "LibDBIcon_IconCreated", function()
+                C_Timer.After(0, function() MM:Collect() end)
+            end)
+        end
     end
-    local n = 0
     for _, child in ipairs({ Minimap:GetChildren() }) do
-        local name = child.GetName and child:GetName()
-        if name and name:find("^LibDBIcon10_") then
-            if not self.collected[child] then
-                self.collected[child] = true
-                child:SetParent(bar)
-            end
+        if not self.collected[child] and wanted(child) then
+            local st = { placing = true }
+            self.collected[child] = st
+            child:SetParent(bar)
+            st.placing = false
+            self:Dress(child)
         end
     end
-    for child in pairs(self.collected) do
-        if child:GetParent() == bar then
-            n = n + 1
-            child:ClearAllPoints()
-            child:SetPoint("TOPLEFT", bar, "TOPLEFT", 4 + ((n - 1) % 6) * 32, -4 - math.floor((n - 1) / 6) * 32)
-        end
-    end
-    local rows = math.max(1, math.ceil(n / 6))
-    bar:SetSize(8 + math.min(n, 6) * 32, 8 + rows * 32)
-    self.toggle:SetShown(n > 0)
+    self:Layout()
 end
 
 -- ============================================================
@@ -410,7 +563,12 @@ function MM:Initialize()
     self:Update()
 
     local function reshape() if db().square then MM:Shape() end end
-    ns:On("PLAYER_ENTERING_WORLD", function() reshape(); MM:UpdateZone(); C_Timer.After(2, function() MM:Collect() end) end)
+    ns:On("PLAYER_ENTERING_WORLD", function()
+        reshape(); MM:UpdateZone()
+        -- Addons make their buttons at login and for a while after.
+        C_Timer.After(2, function() MM:Collect() end)
+        C_Timer.After(10, function() MM:Collect() end)
+    end)
     ns:On("MINIMAP_UPDATE_ZOOM", reshape)
     ns:On("CVAR_UPDATE", function(_, name) if name == "rotateMinimap" then reshape() end end)
     for _, e in ipairs({ "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA" }) do
@@ -432,7 +590,7 @@ ns.Config:AddPage("minimap", "Minimap", function(L)
     L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. The round map keeps Blizzard's size, so its ring fits." })
     L:Toggle("Hide the zoom buttons", "hideZoom")
     L:Toggle("Hide Blizzard's zone header and clock", "hideBlizzardText")
-    L:Toggle("Gather addon buttons into a flyout", "collect", { tooltip = "Buttons made by LibDBIcon, which is most of them. Takes effect after a reload when switched off." })
+    L:Toggle("Gather addon buttons into a flyout", "collect", { tooltip = "Every addon's button round the map, under a + at the map's corner; pins drawn on the map itself are left alone. Stands down when another collector (MBB) is running. Takes effect after a reload when switched off." })
     L:Heading("Text on the map")
     L:Toggle("Zone", "zone")
     L:Toggle("Zone inside the map", "zoneInside")

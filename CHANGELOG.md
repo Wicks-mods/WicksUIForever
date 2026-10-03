@@ -20,6 +20,12 @@
   copies.
 - Where the game has no damage meter of its own, the bags clear a
   Details window instead.
+- The minimap gathers every addon's button, not only LibDBIcon's: the
+  suite's own and hand-made ones too. Their round borders go, the icons
+  sit in a grid of square tiles in the look's border, and an addon that
+  puts its button back on the map's edge is answered. Pins drawn on the
+  map itself are left alone, and the collector stands down when another
+  one (MBB) is running.
 - Your buffs and debuffs on such a client sit on two secure aura
   headers: the client's own secure code sorts them and places a
   button per aura, in combat too, and a right-click cancels a buff.
