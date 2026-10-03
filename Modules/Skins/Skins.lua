@@ -22,6 +22,7 @@ ns.defaults.profile.skins = {
     enable = true,
     tracker = true, trackerFontSize = 14,
     damageMeter = true,
+    meterClassColors = true,     -- the meter's own class colours, kept whatever the look
     meterAlign = true,           -- the meter as wide as the right info panel, sat on it
     meterHeight = 150,           -- its height while lined up (0 leaves it to Edit Mode)
     microMenu = "mouseover",     -- show, mouseover, hide
@@ -227,6 +228,8 @@ local function barColour(entry)
 end
 local function paintBar(entry, tex)
     if painting then return end
+    -- Class colours are the meter's own; leaving its bars alone keeps them.
+    if db().meterClassColors then return end
     local mine = entry.isLocalPlayer
     if issecretvalue and issecretvalue(mine) then mine = false end
     local c = ns:MeterBarColor(mine and true or false)
@@ -579,6 +582,7 @@ ns.Config:AddPage("skins", "Blizzard frames", function(L)
     L:Toggle("Objective tracker", "tracker")
     L:Slider("Tracker text size", "trackerFontSize", 8, 18, 1)
     L:Toggle("Damage meter window", "damageMeter", { tooltip = "The window, and its text in the Wick font. The bars show combat numbers the client keeps secret; those are never read, and nothing on the meter is touched in combat." })
+    L:Toggle("Damage meter in class colours", "meterClassColors", { tooltip = "The meter's own class colours on every bar. Off puts the bars in the look's colours, yours brightest. Turning it back on shows from the next reload or fight, as the meter only repaints a bar when its colour changes." })
     L:Toggle("Line the meter up with the info panel", "meterAlign", { tooltip = "The meter's window is made as wide as the right info panel and sits just above it. Off leaves it to Edit Mode (after a reload)." })
     L:Slider("Damage meter height", "meterHeight", 0, 400, 5, { disabled = function() return not db().meterAlign end,
         tooltip = "Its height while it is lined up with the info panel. 0 leaves the height to Edit Mode." })

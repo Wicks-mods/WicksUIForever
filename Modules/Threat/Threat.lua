@@ -29,6 +29,7 @@ local TH = ns:NewModule("threat", { title = "Threat", order = 45, defaults = {
     onMeter = true,         -- sit on the damage meter, as wide as it
     meterWidth = 220,
     rowHeight = 16,
+    classColors = true,     -- bars in class colours whatever the look
     personal = true,
     personalWidth = 220,
     personalHeight = 8,
@@ -270,7 +271,9 @@ local function drawMeter(list)
         local r = row(i)
         if e then
             local mine = e.unit == "player"
-            local look = ns:MeterBarColor(mine)
+            -- Class colours by default, so you can tell who is who; off
+            -- puts the bars in the look's colours (ns:MeterBarColor).
+            local look = (not d.classColors) and ns:MeterBarColor(mine) or nil
             local c = look or classColor(e)
             r:SetStatusBarColor(c[1], c[2], c[3], e.pet and 0.6 or 0.9)
             r:SetValue(math.min(1, e.value / top))
@@ -417,6 +420,7 @@ ns.Config:AddPage("threat", "Threat", function(L)
     L:Toggle("Sit on the damage meter", "onMeter", { tooltip = "Straight above the damage meter, as wide as it, following it wherever it goes. With the damage meter hidden, the threat meter goes back to its own place (move it with /wui move)." })
     L:Slider("Width", "meterWidth", 140, 400, 2, { disabled = function() return db().onMeter end })
     L:Slider("Row height", "rowHeight", 10, 28, 1)
+    L:Toggle("Class colours", "classColors", { tooltip = "Each bar in its player's class colour, your name in the accent. Off puts the bars in the look's colours, yours brightest." })
     L:Heading("Your bar")
     L:Toggle("Personal threat bar", "personal")
     L:Slider("Width", "personalWidth", 80, 400, 2)

@@ -760,6 +760,20 @@ end
 -- any Wick panel (WickCore marks those).
 -- A unit frame inside a window (the raid frame settings' preview) is
 -- content, and a live one hands back secret alphas and sizes.
+-- Whether addon code may touch a child at all. This client puts some of
+-- Blizzard's own widgets out of reach (the trade window's gold input is
+-- one), and calling any method on such a frame raises "attempt to access
+-- forbidden object". IsForbidden is the one call they allow; a protected
+-- GetObjectType covers objects locked away without saying so, like aura
+-- buttons in combat. The walkers below run every frame on open windows,
+-- so one unchecked child was an error per frame.
+local function reachable(o)
+    if not o then return false end
+    if o.IsForbidden and o:IsForbidden() then return false end
+    return (pcall(o.GetObjectType, o))
+end
+PS.reachable = reachable
+
 local function isUnitFrame(f)
     return f.healthBar ~= nil and f.displayedUnit ~= nil
 end
@@ -773,11 +787,26 @@ local function notOurs(frame)
 end
 PS.notOurs = notOurs
 
+-- The need, greed, pass and transmog buttons on a loot roll: small and
+-- without text, so the arrow rule below would take them for arrows and
+-- give them chevrons. Their pictures are what they mean, so they keep them.
+-- Known by the roll frame's LootButtons array, or by their atlas.
+local function isRollButton(b)
+    local p = b:GetParent()
+    if p and type(p.LootButtons) == "table" then
+        for _, x in ipairs(p.LootButtons) do if x == b then return true end end
+    end
+    local n = b.GetNormalTexture and b:GetNormalTexture()
+    local a = n and n.GetAtlas and n:GetAtlas()
+    return (type(a) == "string" and a:find("^lootroll")) and true or false
+end
+PS.isRollButton = isRollButton
+
 local function scanButtons(frame, depth)
     if depth > 7 or not frame.GetChildren or notOurs(frame) then return end
     recolorText(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
-        if not isUnitFrame(child) then
+        if reachable(child) and not isUnitFrame(child) then
             local kind = child:GetObjectType()
             local w, h = child:GetSize()
             w, h = w or 0, h or 0
@@ -839,6 +868,8 @@ local function scanButtons(frame, depth)
             elseif isButton and (child.Icon or child.icon) and not child.Left and not child.Name
                 and not (child:GetParent() and child:GetParent().Button == child) then
                 styleIconButton(child)
+            elseif isButton and isRollButton(child) then
+                -- Left as Blizzard drew it (see isRollButton).
             elseif arrowGlyphs[child] or (isButton and w <= 32 and h <= 32 and not hasText(child)) then
                 styleArrow(child)
             elseif kind == "Button" and w >= 110 and h <= 36 and hasText(child) and not child.CollapseButton then
@@ -857,6 +888,7 @@ end
 -- ============================================================
 -- Windows that are not built from the common template
 -- ============================================================
+PS.scanButtons = scanButtons
 PS.SPECIAL = {}
 
 -- A frame's art and its border's art, by alpha on the pieces rather than
@@ -877,8 +909,8 @@ local CONTENT = { Button = true, CheckButton = true, EditBox = true, Slider = tr
 local function deepStrip(frame, depth, limit)
     if depth > (limit or 2) or not frame.GetChildren then return end
     for _, child in ipairs({ frame:GetChildren() }) do
-        local kind = child:GetObjectType()
-        if not CONTENT[kind] and not child.ScrollTarget and not child.ScrollBar and not notOurs(child) then
+        local kind = reachable(child) and child:GetObjectType()
+        if kind and not CONTENT[kind] and not child.ScrollTarget and not child.ScrollBar and not notOurs(child) then
             fadeRegions(child)
             fade(child.NineSlice)
             deepStrip(child, depth + 1, limit)
@@ -894,7 +926,7 @@ PS.DEEP = { LFGParentFrame = 2, LFGListingFrame = 2, LFGBrowseFrame = 2,
 local function styleQuestHeaders(root, depth)
     if depth > 6 or not root.GetChildren then return end
     for _, child in ipairs({ root:GetChildren() }) do
-        if child:IsShown() then
+        if reachable(child) and child:IsShown() then
             if child.CollapseButton and child:GetObjectType() == "Button" then
                 if not done[child] then
                     done[child] = true
@@ -4127,19 +4159,21 @@ function PS:Initialize()
     local function findBoxes(f, depth, out)
         if depth > 6 or not f.GetChildren then return out end
         for _, c in ipairs({ f:GetChildren() }) do
-            if c.ScrollTarget then out[#out + 1] = c.ScrollTarget end
-            if c:GetObjectType() ~= "ScrollFrame" then findBoxes(c, depth + 1, out) end
+            if reachable(c) then
+                if c.ScrollTarget then out[#out + 1] = c.ScrollTarget end
+                if c:GetObjectType() ~= "ScrollFrame" then findBoxes(c, depth + 1, out) end
+            end
         end
         return out
     end
     local sigs = {}
     local function signature(n, f)
         local parts = {}
-        for _, c in ipairs({ f:GetChildren() }) do parts[#parts + 1] = c:IsShown() and "1" or "0" end
+        for _, c in ipairs({ f:GetChildren() }) do parts[#parts + 1] = (reachable(c) and c:IsShown()) and "1" or "0" end
         for _, t in ipairs(boxes[f] or {}) do
             parts[#parts + 1] = t:GetNumChildren()
             local shownRows = 0
-            for _, row in ipairs({ t:GetChildren() }) do if row:IsShown() then shownRows = shownRows + 1 end end
+            for _, row in ipairs({ t:GetChildren() }) do if reachable(row) and row:IsShown() then shownRows = shownRows + 1 end end
             parts[#parts + 1] = shownRows
         end
         return table.concat(parts, ",")
