@@ -1,5 +1,16 @@
 # Wick's UI
 
+## 0.10.1 (unreleased)
+
+### TBC Classic Anniversary
+
+- The quest tracker takes the look: a Quests header over an accent rule,
+  and its lines in the look's font at the tracker text size. A quest in
+  progress reads in the text colour and one ready to hand in in the
+  accent; a finished objective is muted. It widens to fit its lines, so
+  they no longer run off the right edge. Blizzard frames, Objective
+  tracker switches it, and Tracker text size sets its size.
+
 ## 0.10.0 (2026-10-03)
 
 ### TBC Classic Anniversary

@@ -209,10 +209,12 @@ local function pinQuestTracker()
     local q, a = rawget(_G, "QuestWatchFrame"), EX.questAnchor
     if not (q and a and db().enable and db().questTracker) then return end
     if InCombatLockdown() and q:IsProtected() then return end
+    -- Room at the top for the skin's header (Skins.lua), inside the mover.
+    local inset = ns.Skins and ns.Skins.ClassicTrackerInset and ns.Skins:ClassicTrackerInset() or 0
     local p, rel, rp, x, y = q:GetPoint(1)
-    if q:GetNumPoints() == 1 and p == "TOPRIGHT" and rel == a and rp == "TOPRIGHT" and x == 0 and y == 0 then return end
+    if q:GetNumPoints() == 1 and p == "TOPRIGHT" and rel == a and rp == "TOPRIGHT" and x == 0 and y == -inset then return end
     q:ClearAllPoints()
-    q:SetPoint("TOPRIGHT", a, "TOPRIGHT", 0, 0)
+    q:SetPoint("TOPRIGHT", a, "TOPRIGHT", 0, -inset)
 end
 EX.PinQuestTracker = pinQuestTracker
 

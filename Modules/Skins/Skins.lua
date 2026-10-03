@@ -64,7 +64,111 @@ local TRACKERS = { "ObjectiveTrackerFrame", "QuestObjectiveTracker", "CampaignQu
     "ScenarioObjectiveTracker", "ProfessionsRecipeTracker", "MonthlyActivitiesObjectiveTracker",
     "AdventureObjectiveTracker", "InitiativeTasksObjectiveTracker", "UIWidgetObjectiveTracker" }
 
+-- The quest tracker of the Classic kind (TBC Anniversary): QuestWatchFrame
+-- has no art and no header, only QuestWatchLine font strings that
+-- QuestWatch_Update rewrites, a quest's title in gold and its objectives
+-- after it, each line starting " - ". The skin runs after every update
+-- (a hook on the global function, never on the frame): the lines take the
+-- look's font, the golds and greys become the palette, and a header of
+-- ours sits above it the way the Forever tracker's headers look. A quest
+-- in progress reads in the text colour, one ready to hand in in the
+-- accent; an objective still to do in the text colour, a finished one
+-- muted. Only method calls reach Blizzard's frame and lines.
+local CLASSIC_HEADER = 22
+local painted = setmetatable({}, { __mode = "k" })   -- line -> { token, text } we last gave it
+
+local function classicTracker()
+    return rawget(_G, "QuestWatchFrame") and not rawget(_G, "ObjectiveTrackerFrame")
+end
+SK.ClassicTracker = classicTracker
+
+-- How far below its anchor the tracker sits, so the header fits inside
+-- the "Quest tracker" mover (Extras).
+function SK:ClassicTrackerInset()
+    return (classicTracker() and db().tracker) and CLASSIC_HEADER or 0
+end
+
+local function kindOf(line)
+    local text = line:GetText() or ""
+    local r, g, b = line:GetTextColor()
+    local bright = r > 0.9 and g > 0.9 and b > 0.9
+    if text:find("^%s*%-%s") then
+        return bright and "muted" or "text"           -- an objective: done, or still to do
+    end
+    return (r > 0.9) and "fel" or "text", true        -- a title: ready to hand in, or in progress
+end
+
+function SK:QuestWatch()
+    local q = rawget(_G, "QuestWatchFrame")
+    if not q then return end
+    local hdr = self.questHeader
+    if not db().tracker then
+        if hdr then hdr:Hide() end
+        return
+    end
+    if not hdr then
+        hdr = CreateFrame("Frame", nil, q)
+        hdr:SetPoint("BOTTOMLEFT", q, "TOPLEFT", 0, 2)
+        hdr:SetPoint("BOTTOMRIGHT", q, "TOPRIGHT", 0, 2)
+        hdr:SetHeight(CLASSIC_HEADER - 2)
+        hdr.text = ns:CreateText(hdr, 14, "LEFT", "OUTLINE")
+        hdr.text:SetPoint("BOTTOMLEFT", hdr, "BOTTOMLEFT", 0, 5)
+        hdr.text:SetText(rawget(_G, "QUESTS_LABEL") or "Quests")
+        ns:HeadingColor(hdr.text)
+        local rule = hdr:CreateTexture(nil, "ARTWORK")
+        rule:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 0.6)
+        rule:SetHeight(ns.mult or 1)
+        rule:SetPoint("BOTTOMLEFT", hdr, "BOTTOMLEFT", 0, 2)
+        rule:SetPoint("BOTTOMRIGHT", hdr, "BOTTOMRIGHT", 0, 2)
+        Chrome:Register(rule, "fel", "texture", 0.6)
+        self.questHeader = hdr
+    end
+    hdr:Show()
+    local font = ns.Media:Font()
+    local size = db().trackerFontSize
+    ns.Media:SetFont(hdr.text, size + 2, "OUTLINE")
+    local widest = hdr.text:GetStringWidth() or 0
+    local i = 1
+    local line = rawget(_G, "QuestWatchLine1")
+    while line do
+        if line:IsShown() then
+            local p = painted[line]
+            local r, g, b = line:GetTextColor()
+            local text = line:GetText()
+            -- Still as we left it (a theme change repaints it through
+            -- ns:TextColor, so its token's colour now is the test), or
+            -- Blizzard repainted it and it is read again.
+            local c = p and C[p.token]
+            if not (p and c and p.text == text and math.abs(c[1] - r) < 0.01 and math.abs(c[2] - g) < 0.01 and math.abs(c[3] - b) < 0.01) then
+                local token, title = kindOf(line)
+                local want = title and size + 1 or size
+                local f, s = line:GetFont()
+                if f ~= font or math.floor((s or 0) + 0.5) ~= want then
+                    line:SetFont(font, want, "OUTLINE")
+                    line:SetShadowOffset(0, 0)
+                end
+                ns:TextColor(line, token)
+                painted[line] = { token = token, text = text }
+            end
+            widest = math.max(widest, line:GetStringWidth() or 0)
+        end
+        i = i + 1
+        line = rawget(_G, "QuestWatchLine" .. i)
+    end
+    -- Blizzard sized the frame to its own font; ours is wider, and the
+    -- frame hangs from its right edge, so the lines would run off it.
+    local w = math.ceil(widest + 10)
+    if math.abs((q:GetWidth() or 0) - w) > 0.5 and not (InCombatLockdown() and q:IsProtected()) then q:SetWidth(w) end
+end
+
 function SK:Tracker()
+    if classicTracker() then
+        if not self.questWatchHooked and rawget(_G, "QuestWatch_Update") then
+            self.questWatchHooked = true
+            hooksecurefunc("QuestWatch_Update", function() SK:QuestWatch() end)
+        end
+        self:QuestWatch()
+    end
     if not db().tracker then return end
     -- The default went from 12 to 14; a profile still on the old default
     -- moves up once, and a size picked after that stands.
