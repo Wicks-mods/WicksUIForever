@@ -222,6 +222,12 @@ local function CastStart(self, event, unit)
 		return
 	end
 
+	-- No interrupt flag on this client (TBC Anniversary): nil, which
+	-- SetAlphaFromBoolean refuses. A secret is passed on uncompared.
+	if(not (issecretvalue and issecretvalue(notInterruptible)) and notInterruptible == nil) then
+		notInterruptible = false
+	end
+
 	STATE[element].delay = 0
 	STATE[element].holdTime = 0
 	STATE[element].notInterruptible = notInterruptible

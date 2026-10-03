@@ -523,7 +523,14 @@ local function donePage(full)
     if run.leaving then
         text = "Wick's UI switches itself off at the reload. It can be switched on again from the AddOns list on the character screen."
     elseif full then
-        text = "Your frames start in Wick's own layout. Type |cff4FC778/wui move|r to place them, |cff4FC778/wui|r for the settings and |cff4FC778/wui kb|r to bind keys by pointing at a button.\n\nColours come with the look. To change them, or see the palette, open WickCore's options: |cff4FC778/wickcore options|r.\n\nA reload finishes the setup."
+        text = "Your frames start in Wick's own layout. Type |cff4FC778/wui move|r to place them, |cff4FC778/wui|r for the settings and |cff4FC778/wui kb|r to bind keys by pointing at a button."
+        -- Other Wick addons' frames are movers from their saved places,
+        -- which they keep: Reset puts them back there.
+        local reg = Chrome.movables
+        if reg and reg.order and #reg.order > 0 then
+            text = text .. "\n\nYour other Wick addons keep the places you gave them. To put them back there later, show Wick addons in |cff4FC778/wui move|r and press Reset shown."
+        end
+        text = text .. "\n\nColours come with the look. To change them, or see the palette, open WickCore's options: |cff4FC778/wickcore options|r.\n\nA reload finishes the setup."
     else
         text = "Answered. A reload puts it into effect.\n\n|cff4FC778/wui install|r asks every question again."
     end

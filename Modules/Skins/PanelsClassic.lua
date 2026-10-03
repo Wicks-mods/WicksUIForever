@@ -134,6 +134,21 @@ local function iconLike(tex)
     return type(tex) == "string" and tex:lower():find("interface\\icons", 1, true) ~= nil
 end
 
+-- A check box drawn from atlases (the settings' kind). Its box answers
+-- GetTexture with a file id like any picture, so iconLike would take it
+-- for one; it is left for the check box style in Panels.lua.
+local function isCheckBox(b, kind)
+    if kind ~= "CheckButton" then return false end
+    for _, get in ipairs({ "GetNormalTexture", "GetCheckedTexture" }) do
+        local t = b[get] and b[get](b)
+        local a = t and t.GetAtlas and t:GetAtlas()
+        if type(a) == "string" and (a:lower():find("checkbox", 1, true) or a:lower():find("checkmark", 1, true)) then
+            return true
+        end
+    end
+    return false
+end
+
 -- A frame's own textures faded, all but the ones that are content (an
 -- icon, a map) and the ones we drew.
 local function fadeArt(f)
@@ -500,6 +515,8 @@ local function button(b, kind, n, w, h)
                 H.card(b, "wuiRow", "TOPLEFT", b, "BOTTOMRIGHT", b, -6, 6, 112, -6)
             end
         end
+    elseif isCheckBox(b, kind) then
+        -- Left for Panels.lua (see isCheckBox).
     else
         local nt = b.GetNormalTexture and b:GetNormalTexture()
         if nt and w <= 40 and h <= 40 and not hasText(b) and iconLike(nt:GetTexture()) then

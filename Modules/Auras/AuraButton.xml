@@ -4,7 +4,7 @@
 	     combat too; a right-click cancels through the client's protected
 	     cancelaura action, which reads the index and filter the header sets.
 	     Everything drawn on it is made by WicksUI_AuraButtonMixin (Auras.lua). -->
-	<Button name="WicksUI_AuraButtonTemplate" inherits="SecureActionButtonTemplate" mixin="WicksUI_AuraButtonMixin" registerForClicks="RightButtonUp" virtual="true">
+	<Button name="WicksUI_AuraButtonTemplate" inherits="SecureActionButtonTemplate" mixin="WicksUI_AuraButtonMixin" registerForClicks="RightButtonUp, RightButtonDown" virtual="true">
 		<Attributes>
 			<Attribute name="type" value="cancelaura"/>
 		</Attributes>

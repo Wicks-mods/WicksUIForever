@@ -32,6 +32,7 @@ ns.defaults.profile.minimap = {
     coords = true, coordsSize = 11,
     mail = true,
     collect = true,              -- gather addon buttons into a flyout
+    strip = true,                -- the Classic layout's own buttons in a row under the map
 }
 
 local SQUARE = "Interface\\BUTTONS\\WHITE8X8"
@@ -188,9 +189,11 @@ function MM:Shape()
             b:ClearAllPoints()
             b:SetPoint(point, Minimap, point, x, y)
         end
-        pin("MiniMapTracking", "TOPLEFT", 2, -22)
-        pin("GameTimeFrame", "TOPRIGHT", -2, -24)
-        pin("MiniMapBattlefieldFrame", "BOTTOMLEFT", 2, 2)
+        if not self:Strip() then
+            pin("MiniMapTracking", "TOPLEFT", 2, -22)
+            pin("GameTimeFrame", "TOPRIGHT", -2, -24)
+            pin("MiniMapBattlefieldFrame", "BOTTOMLEFT", 2, 2)
+        end
         -- The world map is a key and a micro button; the ring's copy goes.
         local wm = rawget(_G, "MiniMapWorldMapButton")
         if wm then wm:SetAlpha(0); wm:EnableMouse(false) end
@@ -298,7 +301,7 @@ function MM:BuildText()
     local elapsed = 0
     chrome:SetScript("OnUpdate", function(_, e)
         elapsed = elapsed + e
-        if elapsed >= 0.5 then elapsed = 0; MM:Tick(); MM:Fill() end
+        if elapsed >= 0.5 then elapsed = 0; MM:Tick(); MM:Fill(); MM:Strip() end
     end)
 end
 
@@ -527,6 +530,134 @@ function MM:Collect()
 end
 
 -- ============================================================
+-- Button strip
+-- ============================================================
+-- The Classic layout's own buttons (tracking, the group finder's eye, the
+-- battleground queue, the day and night dial) and WickCore's launcher sit
+-- in a row under the square map, and the new-mail mark takes the row's
+-- right end. They stay in view, where the flyout would hide them, so a
+-- queue or what you track still shows. Their round borders are faded and
+-- their pictures squared to the row; nothing of ours is written onto the
+-- game's frames. Forever's pieces belong to Edit Mode's minimap and stay.
+local STRIP = { "MiniMapTracking", "MiniMapTrackingFrame", "LFGMinimapFrame", "MiniMapLFGFrame",
+    "MiniMapBattlefieldFrame", "GameTimeFrame", "WickCoreMinimapButton" }
+local STRIP_PAD, STRIP_GAP = 3, 2
+
+local function classicPieces()
+    return rawget(_G, "MiniMapTracking") ~= nil or rawget(_G, "MiniMapTrackingFrame") ~= nil
+end
+MM.ClassicPieces = classicPieces
+
+-- A piece made to fill its tile, looked at again on every pass: Blizzard
+-- moves a pressed button's picture and puts it back on release. The
+-- tracking frame keeps its button as a child; children cover the tile.
+local function fitRegions(f, tile)
+    for _, r in ipairs({ f:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local art = artOf(r)
+            if art and RING[art] then
+                if r:GetAlpha() > 0 then r:SetAlpha(0) end
+            elseif r:GetDrawLayer() == "HIGHLIGHT" then
+                r:ClearAllPoints()
+                r:SetAllPoints(tile)
+            else
+                r:ClearAllPoints()
+                r:SetPoint("TOPLEFT", tile, "TOPLEFT", 2, -2)
+                r:SetPoint("BOTTOMRIGHT", tile, "BOTTOMRIGHT", -2, 2)
+                if defaultCoords(r) then r:SetTexCoord(0.1, 0.9, 0.1, 0.9) end
+            end
+        end
+    end
+end
+
+-- A dropdown hung on a piece (the tracking menu's) is not part of its
+-- picture and keeps its own place.
+local function isMenu(c)
+    local n = c.GetName and c:GetName()
+    return (n and n:lower():find("dropdown", 1, true)) or (c.Left and c.Middle and c.Right and c.Text) and true or false
+end
+
+local function fit(b)
+    fitRegions(b, b)
+    for _, c in ipairs({ b:GetChildren() }) do
+        if not isMenu(c) then
+            c:ClearAllPoints()
+            c:SetAllPoints(b)
+            fitRegions(c, b)
+        end
+    end
+end
+
+function MM:BuildStrip()
+    if self.strip then return self.strip end
+    local s = CreateFrame("Frame", "WicksUI_MinimapStrip", Minimap)
+    s:SetPoint("TOPLEFT", Minimap, "BOTTOMLEFT", 0, -4)
+    s:SetPoint("TOPRIGHT", Minimap, "BOTTOMRIGHT", 0, -4)
+    s:SetHeight(TILE + STRIP_PAD * 2)
+    ns:SetTemplate(s, "Default")
+    self.strip = s
+    return s
+end
+
+-- Lays the row out; false when there is no row (a round map, the option
+-- off, or Forever), so the caller places the pieces the old way.
+function MM:Strip()
+    local d = db()
+    local launcher = rawget(_G, "WickCoreMinimapButton")
+    if not (d.enable and d.square and d.strip and classicPieces()) then
+        if self.strip and self.strip:IsShown() then
+            self.strip:Hide()
+            if launcher then
+                launcher:SetSize(28, 28)
+                if launcher.RegisterForDrag then launcher:RegisterForDrag("LeftButton") end
+                placeLauncher()
+            end
+            self.mail:ClearAllPoints()
+            self.mail:SetPoint("TOPRIGHT", Minimap, "TOPRIGHT", -4, -4)
+        end
+        return false
+    end
+    local s = self:BuildStrip()
+    s:Show()
+    local level = s:GetFrameLevel() + 2
+    local n = 0
+    for _, name in ipairs(STRIP) do
+        local b = rawget(_G, name)
+        if b and b:IsShown() and not (b.IsForbidden and b:IsForbidden()) then
+            n = n + 1
+            local x = STRIP_PAD + (n - 1) * (TILE + STRIP_GAP)
+            if math.abs((b:GetWidth() or 0) - TILE) > 0.5 or math.abs((b:GetHeight() or 0) - TILE) > 0.5 then
+                b:SetSize(TILE, TILE)
+            end
+            local p, rel, _, px = b:GetPoint(1)
+            if not (b:GetNumPoints() == 1 and p == "LEFT" and rel == s and px == x) then
+                b:ClearAllPoints()
+                b:SetPoint("LEFT", s, "LEFT", x, 0)
+            end
+            if b:GetFrameLevel() < level then b:SetFrameLevel(level) end
+            if b == launcher then
+                -- Ours: its own tile and corners stay; the row places it,
+                -- so its drag round the map's edge stands down.
+                if launcher.RegisterForDrag then launcher:RegisterForDrag() end
+                if launcher.icon then
+                    launcher.icon:ClearAllPoints()
+                    launcher.icon:SetPoint("TOPLEFT", 4, -4)
+                    launcher.icon:SetPoint("BOTTOMRIGHT", -4, 4)
+                end
+            else
+                fit(b)
+            end
+        end
+    end
+    local mp, mrel = self.mail:GetPoint(1)
+    if mp ~= "RIGHT" or mrel ~= s then
+        self.mail:ClearAllPoints()
+        self.mail:SetPoint("RIGHT", s, "RIGHT", -STRIP_PAD - 2, 0)
+    end
+    return true
+end
+
+-- ============================================================
 -- Lifecycle
 -- ============================================================
 -- Addons that place buttons around the minimap (LibDBIcon and most others)
@@ -591,6 +722,9 @@ ns.Config:AddPage("minimap", "Minimap", function(L)
     L:Toggle("Hide the zoom buttons", "hideZoom")
     L:Toggle("Hide Blizzard's zone header and clock", "hideBlizzardText")
     L:Toggle("Gather addon buttons into a flyout", "collect", { tooltip = "Every addon's button round the map, under a + at the map's corner; pins drawn on the map itself are left alone. Stands down when another collector (MBB) is running. Takes effect after a reload when switched off." })
+    if MM.ClassicPieces() then
+        L:Toggle("The game's buttons in a row under the map", "strip", { tooltip = "Tracking, the group finder, a battleground queue, the day and night dial and Wick's launcher, in a row under the square map, with new mail at its end. Other addons' buttons stay in the flyout. Switched off, the buttons go back to the map's corners after a reload." })
+    end
     L:Heading("Text on the map")
     L:Toggle("Zone", "zone")
     L:Toggle("Zone inside the map", "zoneInside")

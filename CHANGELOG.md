@@ -45,6 +45,13 @@
   text boxes, spell and item slots and list rows redrawn as ours. The
   windows built on the portrait template keep the pass every window
   gets, and the old widgets inside them are looked over too.
+- The minimap's own buttons (tracking, the group finder's eye, a
+  battleground queue, the day and night dial) and WickCore's launcher
+  sit in a row of tiles under the square map, with new mail at its
+  end, where they had been scattered round its edge. Other addons'
+  buttons stay in the flyout.
+- The quest tracker moves: /wui move, "Quest tracker". It grows down
+  from where you put it. Edit Mode has no place for it on this client.
 
 ### Movers
 
@@ -53,8 +60,31 @@
   addon hands its frame to WickCore; once Wick's UI has it, the addon's
   own drag stands down and its move and reset commands point here.
   Quest Key does so now; the rest follow as they move onto WickCore.
+- The setup's last page says so, and how to put them back where you
+  had them: show Wick addons in /wui move and press Reset shown.
+- The need, greed and pass popups move: /wui move, "Loot rolls". Loot
+  toasts follow them. On Forever the Items loot window is an Edit Mode
+  system; move it there.
 
 ### Fixes
+
+- Forever: no flood of errors from the trade window. The window pass
+  asked a frame the game keeps locked what kind of frame it was; it now
+  checks that a frame can be read before it looks.
+- The damage meter and the threat meter show class colours again,
+  whatever the look, so you can tell who is who. Each is a switch: Damage
+  meter in class colours under Windows, and Class colours on the Threat
+  page. Off puts the bars in the look's colours, yours brightest.
+- The need, greed and pass buttons on a loot roll keep their pictures.
+  They had been taken for arrows and given chevrons.
+- TBC: check boxes in the game's Settings show a fel square when
+  ticked, as they do on Forever. They had been taken for icons, and
+  the tick was drawn as a faint ring round the box.
+- TBC: a right-click cancels a buff. The buttons listened only for the
+  release, and this client acts on the press.
+- TBC: no more error when someone near you starts casting. The game
+  gives no "can be interrupted" flag on this client, and the cast bar
+  had passed that straight on.
 
 - The group finder no longer comes apart. Dragging it by its title could
   pull the page you were on out of the window, leaving the window empty
