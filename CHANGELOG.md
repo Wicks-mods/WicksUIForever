@@ -1,6 +1,6 @@
 # Wick's UI
 
-## 0.10.0 (unreleased)
+## 0.10.0 (2026-10-03)
 
 ### TBC Classic Anniversary
 
