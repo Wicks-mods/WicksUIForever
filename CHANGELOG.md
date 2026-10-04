@@ -1,5 +1,14 @@
 # Wick's UI
 
+## 0.10.2 (unreleased)
+
+### Fixes
+
+- A quest opened from the map's quest log reads again. Its text was the
+  dark ink the game uses on parchment, left on our dark panel, and its
+  gold border, rewards banner and button dividers were still the game's.
+  The panel now takes the look like the quest giver's window does.
+
 ## 0.10.1 (2026-10-03)
 
 ### TBC Classic Anniversary

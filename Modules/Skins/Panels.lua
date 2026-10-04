@@ -1265,6 +1265,47 @@ PS.SPECIAL.WorldMapFrame = function(frame)
             fadeRegions(qf)
             if qf.ScrollFrame then fadeRegions(qf.ScrollFrame) end
         end
+        -- The quest opened from the log. Its parchment, gold border and
+        -- rewards banner go, and its text, inked for parchment, is lit: the
+        -- walk the fully skinned windows run, on this panel alone, so the
+        -- map beside it keeps its art. Blizzard inks the text again each
+        -- time it shows a quest, and draws the border's pieces the first
+        -- time the panel shows, so the walk follows both.
+        local details = ql.DetailsFrame
+        local function skinDetails()
+            if not (details and details:IsVisible() and PS.walkProfessions) then return end
+            PS.walkProfessions(details, 1)
+            local sf = details.ScrollFrame
+            if sf and sf.ScrollBar then styleScrollBar(sf.ScrollBar) end
+            -- The carved dividers either side of Share, unnamed art on the
+            -- button itself.
+            local share = details.ShareButton
+            if share then
+                local own = {}
+                for _, k in ipairs({ "Left", "Middle", "Right" }) do if share[k] then own[share[k]] = true end end
+                local e = extras[share]
+                if e and e.hover then own[e.hover] = true end
+                for _, r in ipairs({ share:GetRegions() }) do
+                    if r:GetObjectType() == "Texture" and not own[r] and r:GetDrawLayer() ~= "HIGHLIGHT" and r:GetAlpha() > 0 then
+                        r:SetAlpha(0)
+                    end
+                end
+            end
+            local label = details.RewardsFrameContainer and details.RewardsFrameContainer.RewardsFrame
+                and details.RewardsFrameContainer.RewardsFrame.Label
+            if label and not done[label] then
+                done[label] = true
+                styleText(label, 14, C.fel)
+            end
+        end
+        if details then
+            details:HookScript("OnShow", function() C_Timer.After(0, skinDetails) end)
+            if QuestInfo_Display then
+                hooksecurefunc("QuestInfo_Display", function()
+                    if details:IsVisible() then C_Timer.After(0, skinDetails) end
+                end)
+            end
+        end
         local poll = CreateFrame("Frame", nil, ql)
         local acc = 0.4
         poll:SetScript("OnUpdate", function(_, e)
@@ -1272,6 +1313,7 @@ PS.SPECIAL.WorldMapFrame = function(frame)
             if acc < 0.4 then return end
             acc = 0
             styleQuestHeaders(ql, 1)
+            skinDetails()
         end)
         -- The quest log as a black card beside the map. Its gold frame, the
         -- filigree on top and the gradient along the bottom go; the search
@@ -2491,6 +2533,7 @@ local function fullSkin(frame, each)
     end)
 end
 PS.fullSkin = fullSkin
+PS.walkProfessions = walkProfessions
 
 
 PS.SPECIAL.ProfessionsFrame = function(frame)
