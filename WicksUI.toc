@@ -2,7 +2,7 @@
 ## Title: Wick's UI
 ## Notes: A full interface replacement for World of Warcraft: Forever and TBC Classic Anniversary. Action bars, unit frames, group frames, nameplates, auras, chat, minimap and skins, in the Wick look, with every part optional.
 ## Author: Wick
-## Version: 0.10.1
+## Version: 0.10.2
 ## Dependencies: WickCore
 ## SavedVariables: WicksUIDB
 ## X-oUF: WicksUI_oUF

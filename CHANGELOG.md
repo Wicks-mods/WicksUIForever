@@ -1,6 +1,6 @@
 # Wick's UI
 
-## 0.10.2 (unreleased)
+## 0.10.2 (2026-10-03)
 
 ### Nameplates
 
