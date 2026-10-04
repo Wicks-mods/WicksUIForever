@@ -7,6 +7,15 @@
 - The group finder shows each group's members again. Their class and
   role marks were taken for window art and faded, so every group in the
   list looked empty.
+- The tooltip over a group fits its member lines. The game sizes it to
+  the dungeon names alone, so a name, its level and its role marks ran
+  past the right edge in the look's font.
+
+### Group finder
+
+- Each group in the Browse list is a card in the look, in place of the
+  game's brown bar, with the accent on hover and round the group you
+  have chosen. The Groups heading over them is a pill to match.
 
 ## 0.10.2 (2026-10-03)
 

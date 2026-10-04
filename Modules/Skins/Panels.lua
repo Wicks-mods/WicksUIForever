@@ -3541,6 +3541,103 @@ PS.SPECIAL.FriendsFrame = function(frame)
     return "generic"
 end
 
+-- The group finder's Browse list. Each group is a card of ours in place of
+-- the game's brown bar, its hover and its chosen state an accent wash over
+-- the card, the chosen one ringed in the accent; the Groups heading is a
+-- grey pill. Held every frame: the rows are pooled and filled again as the
+-- list scrolls.
+local function styleBrowseRow(row)
+    local e = extras[row] or {}
+    extras[row] = e
+    local heading = rawget(row, "CategoryLabel") ~= nil
+    if row.ResultBG and row.ResultBG:GetAlpha() > 0 then row.ResultBG:SetAlpha(0) end
+    if not e.browseCard then
+        local c = CreateFrame("Frame", nil, row)
+        c:SetPoint("TOPLEFT", row, "TOPLEFT", 3, heading and -8 or -2)
+        c:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -3, 0)
+        c:SetFrameLevel(math.max(0, row:GetFrameLevel() - 1))
+        if heading then
+            ns:SetTemplate(c, "Shadow", { shadow = false })
+        else
+            ns:SetTemplate(c, "Default", { alpha = 0.9, shadow = false })
+        end
+        e.browseCard = c
+        for _, k in ipairs({ "Highlight", "Selected" }) do
+            local t = row[k]
+            if t then
+                t:ClearAllPoints()
+                t:SetPoint("TOPLEFT", c, "TOPLEFT", 1, -1)
+                t:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -1, 1)
+                if t.SetBlendMode then t:SetBlendMode("BLEND") end
+                ns:Fill(t, C.fel[1], C.fel[2], C.fel[3], 1)
+            end
+        end
+    end
+    if row.Highlight and math.abs(row.Highlight:GetAlpha() - 0.12) > 0.01 then row.Highlight:SetAlpha(0.12) end
+    if row.Selected and math.abs(row.Selected:GetAlpha() - 0.2) > 0.01 then row.Selected:SetAlpha(0.2) end
+    if heading then
+        row.CategoryLabel:SetTextColor(C.text[1], C.text[2], C.text[3])
+    else
+        local sel = (row.Selected and row.Selected:IsShown()) and true or false
+        if e.browseSel ~= sel then
+            e.browseSel = sel
+            ns:SetBorderColor(e.browseCard, sel and "fel" or "border")
+        end
+    end
+end
+
+local function styleBrowseRows()
+    local bf = rawget(_G, "LFGBrowseFrame")
+    local target = bf and bf:IsVisible() and bf.ScrollBox and bf.ScrollBox.ScrollTarget
+    if not target then return end
+    for _, row in ipairs({ target:GetChildren() }) do
+        if row:IsShown() and rawget(row, "ResultBG") and (rawget(row, "DataDisplay") or rawget(row, "CategoryLabel")) then
+            styleBrowseRow(row)
+        end
+    end
+end
+PS.styleBrowseRows = styleBrowseRows
+
+-- The tooltip over a group. The game sizes it to the activity names alone
+-- and never measures the member lines (name, level, role marks), which in
+-- the look's font ran past its right edge. Once the game has laid it out,
+-- it is widened to the longest member line where that is wider.
+local function fitGroupTooltip(tip)
+    if not (tip and tip:IsShown()) then return end
+    local widest = 0
+    local function line(f)
+        if not (f and f:IsShown() and f.Name and f.Level) then return end
+        local w = (f.Name:GetWidth() or 0) + 4 + (f.Level:GetStringWidth() or 0) + 4
+        for _, r in ipairs(f.Roles or {}) do
+            if r:IsShown() then w = w + 16 end
+        end
+        if w > widest then widest = w end
+    end
+    line(tip.Leader)
+    if tip.memberPool and tip.memberPool.EnumerateActive then
+        for f in tip.memberPool:EnumerateActive() do line(f) end
+    end
+    -- The lines start past the leader's crown (11 + 18 in), and the
+    -- tooltip keeps 11 clear at its right.
+    local want = math.ceil(29 + widest + 11 + 2)
+    if want > (tip:GetWidth() or 0) then tip:SetWidth(want) end
+end
+PS.fitGroupTooltip = fitGroupTooltip
+
+local hookedGroupTip = false
+PS.SPECIAL.LFGParentFrame = function(frame)
+    if not hookedGroupTip and rawget(_G, "LFGBrowseSearchEntryTooltip_UpdateAndShow") then
+        hookedGroupTip = true
+        hooksecurefunc("LFGBrowseSearchEntryTooltip_UpdateAndShow", function(tip)
+            fitGroupTooltip(tip)
+            -- Again once our tooltip skin has set its fonts.
+            C_Timer.After(0, function() fitGroupTooltip(tip) end)
+        end)
+    end
+    fullSkin(frame, function() styleBrowseRows() end)
+    return "generic"
+end
+
 -- (The flight map is not here: its map is Blizzard art, and the full skin
 -- would strip it. It keeps the lighter skin every window gets.)
 for _, name in ipairs({ "MerchantFrame", "AuctionHouseFrame", "FriendsFrame", "LFGParentFrame", "ClassTrainerFrame",
