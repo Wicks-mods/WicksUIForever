@@ -37,7 +37,9 @@ ns.defaults.profile.nameplates = {
     castbar = true, castHeight = 10, castIcon = true,
     debuffs = true, debuffSize = 22, debuffCount = 5,
     buffs = false, buffSize = 18,
-    raidIcon = true, quest = true,
+    raidIcon = true,
+    quest = true,                     -- a mark at the bar's right end on a mob a quest of yours wants
+    questCount = true,                -- and beside it, how many more the quest wants
     targetBorder = true, targetScale = 1.1,
     nonTargetAlpha = 0.6,
     targetMarker = "arrows",          -- arrows, glow or none
@@ -56,6 +58,83 @@ ns.defaults.profile.nameplates = {
 }
 
 local function db() return NP:db() end
+
+-- Quest mobs. The client says whether a unit belongs to a quest you have
+-- (UnitIsRelatedToActiveQuest); how many more are wanted comes from the
+-- quest lines on its tooltip, the same "3/8" the game shows when you point
+-- at it. Either can come back hidden in a fight: a hidden answer changes
+-- nothing on a plate already showing that mob. On a client whose tooltips
+-- carry no quest lines and that has no such call (TBC Anniversary), only
+-- the game's quest bosses are marked, as before.
+local QUEST_LINE = Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.QuestObjective or 8
+local QUEST_COLOR = { 1, 0.82, 0 }
+
+-- Whether the tooltip has quest lines, whether any is unfinished, and the
+-- fewest still wanted among those that count. Nil when the tooltip cannot
+-- be read at all.
+local function questLines(unit)
+    local get = C_TooltipInfo and C_TooltipInfo.GetUnit
+    if not get then return nil end
+    local ok, data = pcall(get, unit)
+    if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then return nil end
+    local found, open, left = false, false, nil
+    for _, line in ipairs(data.lines) do
+        if plain(line.type) == QUEST_LINE then
+            found = true
+            local text, finished = plain(line.leftText), plain(line.completed)
+            local a, b
+            if type(text) == "string" then a, b = text:match("(%d+)%s*/%s*(%d+)") end
+            a, b = tonumber(a), tonumber(b)
+            if a and b then
+                if a < b then
+                    open = true
+                    if not left or b - a < left then left = b - a end
+                end
+            elseif finished == false then
+                open = true
+            end
+        end
+    end
+    return found, open, left
+end
+
+-- The QuestIndicator element's update, in place of oUF's quest-boss-only
+-- one. `event` is "WicksUI_Quests" when the quest log changed, which is
+-- the one time an unreadable answer keeps what the plate shows: the plate
+-- still holds the same mob.
+local function updateQuest(self, event, unit)
+    local own = ns:UnitOf(self)
+    if unit and own and unit ~= own and event ~= "WicksUI_Quests" then return end
+    unit = own
+    local mark, count = self.QuestIndicator, self.wuiQuestCount
+    if not mark then return end
+    local d = db()
+    local show, left = false, nil
+    if d.quest and unit and UnitExists(unit) and not plain(UnitIsPlayer(unit)) then
+        if UnitIsQuestBoss and plain(UnitIsQuestBoss(unit)) then show = true end
+        local related
+        local rel = C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest
+        if rel then
+            local ok, v = pcall(rel, unit)
+            if ok then related = plain(v) end
+        end
+        local found, open, n = questLines(unit)
+        if found then
+            -- Every line done: nothing more is wanted from it.
+            if open then show, left = true, n end
+        elseif related then
+            show = true
+        end
+        if not show and found == nil and related == nil and event == "WicksUI_Quests" then return end
+    end
+    mark:SetShown(show)
+    if count then
+        local want = show and d.questCount and left and left > 0
+        if want then count:SetText(left) end
+        count:SetShown(want and true or false)
+    end
+    NP:PlaceMarks(self)
+end
 
 -- The bar's border sits wholly outside it at the look's thickness. Rebel
 -- draws two pixels; with the backdrop one pixel out, the bar covered half.
@@ -304,11 +383,21 @@ local function style(self, unit)
     glow.feedbackUnit = "player"
     self.wuiThreatGlow = glow
 
+    -- Quest mobs: our mark at the bar's right end, and beside it how many
+    -- more the quest wants.
     local quest = overlay:CreateTexture(nil, "OVERLAY")
     quest:SetSize(14, 14)
     quest:SetPoint("LEFT", health, "RIGHT", 4 + cardPad(), 0)
-    quest.PostUpdate = function() NP:PlaceMarks(self) end
+    quest:SetTexture(ns.Media:Glyph("quest"))
+    quest:SetVertexColor(QUEST_COLOR[1], QUEST_COLOR[2], QUEST_COLOR[3], 1)
+    quest:Hide()
+    quest.Override = updateQuest
     self.QuestIndicator = quest
+    local qc = ns:CreateText(overlay, 10, "LEFT")
+    qc:SetPoint("LEFT", quest, "RIGHT", -2, 0)
+    qc:SetTextColor(QUEST_COLOR[1], QUEST_COLOR[2], QUEST_COLOR[3], 1)
+    qc:Hide()
+    self.wuiQuestCount = qc
 
     -- Target and focus: a pointer each side of the bar, or a glow round it
     -- (its own, apart from the threat glow).
@@ -493,7 +582,11 @@ function NP:PlaceMarks(self)
     local raid = self.RaidTargetIndicator
     if raid and raid:IsShown() then left = math.max(left, 18 + 4) end
     local quest = self.QuestIndicator
-    if quest and quest:IsShown() then right = math.max(right, 14 + 4) end
+    if quest and quest:IsShown() then
+        local qc = self.wuiQuestCount
+        local extra = (qc and qc:IsShown()) and ((qc:GetStringWidth() or 0) - 1) or 0
+        right = math.max(right, 14 + 4 + extra)
+    end
     local pad = cardPad()
     L:ClearAllPoints()
     L:SetPoint("RIGHT", h, "LEFT", -(3 + pad + left), 0)
@@ -610,6 +703,22 @@ function NP:Initialize()
     ns:On("UNIT_FACTION", function() NP:RefreshAll() end)
     ns:On("PLAYER_FOCUS_CHANGED", function() NP:RefreshAll() end)
     ns:On("UNIT_CLASSIFICATION_CHANGED", function() NP:RefreshAll() end)
+    -- A kill, an item looted, a quest taken or handed in: the quest marks
+    -- read again, once for a burst of changes. After a fight too, when
+    -- answers hidden in it can be read.
+    local questPending = false
+    local function questsChanged()
+        if questPending then return end
+        questPending = true
+        C_Timer.After(0.25, function()
+            questPending = false
+            for f in pairs(NP.plates) do
+                if ns:UnitOf(f) and f:IsVisible() then updateQuest(f, "WicksUI_Quests") end
+            end
+        end)
+    end
+    ns:On("QUEST_LOG_UPDATE", questsChanged)
+    ns:On("PLAYER_REGEN_ENABLED", questsChanged)
     -- Tanking or not decides the threat colours.
     ns:On("PLAYER_ROLES_ASSIGNED", function() NP:Update() end)
     ns:On("PLAYER_SPECIALIZATION_CHANGED", function(unit) if unit == nil or unit == "player" then NP:Update() end end)
@@ -682,6 +791,9 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Slider("Name size", "nameSize", 6, 20, 1)
     L:Toggle("Level before the name", "levelShown")
     L:Toggle("A diamond for elites and rares", "classMarker", { tooltip = "Gold for elites and bosses, silver for rares, at the left end of the bar." })
+    L:Toggle("Mark quest mobs", "quest", { tooltip = "A mark at the right end of the bar on anything a quest of yours wants killed or looted. It goes once that quest has all it needs." })
+    L:Toggle("How many are left", "questCount", { tooltip = "Beside the quest mark, how many more the quest wants, from the same count the game shows when you point at the mob.",
+        disabled = function() return not db().quest end })
     L:Toggle("Health percent", "percent")
     L:Slider("Percent size", "percentSize", 6, 20, 1, { disabled = function() return not db().percent end })
     L:Toggle("Friendly plates show the name only", "friendlyNameOnly")

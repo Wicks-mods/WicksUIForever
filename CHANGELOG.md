@@ -2,6 +2,15 @@
 
 ## 0.10.2 (unreleased)
 
+### Nameplates
+
+- A mob a quest of yours wants carries a mark at the right end of its
+  bar, with how many more the quest wants beside it: the same count the
+  game shows when you point at it. The mark goes once the quest has all
+  it needs. Mark quest mobs and How many are left switch them, under
+  Nameplates. On TBC Anniversary, whose mob tooltips carry no quest
+  lines, only quest bosses are marked, as before.
+
 ### Fixes
 
 - A quest opened from the map's quest log reads again. Its text was the
