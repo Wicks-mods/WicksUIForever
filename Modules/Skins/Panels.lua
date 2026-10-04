@@ -2048,9 +2048,20 @@ local function isOwn(frame, r)
     return false
 end
 
+-- Role, class and leader marks drawn from the game's atlases are content
+-- under any key: the group finder shows a group's members as Icon1 to
+-- Icon5, Role1 to Role3 and TankIcon and the rest, which the art pass took
+-- for art and faded, so every group read as empty.
+local ICON_ATLAS = { "^groupfinder%-icon%-", "^UI%-LFG%-RoleIcon", "^roleicon%-", "^classicon%-" }
 local function isIcon(frame, r)
     for k, v in pairs(frame) do
         if v == r and ICON_KEYS[k] then return true end
+    end
+    local a = r.GetAtlas and r:GetAtlas()
+    if type(a) == "string" and not (issecretvalue and issecretvalue(a)) then
+        for _, pat in ipairs(ICON_ATLAS) do
+            if a:find(pat) then return true end
+        end
     end
     local n = r:GetName()
     return n and (n:find("Icon$") or n:find("IconTexture$")) and true or false

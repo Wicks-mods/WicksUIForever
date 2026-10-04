@@ -1,5 +1,13 @@
 # Wick's UI
 
+## 0.10.3 (unreleased)
+
+### Fixes
+
+- The group finder shows each group's members again. Their class and
+  role marks were taken for window art and faded, so every group in the
+  list looked empty.
+
 ## 0.10.2 (2026-10-03)
 
 ### Nameplates
