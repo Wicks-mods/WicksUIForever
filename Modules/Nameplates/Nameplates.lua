@@ -748,16 +748,30 @@ function NP:Initialize()
     ns:On("UNIT_FACTION", function() NP:RefreshAll() end)
     ns:On("PLAYER_FOCUS_CHANGED", function() NP:RefreshAll() end)
     ns:On("UNIT_CLASSIFICATION_CHANGED", function() NP:RefreshAll() end)
-    -- Threat moves through a fight: the plate showing that mob reads it
-    -- again; the end of a fight clears every plate.
-    local function threatChanged(_, unit)
+    -- Threat moves through a fight. Every plate reads it again on the
+    -- game's threat events, which can name the mob by another token than
+    -- its plate's (target, not nameplate3), and four times a second while
+    -- you fight, as the threat meter does; the end of a fight clears them.
+    local function threatAll()
+        if not db().threatPercent then return end
         for f in pairs(NP.plates) do
-            if f:IsVisible() and (unit == nil or ns:UnitOf(f) == unit) then updateThreatText(f) end
+            if f:IsVisible() and ns:UnitOf(f) then updateThreatText(f) end
         end
     end
-    ns:On("UNIT_THREAT_LIST_UPDATE", threatChanged)
-    ns:On("UNIT_THREAT_SITUATION_UPDATE", threatChanged)
-    ns:On("PLAYER_REGEN_ENABLED", function() threatChanged(nil, nil) end)
+    NP.ThreatAll = threatAll
+    ns:On("UNIT_THREAT_LIST_UPDATE", threatAll)
+    ns:On("UNIT_THREAT_SITUATION_UPDATE", threatAll)
+    ns:On("PLAYER_REGEN_DISABLED", threatAll)
+    ns:On("PLAYER_REGEN_ENABLED", function()
+        for f in pairs(NP.plates) do if f:IsVisible() then updateThreatText(f) end end
+    end)
+    local threatPoll, threatAcc = CreateFrame("Frame"), 0
+    threatPoll:SetScript("OnUpdate", function(_, e)
+        threatAcc = threatAcc + e
+        if threatAcc < 0.25 then return end
+        threatAcc = 0
+        if UnitAffectingCombat("player") then threatAll() end
+    end)
     -- A kill, an item looted, a quest taken or handed in: the quest marks
     -- read again, once for a burst of changes. After a fight too, when
     -- answers hidden in it can be read.
