@@ -2,6 +2,17 @@
 
 ## 0.10.3 (unreleased)
 
+### Combat text
+
+- Numbers on the nameplates: what each mob is hit for rises off its
+  plate, in the combat text's font and outline, coloured by the school of
+  the hit, crits larger with a pop. Misses can show too, and heals. The
+  game tells addons what a mob was hit for but not by whom, so in a group
+  these are everyone's hits on it; on your own they are yours and your
+  pet's. Only on your target narrows them. A mob's last numbers finish
+  where it fell. Under Combat text, Numbers on the nameplates; off until
+  you switch it on.
+
 ### Info panels
 
 - Add a panel, on the Info panels page, makes as many more as you want,

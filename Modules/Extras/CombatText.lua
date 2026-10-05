@@ -33,6 +33,15 @@ ns.defaults.profile.combattext = {
     stagger = true,       -- damage lines a little apart sideways, as the game draws them
     colors = {},          -- kind -> { r, g, b }; a kind with none keeps the game's colour
     numbersFont = "Wick", -- the numbers over what you hit; Wick is the look's
+    -- Numbers rising off each mob's nameplate, from what the client says it
+    -- was hit for (UNIT_COMBAT): everyone's hits on it, not only yours.
+    plates = false,
+    platesTarget = false, -- only on your target's plate
+    platesHeals = false,
+    platesMisses = true,  -- misses, dodges, parries and the rest
+    platesSize = 14, platesCritSize = 20,
+    platesRise = 40,      -- how far up they go
+    platesDuration = 1.2,
 }
 
 local function db() return CT:db() end
@@ -388,4 +397,199 @@ function CT:Refresh()
     elseif self:Enabled() then
         self.initialized = ns:Call(self, "Initialize")
     end
+end
+
+-- ============================================================
+-- Numbers on the nameplates
+-- ============================================================
+-- The client tells addons what a unit was hit for (UNIT_COMBAT), plainly
+-- even in a fight (probed 2026-10-05), but not who hit it; the combat log
+-- that would say is closed to addons. So these are every hit on a mob,
+-- yours and your pet's alone when you fight on your own. Each one rises
+-- off the mob's plate in the font and outline above, crits larger with a
+-- pop, coloured by the school of the hit. When a plate goes (the mob died,
+-- or went out of sight) its numbers stay where they were and finish.
+local plateFrame
+local plateLines, plateFree = {}, {}
+local PLATE_MAX, PER_PLATE = 40, 6
+CT.plateLines = plateLines   -- for the offline harness
+
+local SCHOOL = {
+    { 2, { 1, 0.9, 0.5 } },    -- holy
+    { 4, { 1, 0.5, 0 } },      -- fire
+    { 8, { 0.3, 1, 0.3 } },    -- nature
+    { 16, { 0.5, 1, 1 } },     -- frost
+    { 32, { 0.6, 0.5, 1 } },   -- shadow
+    { 64, { 1, 0.5, 1 } },     -- arcane
+}
+local WHITE, HEAL, MISS = { 1, 1, 1 }, { 0.2, 1, 0.2 }, { 0.7, 0.7, 0.7 }
+local MISSES = { MISS = true, DODGE = true, PARRY = true, BLOCK = true, RESIST = true, ABSORB = true,
+    IMMUNE = true, EVADE = true, DEFLECT = true, REFLECT = true }
+
+local band = bit and bit.band
+local function schoolColor(school)
+    if type(school) ~= "number" or not band or (issecret and issecret(school)) then return WHITE end
+    for _, s in ipairs(SCHOOL) do
+        if band(school, s[1]) ~= 0 then return s[2] end
+    end
+    return WHITE
+end
+
+local function short(n)
+    if n >= 1e6 then return ("%.1fm"):format(n / 1e6) end
+    if n >= 1e4 then return ("%.1fk"):format(n / 1e3) end
+    return tostring(math.floor(n + 0.5))
+end
+
+local function plateFor(unit)
+    local NP = ns.Nameplates
+    if not (NP and NP.plates) then return nil end
+    for f in pairs(NP.plates) do
+        if ns:UnitOf(f) == unit and f:IsVisible() then return f end
+    end
+end
+
+local function plateRelease(i)
+    local line = table.remove(plateLines, i)
+    if line then
+        line.fs:Hide()
+        plateFree[#plateFree + 1] = line.fs
+    end
+end
+
+local function platePlace(line, p)
+    local d = db()
+    local fs = line.fs
+    local y = (line.hold and math.min(p, 0.25) or p) * (d.platesRise or 40)
+    fs:ClearAllPoints()
+    if line.anchor then
+        fs:SetPoint("BOTTOM", line.anchor, "TOP", line.x, 4 + y)
+    else
+        fs:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", line.fx + line.x, line.fy + 4 + y)
+    end
+end
+
+local function plateUpdate(_, elapsed)
+    if #plateLines == 0 then return end
+    local span = math.max(0.3, db().platesDuration or 1.2)
+    for i = #plateLines, 1, -1 do
+        local line = plateLines[i]
+        line.t = line.t + elapsed
+        if line.t >= span then
+            plateRelease(i)
+        else
+            local p = line.t / span
+            platePlace(line, p)
+            if p > 0.6 then line.fs:SetAlpha(math.max(0, (1 - p) / 0.4)) end
+            if line.pop then
+                local t, h = line.t, line.height
+                if t <= POP_UP then
+                    line.fs:SetTextHeight(math.floor(h + h * (POP - 1) * t / POP_UP))
+                elseif t <= POP_DOWN then
+                    line.fs:SetTextHeight(math.floor(h * POP - h * (POP - 1) * (t - POP_UP) / (POP_DOWN - POP_UP)))
+                else
+                    line.fs:SetTextHeight(h)
+                    line.pop = nil
+                end
+            end
+        end
+    end
+end
+
+-- One number off a plate. text may be a secret, handed on to SetText.
+function CT:PlateNumber(unit, plate, text, color, crit)
+    if not plateFrame then
+        plateFrame = CreateFrame("Frame", "WicksUI_PlateText", UIParent)
+        plateFrame:SetFrameStrata("HIGH")
+        plateFrame:EnableMouse(false)
+        plateFrame:SetAllPoints()
+        plateFrame:SetScript("OnUpdate", plateUpdate)
+    end
+    local d = db()
+    -- A crowded plate drops its oldest; so does a crowded screen.
+    local n = 0
+    for i = #plateLines, 1, -1 do
+        if plateLines[i].unit == unit then
+            n = n + 1
+            if n >= PER_PLATE then plateRelease(i) end
+        end
+    end
+    if #plateLines >= PLATE_MAX then plateRelease(1) end
+    local fs = table.remove(plateFree) or plateFrame:CreateFontString(nil, "OVERLAY")
+    local size = crit and d.platesCritSize or d.platesSize or 14
+    ns.Media:SetFont(fs, size, d.outline, d.font)
+    local _, h = fs:GetFont()
+    h = tonumber(h) or size
+    fs:SetTextHeight(h)
+    fs:SetText(text)
+    fs:SetTextColor(color[1], color[2], color[3], 1)
+    fs:SetAlpha(1)
+    fs:Show()
+    local line = { fs = fs, t = 0, unit = unit, height = h, anchor = plate.Health or plate,
+        x = math.random(-14, 14), hold = crit or nil, pop = crit or nil, crit = crit }
+    plateLines[#plateLines + 1] = line
+    platePlace(line, 0)
+    return line
+end
+
+local function onUnitCombat(_, unit, action, flag, amount, school)
+    if type(unit) ~= "string" or not unit:match("^nameplate%d+$") then return end
+    local d = db()
+    if not d.plates or ns:G().combatTextFont == false then return end
+    if d.platesTarget and not (UnitIsUnit and UnitIsUnit(unit, "target")) then return end
+    if UnitIsFriend and (function() local f = UnitIsFriend("player", unit) return f and not (issecret and issecret(f)) end)() then return end
+    local plate = plateFor(unit)
+    if not plate then return end
+    if issecret and issecret(action) then return end
+    local secretAmount = issecret and issecret(amount)
+    if action == "WOUND" then
+        if not secretAmount and (type(amount) ~= "number" or amount <= 0) then return end
+        local crit = flag == "CRITICAL" and not (issecret and issecret(flag))
+        CT:PlateNumber(unit, plate, secretAmount and amount or short(amount), schoolColor(school), crit)
+    elseif action == "HEAL" then
+        if not d.platesHeals then return end
+        if not secretAmount and (type(amount) ~= "number" or amount <= 0) then return end
+        CT:PlateNumber(unit, plate, secretAmount and amount or ("+" .. short(amount)), HEAL, false)
+    elseif MISSES[action] then
+        if not d.platesMisses then return end
+        local word = rawget(_G, action)
+        CT:PlateNumber(unit, plate, type(word) == "string" and word or action:lower(), MISS, false)
+    end
+end
+CT.OnUnitCombat = onUnitCombat
+
+-- A plate that goes leaves its numbers where they were, to finish there.
+local function onPlateRemoved(_, unit)
+    for _, line in ipairs(plateLines) do
+        if line.unit == unit and line.anchor then
+            local a = line.anchor
+            local x, top = a:GetCenter(), a:GetTop()
+            local s = (a:GetEffectiveScale() or 1) / (UIParent:GetEffectiveScale() or 1)
+            line.fx, line.fy = (x or 0) * s, (top or 0) * s
+            line.anchor = nil
+        end
+    end
+end
+
+CT.OnPlateRemoved = onPlateRemoved
+
+ns:On("UNIT_COMBAT", onUnitCombat)
+ns:On("NAME_PLATE_UNIT_REMOVED", onPlateRemoved)
+
+-- Off your target's plate, a few of each kind, to see the settings.
+function CT:PlateSample()
+    local plate
+    for f in pairs(ns.Nameplates and ns.Nameplates.plates or {}) do
+        local u = ns:UnitOf(f)
+        if u and f:IsVisible() and UnitIsUnit and UnitIsUnit(u, "target") then plate = f break end
+    end
+    if not plate then
+        ns.A:Print("target something with a nameplate showing to see a sample.")
+        return
+    end
+    local u = ns:UnitOf(plate)
+    CT:PlateNumber(u, plate, "1,284", WHITE, false)
+    CT:PlateNumber(u, plate, "3,571", SCHOOL[2][2], true)
+    if db().platesMisses then CT:PlateNumber(u, plate, rawget(_G, "DODGE") or "dodge", MISS, false) end
+    if db().platesHeals then CT:PlateNumber(u, plate, "+862", HEAL, false) end
 end
