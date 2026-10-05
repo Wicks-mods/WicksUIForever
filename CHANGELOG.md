@@ -31,6 +31,11 @@
 
 ### Fixes
 
+- A submenu no longer misses the look now and then. While a menu was
+  open, the skin checked every frame on the screen for one, and some
+  frames on this client keep whether they show from addons; the check
+  stopped at the first of those and logged a refusal a few times a
+  second. It now passes them by.
 - The Back button is back on a quest opened from the map's quest log.
   The skin hid the strip it sits on along with that strip's art, so the
   only way back to the list was to close the map.

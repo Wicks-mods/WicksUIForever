@@ -4180,13 +4180,27 @@ local function styleMenuRow(b)
     end
 end
 
+-- Some frames on this client answer whether they are shown, or which
+-- atlas a texture uses, with a hidden (secret) value, and testing one is
+-- refused. The menu sweep below asks every frame on the screen, so it
+-- takes such an answer as no: it used to stop at the first one, inside its
+-- pcall, and log a refusal a few times a second while a menu was open
+-- (taint.log 2026-10-04).
+local isSecretValue = rawget(_G, "issecretvalue")
+local function plain(v)
+    if isSecretValue and isSecretValue(v) then return nil end
+    return v
+end
+local function shownPlain(f) return plain(f:IsShown()) and true or false end
+local function bgAtlas(r)
+    local a = plain(r:GetAtlas())
+    return type(a) == "string" and a:find("dropdown%-bg") ~= nil
+end
+
 local function isMenu(f)
     if not f.GetRegions then return false end
     for _, r in ipairs({ f:GetRegions() }) do
-        if r:GetObjectType() == "Texture" then
-            local a = r:GetAtlas()
-            if a and a:find("dropdown%-bg") then return true end
-        end
+        if r:GetObjectType() == "Texture" and bgAtlas(r) then return true end
     end
     return false
 end
@@ -4197,10 +4211,7 @@ local function styleMenu(m, depth)
     if depth > 6 then return end
     seenMenus[m] = true
     for _, r in ipairs({ m:GetRegions() }) do
-        if r:GetObjectType() == "Texture" then
-            local a = r:GetAtlas()
-            if a and a:find("dropdown%-bg") and r:GetAlpha() > 0 then r:SetAlpha(0) end
-        end
+        if r:GetObjectType() == "Texture" and bgAtlas(r) and (plain(r:GetAlpha()) or 0) > 0 then r:SetAlpha(0) end
     end
     if not done[m] then
         done[m] = true
@@ -4247,8 +4258,8 @@ local function openMenus()
         if depth > 3 then return end
         for _, v in pairs(t) do
             if type(v) == "table" and v ~= m and v.GetObjectType and not (v.IsForbidden and v:IsForbidden()) then
-                local ok, isFrame = pcall(function() return v:GetObjectType() == "Frame" and v:IsShown() end)
-                if ok and isFrame and not seenMenus[v] and isMenu(v) then
+                local ok, isFrame = pcall(function() return v:GetObjectType() == "Frame" and shownPlain(v) end)
+                if ok and isFrame == true and not seenMenus[v] and isMenu(v) then
                     styleMenu(v)
                     fields(v, depth + 1)
                 end
@@ -4258,7 +4269,7 @@ local function openMenus()
     pcall(fields, m, 0)
     for _, row in ipairs({ m:GetChildren() }) do pcall(fields, row, 1) end
     for sub in pairs(seenMenus) do
-        if sub ~= m and sub.IsShown and sub:IsShown() then styleMenu(sub) end
+        if sub ~= m and sub.IsShown and shownPlain(sub) then styleMenu(sub) end
     end
     -- The search beside it can run over every frame on the screen, so a
     -- few times a second is enough; a submenu shows for longer than that.
@@ -4277,7 +4288,7 @@ local function openMenus()
         while f and n < 20000 do
             n = n + 1
             if f ~= m and not seenMenus[f] and not (f.IsForbidden and f:IsForbidden())
-                and f:IsShown() and isMenu(f) then
+                and shownPlain(f) and isMenu(f) then
                 styleMenu(f)
             end
             f = EnumerateFrames(f)
@@ -4288,8 +4299,8 @@ local function openMenus()
         if host and host.GetChildren and not seen[host] then
             seen[host] = true
             for _, f in ipairs({ host:GetChildren() }) do
-                if f ~= m and not (f.IsForbidden and f:IsForbidden()) and f:IsShown()
-                    and f:GetFrameStrata() == strata and isMenu(f) then styleMenu(f) end
+                if f ~= m and not (f.IsForbidden and f:IsForbidden()) and shownPlain(f)
+                    and plain(f:GetFrameStrata()) == strata and isMenu(f) then styleMenu(f) end
             end
         end
     end
