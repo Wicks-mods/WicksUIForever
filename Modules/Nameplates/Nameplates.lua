@@ -32,7 +32,8 @@ ns.defaults.profile.nameplates = {
                                       -- and reaction; class; or dark
     lookMigrated = false,
     threat = false,                   -- colour by threat, for tanks
-    threatPercent = true,             -- your threat on the mob, inside the bar's left end
+    threatPercent = true,             -- your threat on the mob, under the bar's left end
+    threatSize = 12,
     plateAlpha = 1,                   -- every plate's opacity; the dimming of the rest goes on top
     nameSize = 11, levelShown = true,
     percent = true, percentSize = 10,
@@ -147,6 +148,7 @@ local function updateThreatText(self)
 end
 NP.UpdateThreatText = updateThreatText
 
+
 -- The QuestIndicator element's update, in place of oUF's quest-boss-only
 -- one. `event` is "WicksUI_Quests" when the quest log changed, which is
 -- the one time an unreadable answer keeps what the plate shows: the plate
@@ -201,6 +203,20 @@ end
 -- would pool. The OG family keeps the bordered bar.
 local CARD_PAD, CAST_LINE = 3, 5
 local function cardPad() return ns:Modern() and CARD_PAD or 0 end
+
+-- Under the bar's left end; while the mob casts, under the cast bar, clear
+-- of the spell's name.
+local function placeThreat(self)
+    local t, h, cb = self.wuiThreatText, self.Health, self.wuiCastbar
+    if not (t and h) then return end
+    t:ClearAllPoints()
+    if cb and cb:IsShown() then
+        t:SetPoint("TOPLEFT", cb, "BOTTOMLEFT", 0, -2)
+    else
+        t:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -(cardPad() + 2))
+    end
+end
+NP.PlaceThreat = placeThreat
 NP.CardPad = cardPad
 local function cardInset() return ns:Modern() and CARD_PAD or edge() end
 NP.CardInset = cardInset
@@ -321,9 +337,8 @@ local function style(self, unit)
     self.wuiName:SetPoint("BOTTOM", health, "TOP", 0, 3 + cardPad())
     self.wuiPercent = ns:CreateText(overlay, d.percentSize, "RIGHT")
     self.wuiPercent:SetPoint("RIGHT", health, "RIGHT", -2, 0)
-    -- Your threat, at the other end of the bar from the health percent.
-    self.wuiThreatText = ns:CreateText(overlay, d.percentSize, "LEFT")
-    self.wuiThreatText:SetPoint("LEFT", health, "LEFT", 2, 0)
+    -- Your threat, under the bar (placed in placeThreat).
+    self.wuiThreatText = ns:CreateText(overlay, d.threatSize or 12, "LEFT")
     self.wuiThreatText:Hide()
 
     -- Cast bar. Placed under the bar here; Modern places its thin line in
@@ -435,6 +450,9 @@ local function style(self, unit)
     local glow = ns:Glow(health.backdrop, 16, { under = true, alpha = 0.6 })
     glow.feedbackUnit = "player"
     self.wuiThreatGlow = glow
+
+    cb:HookScript("OnShow", function() placeThreat(self) end)
+    cb:HookScript("OnHide", function() placeThreat(self) end)
 
     -- Quest mobs: our mark at the bar's right end, and beside it how many
     -- more the quest wants.
@@ -567,7 +585,8 @@ function NP:Configure(self)
     local face, outline = ufd and ufd.font, ufd and ufd.fontOutline
     ns.Media:SetFont(self.wuiName, d.nameSize, outline, face, true)
     ns.Media:SetFont(self.wuiPercent, d.percentSize, outline, face, true)
-    ns.Media:SetFont(self.wuiThreatText, d.percentSize, outline, face, true)
+    -- A firm outline whatever the look: it sits over the world, not a bar.
+    ns.Media:SetFont(self.wuiThreatText, d.threatSize or 12, "OUTLINE", face, true)
     ns.Media:SetFont(cb.Text, 9, outline, face, true)
     ns.Media:SetFont(cb.Time, 9, outline, face, true)
     self.wuiName:SetWidth(d.width + 40)
@@ -671,12 +690,7 @@ function NP:Refresh(self)
     if cls then self.wuiClassMark:SetVertexColor(cls[1], cls[2], cls[3], 1) end
     self.wuiClassMark:SetShown(cls and true or false)
     self.wuiClassBack:SetShown(cls and true or false)
-    self.wuiThreatText:ClearAllPoints()
-    if cls then
-        self.wuiThreatText:SetPoint("LEFT", self.wuiClassBack, "RIGHT", 2, 0)
-    else
-        self.wuiThreatText:SetPoint("LEFT", self.Health, "LEFT", 2, 0)
-    end
+    placeThreat(self)
     if nameOnly then self.wuiThreatText:Hide() else updateThreatText(self) end
 
     self.wuiName:ClearAllPoints()
@@ -859,7 +873,8 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Slider("Opacity", "plateAlpha", 0.1, 1, 0.05, { tooltip = "How see-through every plate is. The dimming of plates other than your target goes on top of this." })
     L:Dropdown("Health colour", "healthColor", { { "look", "The look's colours" }, { "class", "Class and reaction" }, { "dark", "Dark" } },
         { tooltip = "The look's colours are the pair the unit frames use in that look, one for friends and one for enemies. A look without its own uses class and reaction." })
-    L:Toggle("Your threat as a percent", "threatPercent", { tooltip = "Inside the left end of the bar, your threat on that mob in the game's threat colours: how close you are to pulling it, or 100 when it is yours." })
+    L:Toggle("Your threat as a percent", "threatPercent", { tooltip = "Under the left end of the bar (under the cast bar while the mob casts), your threat on that mob in the game's threat colours: how close you are to pulling it, or 100 when it is yours." })
+    L:Slider("Threat size", "threatSize", 8, 24, 1, { disabled = function() return not db().threatPercent end })
     L:Toggle("Colour by threat while you tank", "threat", { tooltip = "In a tank role or spec, the bar shows whether you hold the mob. In any other role plates keep their class and reaction colours; the threat glow and meter warn you instead." })
 
     L:Heading("Execute")

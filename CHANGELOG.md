@@ -32,9 +32,12 @@
 
 ### Nameplates
 
-- Your threat on a mob shows as a percent inside the left end of its
-  bar, in the game's threat colours: how close you are to pulling it, or
-  100 when it is yours. Your threat as a percent switches it.
+- Your threat on a mob shows as a percent under the left end of its
+  bar (under the cast bar while it casts), in the game's threat colours:
+  how close you are to pulling it, or 100 when it is yours. Your threat
+  as a percent switches it, and Threat size sets its size. Where the game
+  keeps threat numbers from addons, it is still drawn, from the value as
+  the game hands it over.
 - An Opacity setting for every plate, with the dimming of plates other
   than your target on top of it.
 - Plates set their threat colours again when you change spec. The
