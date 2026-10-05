@@ -1,0 +1,5 @@
+LibDataBroker-1.1, by Tekkub: https://github.com/tekkub/libdatabroker-1-1
+
+Bundled unchanged (minor version 4), as many addons bundle it, so other
+addons' data feeds can be shown in Wick's UI's info panels. Its terms are
+the ones in that repository; Wick's UI's own MIT license does not apply to it.

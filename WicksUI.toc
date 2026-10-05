@@ -12,6 +12,7 @@
 
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Libs\WickGlow\WickGlow.lua
 Libs\LibActionButton-1.0\LibActionButton-1.0.lua
 Libs\oUF\oUF.xml

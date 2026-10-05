@@ -2,6 +2,15 @@
 
 ## 0.10.3 (unreleased)
 
+### Info panels
+
+- Add a panel, on the Info panels page, makes as many more as you want,
+  each with its own slots and a place among the frames you move. The
+  ones you add can be removed again.
+- Other addons' feeds (LibDataBroker) can go in any slot, marked LDB in
+  the list: their text and icon, their tooltip, and a click goes to the
+  addon as it would on any broker bar. LibDataBroker-1.1 is bundled.
+
 ### Unit frames
 
 - The unit frames can fade, as the action bars do. Fade the unit frames,

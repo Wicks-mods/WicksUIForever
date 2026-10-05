@@ -4,7 +4,10 @@
 -- Thin bars with slots; each slot shows one piece of information and does
 -- something on a click. A datatext is a small table:
 --   { label, events = {...}, interval = seconds, text = fn() -> string,
---     tooltip = fn(tt), click = fn(button) }
+--     tooltip = fn(tt), click = fn(button, slot),
+--     enter = fn(slot), leave = fn(slot) }   -- enter/leave in place of tooltip
+-- Other addons' LibDataBroker feeds are datatexts too, under "ldb:<name>".
+-- Three panels come with it; more can be added, and those removed.
 -- Nothing here touches combat state, so every one of them works anywhere.
 -- Clicks that open a Blizzard panel are refused in combat, which the
 -- client would refuse anyway.
@@ -26,8 +29,8 @@ local function hl(s) return Chrome:Esc("fel") .. tostring(s) .. "|r" end
 
 function DT:Register(key, def)
     def.key = key
+    if not self.registry[key] then self.keys[#self.keys + 1] = key end
     self.registry[key] = def
-    self.keys[#self.keys + 1] = key
 end
 
 ns.defaults.profile.datatexts = {
@@ -260,16 +263,22 @@ local function makeSlot(panel)
     s.text:SetAllPoints()
     s.text:SetJustifyH("CENTER")
     s:RegisterForClicks("AnyUp")
-    s:SetScript("OnClick", function(self, button) if self.def and self.def.click then pcall(self.def.click, button) end end)
+    s:SetScript("OnClick", function(self, button) if self.def and self.def.click then pcall(self.def.click, button, self) end end)
     s:SetScript("OnEnter", function(self)
         local def = self.def
-        if not def or not def.tooltip then return end
+        if not def then return end
+        if def.enter then pcall(def.enter, self) return end
+        if not def.tooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_TOP", 0, 4)
         GameTooltip:AddLine(def.label, C.fel[1], C.fel[2], C.fel[3])
         pcall(def.tooltip, GameTooltip)
         GameTooltip:Show()
     end)
-    s:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    s:SetScript("OnLeave", function(self)
+        local def = self.def
+        if def and def.leave then pcall(def.leave, self) end
+        GameTooltip:Hide()
+    end)
     s:SetScript("OnUpdate", function(self, e)
         local def = self.def
         if not def or not def.interval then return end
@@ -280,14 +289,52 @@ local function makeSlot(panel)
     return s
 end
 
+-- The three that come with it, then the ones added, in the order added.
+local BUILT_IN = { left = 1, right = 2, top = 3 }
+function DT:PanelKeys()
+    local out = {}
+    for key in pairs(db().panels) do out[#out + 1] = key end
+    table.sort(out, function(a, b)
+        local ia, ib = BUILT_IN[a], BUILT_IN[b]
+        if ia or ib then return (ia or 99) < (ib or 99) end
+        return (tonumber(a:match("%d+")) or 0) < (tonumber(b:match("%d+")) or 0)
+    end)
+    return out
+end
+
+function DT:PanelLabel(key)
+    local d = db().panels[key]
+    if d and d.label then return d.label end
+    return ("The %s panel"):format(key)
+end
+
+-- A panel of one's own: a free key, a name, one empty slot, under the
+-- middle of the screen to be moved.
+function DT:AddPanel()
+    local n = 4
+    while db().panels["panel" .. n] do n = n + 1 end
+    local key = "panel" .. n
+    db().panels[key] = { enable = true, width = 300, height = 20, slots = "none",
+        point = "CENTER,UIParent,CENTER,0,-200", label = ("Panel %d"):format(n) }
+    self:Update()
+    return key
+end
+
+function DT:RemovePanel(key)
+    if BUILT_IN[key] then return end
+    db().panels[key] = nil
+    self:Update()
+end
+
 function DT:BuildPanel(key)
+    if self.panels[key] then return self.panels[key] end
     local p = CreateFrame("Frame", "WicksUI_Info_" .. key, UIParent)
     p:SetFrameStrata("BACKGROUND")
     ns:SetTemplate(p, "Transparent")
     p.slots = {}
     self.panels[key] = p
     local d = db().panels[key]
-    ns:CreateMover(p, "info_" .. key, "Info panel, " .. key, d.point, { groups = "datatexts", config = "datatexts" })
+    ns:CreateMover(p, "info_" .. key, "Info panel, " .. (d.label or key), d.point, { groups = "datatexts", config = "datatexts" })
     return p
 end
 
@@ -336,6 +383,7 @@ end
 
 function DT:Initialize()
     self.sessionStart = GetMoney()
+    self:HookBrokers()
     for key in pairs(db().panels) do self:BuildPanel(key) end
     local seen = {}
     for _, def in pairs(self.registry) do
@@ -353,7 +401,71 @@ function DT:Initialize()
 end
 
 function DT:Update()
-    for key in pairs(self.panels) do self:LayoutPanel(key) end
+    -- A panel added (or a profile that has more) is built; one removed
+    -- goes, mover and all.
+    for key in pairs(db().panels) do
+        if not self.panels[key] then self:BuildPanel(key) end
+    end
+    for key, p in pairs(self.panels) do
+        if db().panels[key] then
+            self:LayoutPanel(key)
+        else
+            p:Hide()
+            ns.Movers:SetEnabled("info_" .. key, false)
+        end
+    end
+end
+
+-- ============================================================
+-- Other addons' feeds (LibDataBroker)
+-- ============================================================
+-- Each feed is a datatext named ldb:<name>. Its text is the feed's text
+-- (or its value and suffix), or its label for a launcher with none, with
+-- its icon in front; a click and the pointer go to the feed's own
+-- handlers, given the slot as the frame to anchor to.
+local function ldbText(name, obj)
+    local t = obj.text
+    if (t == nil or t == "") and obj.value ~= nil then t = tostring(obj.value) .. (obj.suffix or "") end
+    if t == nil or t == "" then t = obj.label or name end
+    if obj.icon then t = ("|T%s:0|t %s"):format(tostring(obj.icon), tostring(t)) end
+    return tostring(t)
+end
+
+function DT:RegisterBroker(name, obj)
+    if type(name) ~= "string" or type(obj) ~= "table" then return end
+    self:Register("ldb:" .. name, {
+        label = (obj.label or name) .. " (LDB)",
+        ldbName = name,
+        text = function() return ldbText(name, obj) end,
+        click = function(button, slot) if obj.OnClick then obj.OnClick(slot, button) end end,
+        enter = function(slot)
+            if obj.OnEnter then
+                obj.OnEnter(slot)
+            elseif obj.OnTooltipShow then
+                GameTooltip:SetOwner(slot, "ANCHOR_TOP", 0, 4)
+                obj.OnTooltipShow(GameTooltip)
+                GameTooltip:Show()
+            end
+        end,
+        leave = function(slot) if obj.OnLeave then obj.OnLeave(slot) end end,
+    })
+end
+
+function DT:HookBrokers()
+    local ldb = LibStub and LibStub("LibDataBroker-1.1", true)
+    if not ldb or self.brokerHooked then return end
+    self.brokerHooked = true
+    for name, obj in ldb:DataObjectIterator() do self:RegisterBroker(name, obj) end
+    ldb.RegisterCallback(self, "LibDataBroker_DataObjectCreated", function(_, name, obj)
+        DT:RegisterBroker(name, obj)
+        -- A slot saved with this feed before it existed shows it now.
+        DT:Update()
+    end)
+    ldb.RegisterCallback(self, "LibDataBroker_AttributeChanged", function(_, name)
+        for _, s in ipairs(DT.slots) do
+            if s.def and s.def.ldbName == name and s:IsVisible() then slotUpdate(s) end
+        end
+    end)
 end
 
 -- ============================================================
@@ -365,10 +477,21 @@ ns.Config:AddPage("datatexts", "Info panels", function(L)
     L:DB(db)
     L:Toggle("Panel backgrounds", "backdrop")
     L:Slider("Text size", "fontSize", 8, 18, 1)
-    for _, key in ipairs({ "left", "right", "top" }) do
-        L:Heading(("The %s panel"):format(key))
+    L:Button("Add a panel", function()
+        DT:AddPanel()
+        ns.Config:Rebuild("datatexts")
+    end, { tooltip = "A new panel under the middle of the screen, with one slot. Move it with the other frames (/wui move)." })
+    L:Note("Other addons' feeds (LibDataBroker) are in every slot's list, marked LDB.")
+    for _, key in ipairs(DT:PanelKeys()) do
+        L:Heading(DT:PanelLabel(key))
         L:DB(function() return db().panels[key] end)
         L:Toggle("Show", "enable")
+        if not BUILT_IN[key] then
+            L:Button("Remove this panel", function()
+                DT:RemovePanel(key)
+                ns.Config:Rebuild("datatexts")
+            end)
+        end
         L:Slider("Width", "width", 100, 1200, 2)
         L:Slider("Height", "height", 12, 40, 1)
         L:Slider("Slots", "slotCount", 1, 6, 1, {
