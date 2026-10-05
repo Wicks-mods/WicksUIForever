@@ -1,17 +1,16 @@
 # Wick's UI
 
-## 0.10.3 (unreleased)
+## 0.10.3 (2026-10-05)
 
 ### Combat text
 
-- Numbers on the nameplates: what each mob is hit for rises off its
-  plate, in the combat text's font and outline, coloured by the school of
-  the hit, crits larger with a pop. Misses can show too, and heals. The
-  game tells addons what a mob was hit for but not by whom, so in a group
-  these are everyone's hits on it; on your own they are yours and your
-  pet's. Only on your target narrows them. A mob's last numbers finish
-  where it fell. Under Combat text, Numbers on the nameplates; off until
-  you switch it on.
+- Numbers on the nameplates, off until you switch them on under Combat
+  text: what each mob is hit for rises off its plate, in the combat
+  text's font and outline, coloured by the school of the hit, crits
+  larger with a pop. Misses can show too, and heals. The game tells
+  addons what a mob was hit for but not by whom, so in a group these are
+  everyone's hits on it; on your own they are yours and your pet's. Only
+  on your target narrows them. A mob's last numbers finish where it fell.
 
 ### Info panels
 
@@ -24,12 +23,11 @@
 
 ### Unit frames
 
-- The unit frames can fade, as the action bars do. Off until you switch
-  on Fade the unit frames, on the Unit frames page; then they sit
-  see-through at an opacity you pick
-  until combat, a target, your focus, a cast or your pointer brings them
-  up. Each frame's page has Follow the fade, to leave one out. Party and
-  raid frames are not on it.
+- The unit frames can fade, as the action bars do, once you switch on
+  Fade the unit frames on the Unit frames page; it starts off. They sit
+  see-through at an opacity you pick until combat, a target, your focus,
+  a cast or your pointer brings them up. Each frame's page has Follow the
+  fade, to leave one out. Party and raid frames are not on it.
 
 ### Nameplates
 
