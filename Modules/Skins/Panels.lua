@@ -4156,30 +4156,6 @@ end
 -- Menu text keeps Blizzard's font objects: the menu's compositor forbids
 -- SetFont, and swapping the font object broke how it shows enabled and
 -- disabled rows (they came out dark).
-local function styleMenuRow(b)
-    for _, r in ipairs({ b:GetRegions() }) do
-        local kind = r:GetObjectType()
-        if kind == "Texture" then
-            local a = r:GetAtlas()
-            if a then
-                local al = a:lower()
-                if al:find("checkmark") or al:find("radialtick") then
-                    r:SetDesaturated(true)
-                    r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
-                    Chrome:Register(r, "fel", "vertex", 1)
-                elseif al:find("ticksquare") or al:find("tickradial") then
-                    ns:Fill(r, C.shadow[1], C.shadow[2], C.shadow[3], 1)
-                elseif al:find("divider") then
-                    r:SetColorTexture(C.border[1], C.border[2], C.border[3], 0.8)
-                end
-            elseif r:GetTexture() == 136810 then
-                -- The hover bar Blizzard shows under the row.
-                ns:Fill(r, C.fel[1], C.fel[2], C.fel[3], 0.15)
-            end
-        end
-    end
-end
-
 -- Some frames on this client answer whether they are shown, or which
 -- atlas a texture uses, with a hidden (secret) value, and testing one is
 -- refused. The menu sweep below asks every frame on the screen, so it
@@ -4195,6 +4171,30 @@ local function shownPlain(f) return plain(f:IsShown()) and true or false end
 local function bgAtlas(r)
     local a = plain(r:GetAtlas())
     return type(a) == "string" and a:find("dropdown%-bg") ~= nil
+end
+
+local function styleMenuRow(b)
+    for _, r in ipairs({ b:GetRegions() }) do
+        local kind = r:GetObjectType()
+        if kind == "Texture" then
+            local a = plain(r:GetAtlas())
+            if type(a) == "string" then
+                local al = a:lower()
+                if al:find("checkmark") or al:find("radialtick") then
+                    r:SetDesaturated(true)
+                    r:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+                    Chrome:Register(r, "fel", "vertex", 1)
+                elseif al:find("ticksquare") or al:find("tickradial") then
+                    ns:Fill(r, C.shadow[1], C.shadow[2], C.shadow[3], 1)
+                elseif al:find("divider") then
+                    r:SetColorTexture(C.border[1], C.border[2], C.border[3], 0.8)
+                end
+            elseif plain(r:GetTexture()) == 136810 then
+                -- The hover bar Blizzard shows under the row.
+                ns:Fill(r, C.fel[1], C.fel[2], C.fel[3], 0.15)
+            end
+        end
+    end
 end
 
 local function isMenu(f)
@@ -4221,19 +4221,25 @@ local function styleMenu(m, depth)
     -- kept just under it, or it ends up above the rows and greys them.
     local bd = extras[m] and extras[m].backdrop
     if bd then
-        if bd:GetFrameStrata() ~= m:GetFrameStrata() then bd:SetFrameStrata(m:GetFrameStrata()) end
-        local want = math.max(0, m:GetFrameLevel() - 1)
-        if bd:GetFrameLevel() ~= want then bd:SetFrameLevel(want) end
+        -- A menu can hold its layer as a hidden value (taint.log
+        -- 2026-10-04); then our card stays where it was.
+        local strata = plain(m:GetFrameStrata())
+        if type(strata) == "string" and bd:GetFrameStrata() ~= strata then bd:SetFrameStrata(strata) end
+        local level = plain(m:GetFrameLevel())
+        if type(level) == "number" then
+            local want = math.max(0, level - 1)
+            if bd:GetFrameLevel() ~= want then bd:SetFrameLevel(want) end
+        end
     end
     for _, child in ipairs({ m:GetChildren() }) do
-        if child:IsShown() then
+        if shownPlain(child) then
             -- A menu opened from a row of this one.
             if isMenu(child) then
                 styleMenu(child, depth + 1)
             else
                 styleMenuRow(child)
                 for _, g in ipairs({ child:GetChildren() }) do
-                    if g:IsShown() and g.GetRegions then
+                    if g.GetRegions and shownPlain(g) then
                         if isMenu(g) then styleMenu(g, depth + 1) else styleMenuRow(g) end
                     end
                 end
@@ -4250,7 +4256,7 @@ local function openMenus()
     local mgr = Menu and Menu.GetManager and Menu.GetManager()
     if not mgr or not mgr.GetOpenMenu then return end
     local m = mgr:GetOpenMenu()
-    if not (m and m.IsShown and m:IsShown()) then return end
+    if not (m and m.IsShown and shownPlain(m)) then return end
     styleMenu(m)
     -- Submenus can have no parent at all, so walking frames never meets
     -- them; the menu (or the row that opened one) holds them in a field.

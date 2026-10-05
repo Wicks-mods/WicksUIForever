@@ -24,8 +24,9 @@
 
 ### Unit frames
 
-- The unit frames can fade, as the action bars do. Fade the unit frames,
-  on the Unit frames page, sets them see-through at an opacity you pick
+- The unit frames can fade, as the action bars do. Off until you switch
+  on Fade the unit frames, on the Unit frames page; then they sit
+  see-through at an opacity you pick
   until combat, a target, your focus, a cast or your pointer brings them
   up. Each frame's page has Follow the fade, to leave one out. Party and
   raid frames are not on it.
@@ -45,6 +46,12 @@
 
 ### Fixes
 
+- Target borders on party and raid frames no longer stop part way. The
+  game can keep from addons whether a group member's unit is your
+  target, and the check halted the update at the first such frame,
+  hundreds of times in a session.
+- Menus whose layer the game keeps from addons are styled without a
+  refusal: their rows, and our card's place under them.
 - Save for this character only, in keybind mode, can be ticked again.
   The box showed the game's own setting, which only changes when you
   save, so a click never showed and could not be taken back.

@@ -972,13 +972,23 @@ end
 -- ============================================================
 -- Target and threat borders
 -- ============================================================
+-- Whether a frame's unit is your target can come back hidden (a party or
+-- raid unit in a restricted place: taint.log 2026-10-04, hundreds of
+-- refusals); a hidden answer counts as no, so the loop carries on to the
+-- rest of the frames instead of stopping at that one.
+local isSecretValue = rawget(_G, "issecretvalue")
+local function yes(v)
+    if isSecretValue and isSecretValue(v) then return false end
+    return v and true or false
+end
+
 function UF:UpdateBorders()
     local g = self:db()
     for f in pairs(self.all) do
         local color = "border"
         local u = ns:UnitOf(f)
-        if u and UnitExists(u) then
-            if g.targetBorder and f.wuiKey ~= "target" and f.wuiKey ~= "player" and UnitIsUnit(u, "target") then
+        if u and yes(UnitExists(u)) then
+            if g.targetBorder and f.wuiKey ~= "target" and f.wuiKey ~= "player" and yes(UnitIsUnit(u, "target")) then
                 color = "fel"
             end
         end
