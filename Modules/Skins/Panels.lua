@@ -1257,7 +1257,16 @@ PS.SPECIAL.WorldMapFrame = function(frame)
         fadeRegions(ql)
         fade(ql.Background)
         fade(ql.VerticalSeparator)
-        if ql.DetailsFrame then fadeRegions(ql.DetailsFrame); fade(ql.DetailsFrame.BackFrame) end
+        if ql.DetailsFrame then
+            fadeRegions(ql.DetailsFrame)
+            -- Only the strip's art: the Back button (back to the quest
+            -- list) lives on it, and fading the whole strip hid it.
+            local back = ql.DetailsFrame.BackFrame
+            if back then
+                fadeRegions(back)
+                if back.BackButton then styleButton(back.BackButton) end
+            end
+        end
         deepStrip(ql, 1)
         scanButtons(ql, 1)
         local qf = ql.QuestsFrame

@@ -4,6 +4,9 @@
 
 ### Fixes
 
+- The Back button is back on a quest opened from the map's quest log.
+  The skin hid the strip it sits on along with that strip's art, so the
+  only way back to the list was to close the map.
 - The group finder shows each group's members again. Their class and
   role marks were taken for window art and faded, so every group in the
   list looked empty.
