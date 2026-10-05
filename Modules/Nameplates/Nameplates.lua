@@ -32,6 +32,8 @@ ns.defaults.profile.nameplates = {
                                       -- and reaction; class; or dark
     lookMigrated = false,
     threat = false,                   -- colour by threat, for tanks
+    threatPercent = true,             -- your threat on the mob, inside the bar's left end
+    plateAlpha = 1,                   -- every plate's opacity; the dimming of the rest goes on top
     nameSize = 11, levelShown = true,
     percent = true, percentSize = 10,
     castbar = true, castHeight = 10, castIcon = true,
@@ -97,6 +99,36 @@ local function questLines(unit)
     end
     return found, open, left
 end
+
+-- Your threat on the mob, as a percent inside the bar's left end, in the
+-- game's colour for how close you are to pulling it (or holding it). The
+-- client hands threat over plainly in a fight; an answer it hides is
+-- simply not shown. Nothing on a mob you have no threat on, a player, or
+-- a friend.
+local function updateThreatText(self)
+    local t = self.wuiThreatText
+    if not t then return end
+    local unit = ns:UnitOf(self)
+    local d = db()
+    local shown = false
+    if d.threatPercent and unit and UnitExists(unit) and UnitDetailedThreatSituation
+        and not plain(UnitIsPlayer(unit)) and not plain(UnitIsFriend("player", unit)) then
+        local ok, _, status, pct = pcall(UnitDetailedThreatSituation, "player", unit)
+        status, pct = ok and plain(status), ok and plain(pct)
+        if type(pct) == "number" and pct > 0 then
+            t:SetText(("%d%%"):format(math.floor(pct + 0.5)))
+            local r, g, b = 1, 1, 1
+            if GetThreatStatusColor and type(status) == "number" then
+                local okC, cr, cg, cb = pcall(GetThreatStatusColor, status)
+                if okC and cr then r, g, b = cr, cg, cb end
+            end
+            t:SetTextColor(r, g, b, 1)
+            shown = true
+        end
+    end
+    t:SetShown(shown)
+end
+NP.UpdateThreatText = updateThreatText
 
 -- The QuestIndicator element's update, in place of oUF's quest-boss-only
 -- one. `event` is "WicksUI_Quests" when the quest log changed, which is
@@ -272,6 +304,10 @@ local function style(self, unit)
     self.wuiName:SetPoint("BOTTOM", health, "TOP", 0, 3 + cardPad())
     self.wuiPercent = ns:CreateText(overlay, d.percentSize, "RIGHT")
     self.wuiPercent:SetPoint("RIGHT", health, "RIGHT", -2, 0)
+    -- Your threat, at the other end of the bar from the health percent.
+    self.wuiThreatText = ns:CreateText(overlay, d.percentSize, "LEFT")
+    self.wuiThreatText:SetPoint("LEFT", health, "LEFT", 2, 0)
+    self.wuiThreatText:Hide()
 
     -- Cast bar. Placed under the bar here; Modern places its thin line in
     -- Configure, once the size of the text above it is known.
@@ -514,6 +550,7 @@ function NP:Configure(self)
     local face, outline = ufd and ufd.font, ufd and ufd.fontOutline
     ns.Media:SetFont(self.wuiName, d.nameSize, outline, face, true)
     ns.Media:SetFont(self.wuiPercent, d.percentSize, outline, face, true)
+    ns.Media:SetFont(self.wuiThreatText, d.percentSize, outline, face, true)
     ns.Media:SetFont(cb.Text, 9, outline, face, true)
     ns.Media:SetFont(cb.Time, 9, outline, face, true)
     self.wuiName:SetWidth(d.width + 40)
@@ -617,6 +654,13 @@ function NP:Refresh(self)
     if cls then self.wuiClassMark:SetVertexColor(cls[1], cls[2], cls[3], 1) end
     self.wuiClassMark:SetShown(cls and true or false)
     self.wuiClassBack:SetShown(cls and true or false)
+    self.wuiThreatText:ClearAllPoints()
+    if cls then
+        self.wuiThreatText:SetPoint("LEFT", self.wuiClassBack, "RIGHT", 2, 0)
+    else
+        self.wuiThreatText:SetPoint("LEFT", self.Health, "LEFT", 2, 0)
+    end
+    if nameOnly then self.wuiThreatText:Hide() else updateThreatText(self) end
 
     self.wuiName:ClearAllPoints()
     if nameOnly then
@@ -649,7 +693,8 @@ function NP:Refresh(self)
         self.wuiTargetGlow:SetShown(glow)
     end
 
-    self:SetAlpha((not hasTarget or isTarget or isFocus or nameOnly) and 1 or d.nonTargetAlpha)
+    local dim = (not hasTarget or isTarget or isFocus or nameOnly) and 1 or d.nonTargetAlpha
+    self:SetAlpha(dim * (d.plateAlpha or 1))
     self.Health:SetScale((isTarget and d.targetBorder) and d.targetScale or 1)
 end
 
@@ -703,6 +748,16 @@ function NP:Initialize()
     ns:On("UNIT_FACTION", function() NP:RefreshAll() end)
     ns:On("PLAYER_FOCUS_CHANGED", function() NP:RefreshAll() end)
     ns:On("UNIT_CLASSIFICATION_CHANGED", function() NP:RefreshAll() end)
+    -- Threat moves through a fight: the plate showing that mob reads it
+    -- again; the end of a fight clears every plate.
+    local function threatChanged(_, unit)
+        for f in pairs(NP.plates) do
+            if f:IsVisible() and (unit == nil or ns:UnitOf(f) == unit) then updateThreatText(f) end
+        end
+    end
+    ns:On("UNIT_THREAT_LIST_UPDATE", threatChanged)
+    ns:On("UNIT_THREAT_SITUATION_UPDATE", threatChanged)
+    ns:On("PLAYER_REGEN_ENABLED", function() threatChanged(nil, nil) end)
     -- A kill, an item looted, a quest taken or handed in: the quest marks
     -- read again, once for a burst of changes. After a fight too, when
     -- answers hidden in it can be read.
@@ -721,7 +776,7 @@ function NP:Initialize()
     ns:On("PLAYER_REGEN_ENABLED", questsChanged)
     -- Tanking or not decides the threat colours.
     ns:On("PLAYER_ROLES_ASSIGNED", function() NP:Update() end)
-    ns:On("PLAYER_SPECIALIZATION_CHANGED", function(unit) if unit == nil or unit == "player" then NP:Update() end end)
+    ns:On("PLAYER_SPECIALIZATION_CHANGED", function(_, unit) if unit == nil or unit == "player" then NP:Update() end end)
     -- A theme change repaints the plates in the new colours: cast bars in
     -- the accent, the look's health colours, the target's pointers.
     if Chrome.OnThemeChanged then
@@ -770,8 +825,10 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Toggle("Enable", "enable", { tooltip = "Takes effect after a reload." })
     L:Slider("Width", "width", 60, 300, 1)
     L:Slider("Height", "height", 4, 40, 1)
+    L:Slider("Opacity", "plateAlpha", 0.1, 1, 0.05, { tooltip = "How see-through every plate is. The dimming of plates other than your target goes on top of this." })
     L:Dropdown("Health colour", "healthColor", { { "look", "The look's colours" }, { "class", "Class and reaction" }, { "dark", "Dark" } },
         { tooltip = "The look's colours are the pair the unit frames use in that look, one for friends and one for enemies. A look without its own uses class and reaction." })
+    L:Toggle("Your threat as a percent", "threatPercent", { tooltip = "Inside the left end of the bar, your threat on that mob in the game's threat colours: how close you are to pulling it, or 100 when it is yours." })
     L:Toggle("Colour by threat while you tank", "threat", { tooltip = "In a tank role or spec, the bar shows whether you hold the mob. In any other role plates keep their class and reaction colours; the threat glow and meter warn you instead." })
 
     L:Heading("Execute")

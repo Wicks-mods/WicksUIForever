@@ -65,6 +65,7 @@ local function unit(o)
         raidIcon = true, leader = true, combat = false, resting = false,
         role = false, readyCheck = false, phase = false, resurrect = false, summon = false,
         rangeFade = false,
+        fade = true,                    -- follows the unit frames' fade, when that is on
         point = "CENTER,UIParent,CENTER,0,0",
     }
     for k, v in pairs(o or {}) do
@@ -92,6 +93,9 @@ local defaults = {
     colorsMigrated = false,
     smooth        = true,
     rangeAlpha    = 0.45,
+    fade          = false,         -- frames that follow it sit see-through until a reason brings them up
+    fadeAlpha     = 0.3,
+    fadeIn        = "combat,target,casting,mouseover",
     targetBorder  = true,          -- fel border on the frame of whatever you target
     threatBorder  = true,
     units = {
@@ -993,6 +997,74 @@ function UF:DisableBlizzard(key)
     end
 end
 
+-- ============================================================
+-- Fade
+-- ============================================================
+-- The single frames that follow the fade sit under one frame of ours and
+-- that frame's opacity changes, as the action bars' fade does. Opacity is
+-- not protected, so it changes in a fight; the frames move under it only
+-- out of combat. Range fading on a frame goes on top. Health cannot be a
+-- reason to come up: this client keeps it from addons.
+local fader = CreateFrame("Frame", "WicksUIUnitFrameFader", UIParent)
+fader:SetAllPoints()
+UF.fader = fader
+local fadeReasons = {}
+
+local function fadeWants(reason)
+    local list = "," .. (UF:db().fadeIn or ""):gsub("%s", "") .. ","
+    return list:find("," .. reason .. ",", 1, true) ~= nil
+end
+
+local function fadeTo(to, dur)
+    fader.wuiWant = to
+    local from = fader:GetAlpha()
+    if math.abs(from - to) < 0.01 then fader:SetAlpha(to) fader:SetScript("OnUpdate", nil) return end
+    local start = GetTime()
+    dur = dur or 0.25
+    fader:SetScript("OnUpdate", function(self)
+        local t = (GetTime() - start) / dur
+        if t >= 1 then
+            self:SetAlpha(to)
+            self:SetScript("OnUpdate", nil)
+        else
+            self:SetAlpha(from + (to - from) * t)
+        end
+    end)
+end
+
+function UF:EvalFade()
+    local g = self:db()
+    if not g.fade then fadeTo(1, 0.15) return end
+    local function on(reason, cond) fadeReasons[reason] = (fadeWants(reason) and cond) and true or nil end
+    on("combat", UnitAffectingCombat("player"))
+    on("target", UnitExists("target"))
+    on("focus", UnitExists("focus"))
+    on("casting", (UnitCastingInfo("player") or UnitChannelInfo("player")) and true or false)
+    if not fadeWants("mouseover") then fadeReasons.mouseover = nil end
+    local up = next(fadeReasons) ~= nil
+    fadeTo(up and 1 or (g.fadeAlpha or 0.3), up and 0.15 or 0.4)
+end
+
+-- Under the fader or back under UIParent, by the settings. Out of combat.
+function UF:ApplyFade(key, f)
+    local follow = self:db().fade and self:UnitDB(key).fade and true or false
+    local want = follow and fader or UIParent
+    if f:GetParent() ~= want then
+        local strata = f:GetFrameStrata()
+        f:SetParent(want)
+        f:SetFrameStrata(strata)
+    end
+    if not f.wuiFadeHooked then
+        f.wuiFadeHooked = true
+        f:HookScript("OnEnter", function()
+            if UF:db().fade and fadeWants("mouseover") then fadeReasons.mouseover = true UF:EvalFade() end
+        end)
+        f:HookScript("OnLeave", function()
+            if fadeReasons.mouseover then fadeReasons.mouseover = nil UF:EvalFade() end
+        end)
+    end
+end
+
 function UF:SpawnSingle(key)
     local d = self:UnitDB(key)
     local f = oUF:Spawn(key, "WicksUI_" .. key:gsub("^%l", string.upper))
@@ -1055,7 +1127,14 @@ function UF:Initialize()
     end
     if ns.UnitGroups then ns.UnitGroups:Initialize() end
 
-    ns:On("PLAYER_TARGET_CHANGED", function() UF:UpdateBorders() end)
+    ns:On("PLAYER_TARGET_CHANGED", function() UF:UpdateBorders() UF:EvalFade() end)
+    ns:On("PLAYER_FOCUS_CHANGED", function() UF:EvalFade() end)
+    ns:On("PLAYER_REGEN_DISABLED", function() UF:EvalFade() end)
+    ns:On("PLAYER_REGEN_ENABLED", function() UF:EvalFade() end)
+    for _, e in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_CHANNEL_START",
+        "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED" }) do
+        ns:On(e, function(_, unit) if unit == "player" then UF:EvalFade() end end)
+    end
     ns:On("GROUP_ROSTER_UPDATE", function() UF:UpdateBorders() end)
     -- A theme change repaints the frames in the new colours: the cast bar
     -- in the accent, the health gradient that runs up to it, and the look's
@@ -1084,6 +1163,7 @@ function UF:Update()
                 self:Configure(f)
                 ns.Movers:Resize("uf_" .. key)
                 self:ApplyEnabled(key, f)
+                self:ApplyFade(key, f)
             end
         end
         if self.frames.boss then
@@ -1096,5 +1176,6 @@ function UF:Update()
         end
         if ns.UnitGroups then ns.UnitGroups:Update() end
         self:UpdateBorders()
+        self:EvalFade()
     end)
 end

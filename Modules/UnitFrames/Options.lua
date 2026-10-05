@@ -59,6 +59,13 @@ ns.Config:AddPage("unitframes", "Unit frames", function(L)
     })
     L:Toggle("Accent border on your target", "targetBorder", { tooltip = "Whichever party or raid frame belongs to what you are targeting gets a border in the look's accent." })
     L:Slider("Out of range, opacity", "rangeAlpha", 0.1, 1, 0.05)
+
+    L:Heading("Fade")
+    L:Note("Frames that follow the fade (each frame's page says) sit at the opacity below, and come up together when any of the reasons you pick is true. Health cannot be one of the reasons: this client keeps your health from addons. Party and raid frames are not on it.")
+    L:Toggle("Fade the unit frames", "fade")
+    L:Slider("Faded opacity", "fadeAlpha", 0, 1, 0.05, { disabled = function() return not UF:db().fade end })
+    L:Input("Come up for", "fadeIn", { disabled = function() return not UF:db().fade end,
+        tooltip = "Any of: combat, target, focus, casting, mouseover. Separate with commas." })
     L:Button("Preview group frames", function()
         if ns.UnitGroups then ns.UnitGroups:SetTestMode(not ns.UnitGroups.testing) end
     end, { tooltip = "Shows the party and raid frames with you in them, so they can be moved and sized without a group. Click again to stop." })
@@ -130,6 +137,9 @@ local function unitPage(key, order)
         L:Toggle("Enable", "enable")
         L:DisabledWhen(off)
         L:Toggle("Fade out of range", "rangeFade")
+        if key ~= "boss" and key ~= "party" and key ~= "raid" then
+            L:Toggle("Follow the fade", "fade", { tooltip = "With Fade the unit frames on (Unit frames page), this frame sits see-through until combat, a target or the other reasons picked there bring it up." })
+        end
         L:Slider("Width", "width", 40, 500, 1)
         L:Slider("Height", "height", 10, 120, 1)
         L:Toggle("Power bar", "power")

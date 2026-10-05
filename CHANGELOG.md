@@ -2,6 +2,24 @@
 
 ## 0.10.3 (unreleased)
 
+### Unit frames
+
+- The unit frames can fade, as the action bars do. Fade the unit frames,
+  on the Unit frames page, sets them see-through at an opacity you pick
+  until combat, a target, your focus, a cast or your pointer brings them
+  up. Each frame's page has Follow the fade, to leave one out. Party and
+  raid frames are not on it.
+
+### Nameplates
+
+- Your threat on a mob shows as a percent inside the left end of its
+  bar, in the game's threat colours: how close you are to pulling it, or
+  100 when it is yours. Your threat as a percent switches it.
+- An Opacity setting for every plate, with the dimming of plates other
+  than your target on top of it.
+- Plates set their threat colours again when you change spec. The
+  handler read the event's name as the unit and never ran.
+
 ### Fixes
 
 - The Back button is back on a quest opened from the map's quest log.
