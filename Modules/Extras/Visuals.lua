@@ -336,6 +336,13 @@ ns.Config:AddPage("combattext", "Combat text", function(L)
             tooltip = k.tip .. " Right-click to go back to the game's colour.",
         })
     end
+    L:Toggle("Darker when an aura fades", "dimFades", {
+        tooltip = "The game shows a buff or debuff fading in the same colour as when it landed. On, the fading line comes darker, so one going stands apart from one coming.",
+    })
+    L:Slider("Fading aura brightness", "fadesBright", 0.2, 0.9, 0.05, {
+        disabled = function() return CT:db().dimFades == false end,
+        tooltip = "How bright a fading aura's line is, against the full colour of one landing.",
+    })
     L:DisabledWhen(nil)
 
     L:Heading("What your own text shows")

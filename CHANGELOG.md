@@ -1,5 +1,15 @@
 # Wick's UI
 
+## 0.10.4 (unreleased)
+
+### Combat text
+
+- An aura fading is drawn darker than when it landed, so a buff or
+  debuff going stands apart from one coming; the game gives both the
+  same colour. Darker when an aura fades switches it, and Fading aura
+  brightness sets how dark, under Colours of your own text. The sample
+  shows one of each.
+
 ## 0.10.3 (2026-10-05)
 
 ### Combat text

@@ -32,6 +32,8 @@ ns.defaults.profile.combattext = {
     fade = 0.6,           -- fading over its last this many seconds, as the game's do
     stagger = true,       -- damage lines a little apart sideways, as the game draws them
     colors = {},          -- kind -> { r, g, b }; a kind with none keeps the game's colour
+    dimFades = true,      -- an aura's "fades" line darker than the line when it lands
+    fadesBright = 0.5,    -- how bright, against the landing line's full colour
     numbersFont = "Wick", -- the numbers over what you hit; Wick is the look's
     -- Numbers rising off each mob's nameplate, from what the client says it
     -- was hit for (UNIT_COMBAT): everyone's hits on it, not only yours.
@@ -179,7 +181,7 @@ local function onUpdate(_, elapsed)
         else
             place(line, line.t / span)
             if line.t > span - fade then
-                line.fs:SetAlpha(math.max(0, (span - line.t) / fade))
+                line.fs:SetAlpha(math.max(0, (span - line.t) / fade) * (line.alpha or 1))
             end
             if line.pop then
                 local t, h = line.t, line.height
@@ -214,7 +216,8 @@ end
 local side, aside = 1, 1
 -- message: the game's finished text, possibly a secret.
 -- kind of line: "crit" pops and holds, "sticky" holds.
-function CT:Add(message, r, g, b, displayType, staggered)
+-- fading: the line is an aura fading.
+function CT:Add(message, r, g, b, displayType, staggered, fading)
     if not (frame and self:Drawing()) then return end
     local d = db()
     if #active >= MAX_LINES then release(1) end
@@ -236,10 +239,18 @@ function CT:Add(message, r, g, b, displayType, staggered)
     local pick = self:Picked(CT.KindOf(r, g, b))
     if pick then r, g, b = pick[1], pick[2], pick[3] end
     if type(r) ~= "number" then r, g, b = 1, 1, 1 end
+    -- An aura fading comes in the same colour as when it landed; drawn
+    -- darker, a buff going stands apart from one coming.
+    local alpha = 1
+    if fading and d.dimFades ~= false and not (issecret and (issecret(r) or issecret(g) or issecret(b))) then
+        local k = math.max(0.1, math.min(1, d.fadesBright or 0.5))
+        r, g, b = r * k, g * k, b * k
+        alpha = 0.5 + k / 2
+    end
     fs:SetTextColor(r, g, b, 1)
-    fs:SetAlpha(1)
+    fs:SetAlpha(alpha)
     fs:Show()
-    local line = { fs = fs, t = 0, height = h, side = side, crit = crit,
+    local line = { fs = fs, t = 0, height = h, side = side, crit = crit, alpha = alpha,
         hold = crit or displayType == "sticky", pop = crit or nil,
         x = (staggered and d.stagger) and math.random(-STAGGER, STAGGER) or 0 }
     side = -side
@@ -271,11 +282,13 @@ local SAMPLES = {
     { "<Overpower>", 1, 0.82, 0, "crit" },
     { "(Stormwind +25)", 0.1, 0.1, 1 },
     { "Interrupted", 1, 1, 1 },
+    { "<Renew>", 0.1, 1, 0.1 },
+    { "<Renew> fades", 0.1, 1, 0.1, nil, nil, true },
 }
 function CT:Sample()
     local after = C_Timer and C_Timer.After
     for i, s in ipairs(SAMPLES) do
-        local function add() CT:Add(s[1], s[2], s[3], s[4], s[5], s[6]) end
+        local function add() CT:Add(s[1], s[2], s[3], s[4], s[5], s[6], s[7]) end
         if after and i > 1 then after((i - 1) * 0.25, add) else add() end
     end
 end
@@ -314,6 +327,63 @@ CT.FadeGame = fadeGame
 -- time has gone back, holds a new line. Nothing is written onto the game's
 -- font strings; what was seen is kept here.
 local seen = setmetatable({}, { __mode = "k" })
+
+-- Which of the game's lines are auras fading. Nothing on a line says so:
+-- an aura's start and its end come in the same colour, and on Forever the
+-- text is a secret (the aura's name comes from C_CombatText.GetCurrentEventInfo,
+-- whose returns are all secret). Plain text says so itself, in the game's
+-- own words (AURA_END, "<%s> fades"). Otherwise the event that made the
+-- line does: COMBAT_TEXT_UPDATE names the kind of line, plainly, and the
+-- game draws that line as the event comes in. Each kind that would show is
+-- noted with its colour, in order, and each new line takes the oldest
+-- note in its colour.
+local notes = {}
+local NOTE_LIFE, NOTE_MAX = 1, 40
+local function typeInfo()
+    return rawget(_G, "CombatTextTypeInfo") or rawget(_G, "COMBAT_TEXT_TYPE_INFO")
+end
+local function noteLine(_, kind)
+    if type(kind) ~= "string" or (issecret and issecret(kind)) then return end
+    local all = typeInfo()
+    local info = type(all) == "table" and all[kind]
+    if not (type(info) == "table" and info.show and type(info.r) == "number") then return end
+    if #notes >= NOTE_MAX then table.remove(notes, 1) end
+    notes[#notes + 1] = { info.r, info.g, info.b, fading = kind:find("AURA_END", 1, true) ~= nil, at = GetTime() }
+end
+CT.NoteLine = noteLine
+
+local fadesPattern
+local function fadesText(text)
+    if not fadesPattern then
+        local f = rawget(_G, "AURA_END")
+        if type(f) ~= "string" then return false end
+        local p = f:gsub("[%^%$%(%)%.%[%]%*%+%-%?%%]", "%%%0")
+        fadesPattern = "^" .. p:gsub("%%%%s", ".+") .. "$"
+    end
+    return text:match(fadesPattern) ~= nil
+end
+
+local function isFading(text, r, g, b)
+    local now = GetTime()
+    for i = #notes, 1, -1 do
+        if now - notes[i].at > NOTE_LIFE then table.remove(notes, i) end
+    end
+    -- The note is taken even when the text answers, so the next line in
+    -- that colour finds its own.
+    local note
+    if type(r) == "number" and type(g) == "number" and type(b) == "number"
+        and not (issecret and (issecret(r) or issecret(g) or issecret(b))) then
+        for i, n in ipairs(notes) do
+            if near(r, g, b, n) then note = table.remove(notes, i) break end
+        end
+    end
+    if type(text) == "string" and not (issecret and issecret(text)) then
+        return fadesText(text)
+    end
+    return note and note.fading or false
+end
+CT.IsFading = isFading
+
 local function readGame()
     local bz = rawget(_G, "CombatText")
     local list = bz and bz.activeFontStrings
@@ -326,7 +396,8 @@ local function readGame()
             if last == nil or t < last then
                 local r, g, b = fs:GetTextColor()
                 local kind = (fs.isCrit and "crit") or (at and fs.endY == at.startY and "sticky") or nil
-                CT:Add(fs:GetText(), r, g, b, kind, at and fs.startX ~= at.startX)
+                local text = fs:GetText()
+                CT:Add(text, r, g, b, kind, at and fs.startX ~= at.startX, isFading(text, r, g, b))
             end
             seen[fs] = t
         end
@@ -380,6 +451,7 @@ function CT:Initialize()
     ns:On("ADDON_LOADED", function(_, addon)
         if addon == "Blizzard_CombatText" then CT:Hook(); fadeGame() end
     end)
+    ns:On("COMBAT_TEXT_UPDATE", noteLine)
     self:Layout()
     fadeGame()
 end
