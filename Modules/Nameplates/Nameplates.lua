@@ -101,10 +101,15 @@ local function questLines(unit)
 end
 
 -- Your threat on the mob, as a percent inside the bar's left end, in the
--- game's colour for how close you are to pulling it (or holding it). The
--- client hands threat over plainly in a fight; an answer it hides is
--- simply not shown. Nothing on a mob you have no threat on, a player, or
--- a friend.
+-- game's colour for how close you are to pulling it (or holding it).
+-- Nothing on a mob you have no threat on, a player, or a friend.
+-- This client can hide threat values (UnitDetailedThreatSituation is
+-- SecretWhenUnitThreatValuesRestricted), and through a nameplate it did,
+-- in game, for a mob the meter read plainly through "target". A hidden
+-- percent is drawn as it is (SetFormattedText takes one) and never read:
+-- the call returns nothing at all for a mob you have no threat on, so a
+-- value means you are on its list. Its colour is the status's when that
+-- is plain, else the look's text colour.
 local function updateThreatText(self)
     local t = self.wuiThreatText
     if not t then return end
@@ -114,6 +119,18 @@ local function updateThreatText(self)
     if d.threatPercent and unit and UnitExists(unit) and UnitDetailedThreatSituation
         and not plain(UnitIsPlayer(unit)) and not plain(UnitIsFriend("player", unit)) then
         local ok, _, status, pct = pcall(UnitDetailedThreatSituation, "player", unit)
+        if ok and issecret and issecret(pct) then
+            t:SetFormattedText("%.0f%%", pct)
+            local st = plain(status)
+            local r, g, b = C.text[1], C.text[2], C.text[3]
+            if type(st) == "number" and GetThreatStatusColor then
+                local okC, cr, cg, cb = pcall(GetThreatStatusColor, st)
+                if okC and type(cr) == "number" and not issecret(cr) then r, g, b = cr, cg, cb end
+            end
+            t:SetTextColor(r, g, b, 1)
+            t:Show()
+            return
+        end
         status, pct = ok and plain(status), ok and plain(pct)
         if type(pct) == "number" and pct > 0 then
             t:SetText(("%d%%"):format(math.floor(pct + 0.5)))
