@@ -161,9 +161,13 @@ local function makePanel()
     note:SetText("Point at a button and press a key, a mouse button or turn the wheel. Escape clears the button. Left and right click only bind with a modifier held.")
     ns:TextColor(note, "muted")
 
+    -- The box shows the choice being made, which starts from the game's
+    -- current set when the mode opens. It used to read the game's set
+    -- every time, which only changes on Save, so a click never showed and
+    -- could not be taken back.
     panel.perChar = W:Check(panel, "Save for this character only", function()
-        return GetCurrentBindingSet and GetCurrentBindingSet() == 2
-    end, function(v) K.perChar = v end, { width = 220 })
+        return K.perChar and true or false
+    end, function(v) K.perChar = v and true or false end, { width = 220 })
     panel.perChar:SetPoint("BOTTOMLEFT", 12, 34)
 
     local save = W:Button(panel, "Save", 90, function() K:Deactivate(true) end)

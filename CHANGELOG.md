@@ -42,6 +42,9 @@
 
 ### Fixes
 
+- Save for this character only, in keybind mode, can be ticked again.
+  The box showed the game's own setting, which only changes when you
+  save, so a click never showed and could not be taken back.
 - A submenu no longer misses the look now and then. While a menu was
   open, the skin checked every frame on the screen for one, and some
   frames on this client keep whether they show from addons; the check
