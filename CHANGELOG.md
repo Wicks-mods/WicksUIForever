@@ -70,6 +70,12 @@
   the dungeon names alone, so a name, its level and its role marks ran
   past the right edge in the look's font.
 
+### Visuals
+
+- The Visuals page is marked Experimental. Its settings are ones the game
+  has but leaves out of its own options, so a patch can change one or
+  take it away.
+
 ### Group finder
 
 - Each group in the Browse list is a card in the look, in place of the

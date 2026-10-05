@@ -135,7 +135,7 @@ end
 
 ns.Config:AddPage("visuals", "Visuals", function(L)
     L:DB(db)
-    L:Note("Picture settings the game has but leaves out of its options. Each one changes the game's own setting, so it holds with Wick's UI switched off. Switching it off here puts back what was there.")
+    L:Note(ns.Core.Chrome:Esc("fel") .. "Experimental.|r These are picture settings the game has but leaves out of its options, so a patch can change one or take it away without notice, and some may not do anything on this client yet. Each one changes the game's own setting, so it holds with Wick's UI switched off. Switching it off here puts back what was there.")
     L:Heading("Screen effects")
     toggle(L, "noFog", "No distance fog", "Far land and sky stay clear instead of fading into haze.")
     toggle(L, "noGlow", "No screen glow", "The soft bloom laid over the whole picture.")
