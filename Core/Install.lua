@@ -669,9 +669,9 @@ local function build()
     f.text:SetPoint("TOPRIGHT", -18, -70)
     f.reloadAction = W:Button(f, "Reload now", 160, function() I:Finish(true) end)
     f.reloadAction:SetPoint("BOTTOMLEFT", 18, 16)
-    -- Up to nine answers, three to a row, above the Back and Next buttons.
+    -- Up to twelve answers, three to a row, above the Back and Next buttons.
     f.choices = {}
-    for i = 1, 9 do
+    for i = 1, 12 do
         local b = W:Button(f, "", CHOICE_W, function() end)
         b:HookScript("OnEnter", function()
             if not b.tip then return end
