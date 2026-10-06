@@ -36,6 +36,8 @@ local function game() return ns:Game() end
 -- a stretched middle, as InputBoxTemplate draws it.
 local INPUT = "Interface\\Common\\Common-Input-Border"
 local function inputArt(f, inset)
+    -- WickCore's, shared with the suite; this copy for a WickCore without it.
+    if Chrome.GameInputArt then return Chrome:GameInputArt(f, inset) end
     inset = inset or 0
     local l = f:CreateTexture(nil, "BACKGROUND")
     l:SetTexture(INPUT)
