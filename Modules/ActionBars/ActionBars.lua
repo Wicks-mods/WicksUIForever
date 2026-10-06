@@ -258,12 +258,36 @@ local function abbreviate(text)
 end
 AB.Abbreviate = abbreviate
 
+-- What every button gets whatever its look: the keybind text through the
+-- abbreviation, whoever sets it, and the bar's mouseover fade, which reads
+-- whether the pointer is on any button of the bar.
+local function buttonHooks(button)
+    local hk = button.HotKey
+    if hk then
+        local busy
+        hooksecurefunc(hk, "SetText", function(fs, text)
+            if busy or not AB:db().abbreviate then return end
+            local short = abbreviate(text)
+            if short ~= text then busy = true; fs:SetText(short); busy = false end
+        end)
+    end
+    button:HookScript("OnEnter", function(self) AB:BarEnter(self.header) end)
+    button:HookScript("OnLeave", function(self) AB:BarLeave(self.header) end)
+end
+
 -- Take the button's art over. Setting MasqueSkinned tells the library not
 -- to put its own frame art back on every update.
 function AB:StyleButton(button)
     if button.wuiStyled then return end
     button.wuiStyled = true
     button.MasqueSkinned = true
+    if ns:Game() then
+        -- Classic: the button as the game's own template draws it on this
+        -- client, left alone. Marked skinned all the same, so the library
+        -- does not lay its art for another client over the template's.
+        buttonHooks(button)
+        return
+    end
 
     local icon = button.icon or button.Icon
     if button.IconMask and icon.RemoveMaskTexture then icon:RemoveMaskTexture(button.IconMask) end
@@ -350,20 +374,7 @@ function AB:StyleButton(button)
         button.Border:SetTexture(nil)
     end
 
-    -- Keybind text through the abbreviation, whoever sets it.
-    local hk = button.HotKey
-    if hk then
-        local busy
-        hooksecurefunc(hk, "SetText", function(fs, text)
-            if busy or not AB:db().abbreviate then return end
-            local short = abbreviate(text)
-            if short ~= text then busy = true; fs:SetText(short); busy = false end
-        end)
-    end
-
-    -- Mouseover fading reads whether the pointer is on any button of the bar.
-    button:HookScript("OnEnter", function(self) AB:BarEnter(self.header) end)
-    button:HookScript("OnLeave", function(self) AB:BarLeave(self.header) end)
+    buttonHooks(button)
 end
 
 -- Show the empty-slot fill only when the slot is shown empty.
@@ -384,8 +395,16 @@ AB.bars = {}
 -- The keybind text: the colour the player picked, or the look's text
 -- colour. Read as it is painted, so a theme change only has to paint again.
 function AB:HotkeyColor()
+    -- Classic: the game's grey, as its own keybinds are.
+    if not self:db().hotkeyColor and ns:Game() then return AB.GAME_HOTKEY end
     return self:db().hotkeyColor or C.text
 end
+AB.GAME_HOTKEY = { 0.6, 0.6, 0.6 }
+
+-- Classic's button text: the game's number font for keybinds and counts,
+-- its own small outlined face for macro names.
+AB.GAME_NUMBER_FONT = "Fonts\\ARIALN.TTF"
+AB.GAME_MACRO_FONT = "Fonts\\FRIZQT__.TTF"
 
 -- The button text outline as a font flag. "look" is the look's own (an
 -- outline in Rebel, none elsewhere), the way Media:SetFont reads it; the
@@ -415,7 +434,7 @@ local function buttonConfig(db, bar)
     local font = ns.Media:Font(g.font)
     local outline = AB:OutlineFlag()
     local hk = AB:HotkeyColor()
-    return {
+    local cfg = {
         outOfRangeColoring = g.rangeColoring,
         tooltip = g.tooltips,
         showGrid = bar.showGrid,
@@ -456,6 +475,13 @@ local function buttonConfig(db, bar)
             },
         },
     }
+    if ns:Game() then
+        local t = cfg.text
+        t.hotkey.font = { font = AB.GAME_NUMBER_FONT, size = g.hotkeySize, flags = "OUTLINE" }
+        t.count.font = { font = AB.GAME_NUMBER_FONT, size = g.countSize, flags = "OUTLINE" }
+        t.macro.font = { font = AB.GAME_MACRO_FONT, size = g.macroSize, flags = "OUTLINE" }
+    end
+    return cfg
 end
 
 -- The vehicle exit, on the last button of the main bar while in a vehicle.

@@ -38,6 +38,24 @@ local function styleSimple(b)
     b.wuiStyled = true
     local icon = b.icon or b.Icon or _G[b:GetName() .. "Icon"]
     b.wuiIcon = icon
+    -- Classic: a button made from the game's template keeps the template's
+    -- art. Only what the bar works with is found; a button the template
+    -- could not make has no art of the game's and takes the flat one.
+    if ns:Game() and b.GetNormalTexture and b:GetNormalTexture() then
+        local cd = b.cooldown or b.Cooldown or _G[b:GetName() .. "Cooldown"]
+        if not cd then cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate"); cd:SetAllPoints() end
+        b.wuiCooldown = cd
+        local hk = b.HotKey or _G[b:GetName() .. "HotKey"]
+        if not hk then
+            hk = b:CreateFontString(nil, "OVERLAY")
+            hk:SetPoint("TOPRIGHT", -1, -3)
+            b.HotKey = hk
+        end
+        b.wuiHotKey = hk
+        b:HookScript("OnEnter", function(self) AB:BarEnter(self:GetParent()) end)
+        b:HookScript("OnLeave", function(self) AB:BarLeave(self:GetParent()) end)
+        return
+    end
     if b.IconMask and icon and icon.RemoveMaskTexture then icon:RemoveMaskTexture(b.IconMask) end
     for _, key in ipairs({ "SlotArt", "SlotBackground", "FloatingBG" }) do
         local t = b[key]
@@ -153,7 +171,11 @@ local function layout(bar, d, shown)
         b:SetPoint(growth, bar, growth, left and x or -x, up and y or -y)
         b:SetShown(i <= n)
         if b.wuiHotKey then
-            ns.Media:SetFont(b.wuiHotKey, g.hotkeySize, g.fontOutline, g.font)
+            if ns:Game() then
+                b.wuiHotKey:SetFont(AB.GAME_NUMBER_FONT, g.hotkeySize, "OUTLINE")
+            else
+                ns.Media:SetFont(b.wuiHotKey, g.hotkeySize, g.fontOutline, g.font)
+            end
             -- The action bars' keybind colour; the look's text colour by
             -- default, which then follows a theme change by itself.
             ns:TextColor(b.wuiHotKey, AB:HotkeyColor())
