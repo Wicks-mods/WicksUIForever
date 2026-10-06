@@ -262,6 +262,9 @@ function ns:SetTemplate(f, template, opts)
         if holder and window then
             holder:SetFrameLevel(f:GetFrameLevel())
             f.wuiGameWindow = Chrome:GameWindowBackground(f)
+            -- Our fill goes: the game's frame and rock are the window's edge
+            -- and ground.
+            if f.wuiBG then f.wuiBG:SetAlpha(0) end
             -- So WickCore knows a panel inside it is in one of the game's windows.
             f.gameWindowBG = f.wuiGameWindow
         elseif holder and inset then
