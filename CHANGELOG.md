@@ -16,7 +16,13 @@
   the name, level, health and power where the game puts them, an elite
   or rare target's dragon and its name band in its reaction colour, and
   the game's threat flash. They keep fade, range, cast bars and auras.
-  Each client draws its own art.
+  Nameplates are the game's too: on TBC Anniversary the bar in the
+  game's border with its level box and a bordered cast bar; on Forever
+  the slim bar with its level badge, the yellow outline round your
+  target and a shade on the rest. Health is in the game's reaction
+  colours. Your threat as a percent, quest marks, hit numbers and your
+  debuffs stay. The settings windows, the bags and Wick's own windows
+  wear the game's frames and controls. Each client draws its own art.
 
 ### Combat text
 

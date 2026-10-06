@@ -304,7 +304,7 @@ local function style(self, unit)
     local health = newBar(self)
     health:SetPoint("CENTER")
     health.backdrop = ns:CreateBackdrop(health, "Default", cardInset(), ns:Modern() and { shadow = false } or nil)
-    track(health, 0.9)
+    health.wuiTrack = track(health, 0.9)
     health.colorTapping = true
     health.colorDisconnected = true
     health.PostUpdate = function(h) updateExecute(h) end
@@ -348,6 +348,7 @@ local function style(self, unit)
     cb:SetPoint("TOPRIGHT", health, "BOTTOMRIGHT", 0, -3)
     ns:CreateBackdrop(cb, "Default", edge(), ns:Modern() and { shadow = false } or nil)
     local cbg = track(cb, 0.9)
+    cb.wuiTrack = cbg
     -- The unit frames' thin cast line runs over a dark track.
     if ns:Modern() then
         cbg:SetVertexColor(C.void[1], C.void[2], C.void[3], 1)
@@ -496,6 +497,9 @@ local function style(self, unit)
     tglow.Override = nil
     self.wuiTargetGlow = tglow
 
+    -- Classic: the game's own plate over what is built above (Classic.lua).
+    if NP.GameStyle and ns:Game() then NP:GameStyle(self) end
+
     NP:Configure(self)
     self.wuiStyled = true
 end
@@ -638,6 +642,9 @@ function NP:Configure(self)
     self.wuiMarkL:SetSize(ms * 0.75, ms)
     self.wuiMarkR:SetSize(ms * 0.75, ms)
     NP:PlaceMarks(self)
+
+    -- Classic: the game's sizes and places over these (Classic.lua).
+    if self.wuiGameNP and NP.ConfigureGame then NP:ConfigureGame(self) end
 end
 
 -- The pointers hug the bar (its card, in Modern), stepping out past
@@ -727,6 +734,9 @@ function NP:Refresh(self)
     local dim = (not hasTarget or isTarget or isFocus or nameOnly) and 1 or d.nonTargetAlpha
     self:SetAlpha(dim * (d.plateAlpha or 1))
     self.Health:SetScale((isTarget and d.targetBorder) and d.targetScale or 1)
+
+    -- Classic: the game's own marks, shade and places (Classic.lua).
+    if self.wuiGameNP and NP.RefreshGame then NP:RefreshGame(self, isTarget, isFocus, nameOnly) end
 end
 
 function NP:RefreshAll()
@@ -860,6 +870,9 @@ end
 -- ============================================================
 ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:DB(db)
+    if ns:Game() then
+        L:Note(Chrome:Esc("fel") .. "The Classic look draws the plates as the game does: its sizes, its art, its colours and its marks for your target. Your threat as a percent, quest marks, your debuffs, names only on friends and the opacity still follow these settings.|r")
+    end
     -- The looks that draw the full cast bar, by name, for the settings that
     -- only apply in them.
     local og = {}
