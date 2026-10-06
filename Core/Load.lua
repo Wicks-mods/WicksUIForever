@@ -60,6 +60,13 @@ local PRESETS = {
         bars = { size = 34, spacing = 2 },
         units = { player = 40, target = 40, focus = 32, focustarget = 26, targettarget = 26, pet = 26, boss = 36, party = 40, raid = 42 },
     },
+    -- The game's own buttons and gaps: 45 and 2 on Forever, 36 and 6 on TBC
+    -- Anniversary. Unit frames in Classic take the game's sizes whatever
+    -- these say.
+    classic = {
+        bars = (ns.Core.Client and ns.Core.Client.isTBC) and { size = 36, spacing = 6 } or { size = 45, spacing = 2 },
+        units = { player = 40, target = 40, focus = 32, focustarget = 26, targettarget = 26, pet = 26, boss = 36, party = 40, raid = 42 },
+    },
 }
 
 -- The key a style's sizes are kept under. Wick OG predates the others and

@@ -42,6 +42,7 @@ local function styleSimple(b)
     -- art. Only what the bar works with is found; a button the template
     -- could not make has no art of the game's and takes the flat one.
     if ns:Game() and b.GetNormalTexture and b:GetNormalTexture() then
+        AB.FitGameArt(b)
         local cd = b.cooldown or b.Cooldown or _G[b:GetName() .. "Cooldown"]
         if not cd then cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate"); cd:SetAllPoints() end
         b.wuiCooldown = cd

@@ -275,6 +275,48 @@ local function buttonHooks(button)
     button:HookScript("OnLeave", function(self) AB:BarLeave(self.header) end)
 end
 
+-- Classic: the template's art is drawn for the template's own size (45 on
+-- Forever, 36 on TBC Anniversary), much of it at fixed sizes and offsets,
+-- so at any other size the frame ran past the button onto the next one.
+-- Each piece is scaled with the button instead: its size and offsets, from
+-- what they were when the button was made. Text is left to the bar's own
+-- settings, and the icon, which fills the button, needs nothing.
+function AB.FitGameArt(button)
+    local w0, h0 = button:GetSize()
+    if not (w0 and h0 and w0 > 0 and h0 > 0) or button.wuiGameArt then return end
+    local pieces, seen = {}, {}
+    local icon = button.icon or button.Icon
+    local function take(r)
+        if not r or seen[r] or r == icon then return end
+        seen[r] = true
+        if r.GetObjectType and r:GetObjectType() == "FontString" then return end
+        local n = r.GetNumPoints and r:GetNumPoints() or 0
+        if n == 0 then return end
+        local pts = {}
+        for i = 1, n do pts[i] = { r:GetPoint(i) } end
+        local w, h = r:GetSize()
+        pieces[#pieces + 1] = { r = r, pts = pts, w = w, h = h }
+    end
+    for _, r in ipairs({ button:GetRegions() }) do take(r) end
+    take(button.IconMask)
+    for _, c in ipairs({ button:GetChildren() }) do take(c) end
+    local function fit()
+        local w, h = button:GetSize()
+        if not (w and h and w > 0 and h > 0) then return end
+        local kx, ky = w / w0, h / h0
+        for _, p in ipairs(pieces) do
+            local r = p.r
+            r:ClearAllPoints()
+            for _, pt in ipairs(p.pts) do r:SetPoint(pt[1], pt[2], pt[3], (pt[4] or 0) * kx, (pt[5] or 0) * ky) end
+            -- One point: the piece has a size of its own, scaled too. Two
+            -- or more stretch it, and the size follows.
+            if #p.pts == 1 and p.w and p.w > 0 then r:SetSize(p.w * kx, p.h * ky) end
+        end
+    end
+    button.wuiGameArt = fit
+    button:HookScript("OnSizeChanged", fit)
+end
+
 -- Take the button's art over. Setting MasqueSkinned tells the library not
 -- to put its own frame art back on every update.
 function AB:StyleButton(button)
@@ -283,8 +325,10 @@ function AB:StyleButton(button)
     button.MasqueSkinned = true
     if ns:Game() then
         -- Classic: the button as the game's own template draws it on this
-        -- client, left alone. Marked skinned all the same, so the library
-        -- does not lay its art for another client over the template's.
+        -- client, scaled to the bar's size. Marked skinned all the same, so
+        -- the library does not lay its art for another client over the
+        -- template's.
+        AB.FitGameArt(button)
         buttonHooks(button)
         return
     end
