@@ -282,6 +282,13 @@ end
 -- what they were when the button was made. Text is left to the bar's own
 -- settings, and the icon, which fills the button, needs nothing.
 function AB.FitGameArt(button)
+    -- WickCore's, shared with the suite's other buttons made from the
+    -- game's templates; this copy is for a WickCore without it.
+    if Chrome.FitGameArt then
+        local fit = Chrome:FitGameArt(button)
+        if fit then button.wuiGameArt = fit end
+        return
+    end
     local w0, h0 = button:GetSize()
     if not (w0 and h0 and w0 > 0 and h0 > 0) or button.wuiGameArt then return end
     local pieces, seen = {}, {}

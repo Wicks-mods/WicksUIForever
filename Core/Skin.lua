@@ -257,10 +257,16 @@ function ns:SetTemplate(f, template, opts)
         -- A window of our own wears the game's window frame; the rest the
         -- tooltip border.
         local window = Chrome.GameWindowish and Chrome:GameWindowish(f)
-        local holder = Chrome:GameBorder(f, window and "ButtonFrameTemplateNoPortrait" or nil)
+        local inset = not window and Chrome.InGameWindow and Chrome:InGameWindow(f)
+        local holder = Chrome:GameBorder(f, (window and "ButtonFrameTemplateNoPortrait") or (inset and "InsetFrameTemplate") or nil)
         if holder and window then
             holder:SetFrameLevel(f:GetFrameLevel())
             f.wuiGameWindow = Chrome:GameWindowBackground(f)
+            -- So WickCore knows a panel inside it is in one of the game's windows.
+            f.gameWindowBG = f.wuiGameWindow
+        elseif holder and inset then
+            holder:SetFrameLevel(f:GetFrameLevel())
+            f.wuiGameInset = Chrome:GameInsetBackground(f)
         end
         if holder then
             f.wuiGame = holder
