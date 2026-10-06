@@ -544,14 +544,19 @@ local function build()
     Chrome:CloseOnEscape(frame)
     frame:SetScript("OnHide", function() W.CloseMenu() end)
 
+    -- Classic: the game's window frame is already drawn round the window
+    -- (Skin.lua); its title bar is the header, and its close button the
+    -- close.
+    local game = ns:Game()
     local header = CreateFrame("Frame", nil, frame)
     header:SetPoint("TOPLEFT", 1, -1)
     header:SetPoint("TOPRIGHT", -1, -1)
-    header:SetHeight(30)
+    header:SetHeight(game and 22 or 30)
     local hbg = header:CreateTexture(nil, "BACKGROUND")
     hbg:SetAllPoints()
     hbg:SetColorTexture(C.shadow[1], C.shadow[2], C.shadow[3], 1)
     Chrome:Register(hbg, "shadow", "texture")
+    if game then hbg:Hide() end
     header:EnableMouse(true)
     header:RegisterForDrag("LeftButton")
     header:SetScript("OnDragStart", function() frame:StartMoving() end)
@@ -561,14 +566,26 @@ local function build()
     title:SetPoint("LEFT", 12, 0)
     title:SetText(Chrome:TitleMarkup("Wick's UI") .. "  " .. Chrome:Esc("muted") .. tostring(ns.version) .. "|r")
 
-    local close = W:Button(header, "x", 22, function() frame:Hide() end)
-    close:SetPoint("RIGHT", -4, 0)
+    local close
+    if game then
+        local ok, made = pcall(CreateFrame, "Button", nil, frame, "UIPanelCloseButtonDefaultAnchors")
+        if ok and made then
+            close = made
+            if close:GetNumPoints() == 0 then close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 4, 4) end
+            close:SetFrameLevel(header:GetFrameLevel() + 2)
+            close:SetScript("OnClick", function() frame:Hide() end)
+        end
+    end
+    if not close then
+        close = W:Button(header, "x", 22, function() frame:Hide() end)
+        close:SetPoint("RIGHT", -4, 0)
+    end
 
     local movers = W:Button(header, "Move frames", 110, function()
         frame:Hide()
         ns.Movers:Unlock()
     end)
-    movers:SetPoint("RIGHT", close, "LEFT", -6, 0)
+    movers:SetPoint("RIGHT", close, "LEFT", game and -2 or -6, 0)
 
     local keys = W:Button(header, "Keybind mode", 110, function()
         frame:Hide()
@@ -579,10 +596,11 @@ local function build()
     local reload = W:Button(header, "Reload", 70, nil, { reload = true })
     reload:SetPoint("RIGHT", keys, "LEFT", -6, 0)
 
-    -- The page list.
+    -- The page list. Classic: one of the game's insets, as its own windows
+    -- set off a list.
     local navBG = CreateFrame("Frame", nil, frame)
-    navBG:SetPoint("TOPLEFT", 1, -31)
-    navBG:SetPoint("BOTTOMLEFT", 1, 1)
+    navBG:SetPoint("TOPLEFT", game and 6 or 1, game and -28 or -31)
+    navBG:SetPoint("BOTTOMLEFT", game and 6 or 1, game and 6 or 1)
     navBG:SetWidth(NAV_W)
     local nbg = navBG:CreateTexture(nil, "BACKGROUND")
     nbg:SetAllPoints()
@@ -594,14 +612,19 @@ local function build()
     divider:SetWidth(ns.mult or 1)
     divider:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
     Chrome:Register(divider, "border", "texture")
+    if game then
+        nbg:Hide()
+        divider:Hide()
+        ns:SetTemplate(navBG, "None")
+    end
 
     nav = makeScroll(navBG)
     nav:SetAllPoints()
     nav.child:SetWidth(NAV_W)
 
     scroll = makeScroll(frame)
-    scroll:SetPoint("TOPLEFT", navBG, "TOPRIGHT", 0, 0)
-    scroll:SetPoint("BOTTOMRIGHT", -1, 1)
+    scroll:SetPoint("TOPLEFT", navBG, "TOPRIGHT", game and 4 or 0, 0)
+    scroll:SetPoint("BOTTOMRIGHT", game and -6 or -1, game and 6 or 1)
     scroll.child:SetWidth(WIDTH - NAV_W - 4)
 end
 

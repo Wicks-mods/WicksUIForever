@@ -22,6 +22,42 @@ ns.Widgets = W
 
 local ROW = 24
 
+-- ============================================================
+-- Classic: the game's own art for the controls
+-- ============================================================
+-- In the Classic look a control is drawn as the game draws its own: the
+-- red button, the gold-rimmed check box, the slider's groove and knob, the
+-- input box's ends and middle. Each client's own copy of that art, under
+-- the same names on both. A template is used where the game has one for
+-- the whole control; otherwise its textures are laid on ours.
+local function game() return ns:Game() end
+
+-- A box in the input box's art: the game's Common-Input-Border, ends and
+-- a stretched middle, as InputBoxTemplate draws it.
+local INPUT = "Interface\\Common\\Common-Input-Border"
+local function inputArt(f, inset)
+    inset = inset or 0
+    local l = f:CreateTexture(nil, "BACKGROUND")
+    l:SetTexture(INPUT)
+    l:SetTexCoord(0, 0.0625, 0, 0.625)
+    l:SetPoint("TOPLEFT", -inset, 0)
+    l:SetPoint("BOTTOMLEFT", -inset, 0)
+    l:SetWidth(8)
+    local r = f:CreateTexture(nil, "BACKGROUND")
+    r:SetTexture(INPUT)
+    r:SetTexCoord(0.9375, 1, 0, 0.625)
+    r:SetPoint("TOPRIGHT", 0, 0)
+    r:SetPoint("BOTTOMRIGHT", 0, 0)
+    r:SetWidth(8)
+    local m = f:CreateTexture(nil, "BACKGROUND")
+    m:SetTexture(INPUT)
+    m:SetTexCoord(0.0625, 0.9375, 0, 0.625)
+    m:SetPoint("TOPLEFT", l, "TOPRIGHT")
+    m:SetPoint("BOTTOMRIGHT", r, "BOTTOMLEFT")
+    return l, m, r
+end
+W.GameInputArt = inputArt
+
 local function label(parent, text, size)
     local fs = ns:CreateText(parent, size or 12, "LEFT", "NONE")
     fs:SetText(text or "")
@@ -156,19 +192,37 @@ end
 -- opts.reload: the button reloads the interface after onClick (at once,
 -- or when a fight ends; see Chrome:Reload).
 function W:Button(parent, text, width, onClick, opts)
-    local b = CreateFrame("Button", nil, parent)
+    local gb
+    if game() then
+        -- Classic: the game's red button, its gold label and its highlight.
+        local ok, made = pcall(CreateFrame, "Button", nil, parent, "UIPanelButtonTemplate")
+        if ok and made and made.GetFontString then gb = made end
+    end
+    local b = gb or CreateFrame("Button", nil, parent)
     b:SetSize(width or 100, 22)
-    ns:SetTemplate(b, "Shadow")
-    b.text = label(b, text)
-    b.text:SetPoint("CENTER")
-    b.text:SetJustifyH("CENTER")
-    b:SetScript("OnEnter", function(self) if not self.disabled then ns:SetBorderColor(self, "fel") end end)
-    -- A chosen button (a setup answer) keeps its ring when the pointer leaves.
-    b:SetScript("OnLeave", function(self) ns:SetBorderColor(self, self.selected and "fel" or "border") end)
-    function b:SetSelected(on)
-        self.selected = on and true or nil
-        ns:SetBorderColor(self, on and "fel" or "border")
-        ns:TextColor(self.text, on and "fel" or "text")
+    if gb then
+        b:SetText(text or "")
+        b.text = b:GetFontString()
+        b.text:ClearAllPoints()
+        b.text:SetPoint("CENTER")
+        b.text:SetJustifyH("CENTER")
+        function b:SetSelected(on)
+            self.selected = on and true or nil
+            if on then self:LockHighlight() else self:UnlockHighlight() end
+        end
+    else
+        ns:SetTemplate(b, "Shadow")
+        b.text = label(b, text)
+        b.text:SetPoint("CENTER")
+        b.text:SetJustifyH("CENTER")
+        b:SetScript("OnEnter", function(self) if not self.disabled then ns:SetBorderColor(self, "fel") end end)
+        -- A chosen button (a setup answer) keeps its ring when the pointer leaves.
+        b:SetScript("OnLeave", function(self) ns:SetBorderColor(self, self.selected and "fel" or "border") end)
+        function b:SetSelected(on)
+            self.selected = on and true or nil
+            ns:SetBorderColor(self, on and "fel" or "border")
+            ns:TextColor(self.text, on and "fel" or "text")
+        end
     end
     local reload = opts and opts.reload
     b:SetScript("OnClick", function(self, ...)
@@ -191,16 +245,34 @@ function W:Check(parent, text, get, set, opts)
     local f = CreateFrame("Button", nil, parent)
     f:SetSize((opts and opts.width) or 200, ROW)
     local box = CreateFrame("Frame", nil, f)
-    box:SetSize(14, 14)
-    box:SetPoint("LEFT", 0, 0)
-    ns:SetTemplate(box, "Shadow")
-    local mark = box:CreateTexture(nil, "ARTWORK")
-    mark:SetPoint("TOPLEFT", 3, -3)
-    mark:SetPoint("BOTTOMRIGHT", -3, 3)
-    mark:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 1)
-    Chrome:Register(mark, "fel", "texture")
+    local mark, glow
+    if game() then
+        -- Classic: the game's check box, its tick and its hover glow.
+        box:SetSize(22, 22)
+        box:SetPoint("LEFT", -3, 0)
+        local up = box:CreateTexture(nil, "BACKGROUND")
+        up:SetTexture("Interface\\Buttons\\UI-CheckBox-Up")
+        up:SetAllPoints()
+        mark = box:CreateTexture(nil, "ARTWORK")
+        mark:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+        mark:SetAllPoints()
+        glow = box:CreateTexture(nil, "OVERLAY")
+        glow:SetTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+        glow:SetBlendMode("ADD")
+        glow:SetAllPoints()
+        glow:Hide()
+    else
+        box:SetSize(14, 14)
+        box:SetPoint("LEFT", 0, 0)
+        ns:SetTemplate(box, "Shadow")
+        mark = box:CreateTexture(nil, "ARTWORK")
+        mark:SetPoint("TOPLEFT", 3, -3)
+        mark:SetPoint("BOTTOMRIGHT", -3, 3)
+        mark:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(mark, "fel", "texture")
+    end
     f.text = label(f, text)
-    f.text:SetPoint("LEFT", box, "RIGHT", 6, 0)
+    f.text:SetPoint("LEFT", box, "RIGHT", glow and 3 or 6, 0)
     f.text:SetPoint("RIGHT", f, "RIGHT", 0, 0)
     f.labelText = text
     f:SetScript("OnClick", function(self)
@@ -209,8 +281,13 @@ function W:Check(parent, text, get, set, opts)
         if self.onChange then self.onChange() end
         self:Refresh()
     end)
-    f:SetScript("OnEnter", function() ns:SetBorderColor(box, "fel") end)
-    f:SetScript("OnLeave", function() ns:SetBorderColor(box, "border") end)
+    if glow then
+        f:SetScript("OnEnter", function() glow:Show() end)
+        f:SetScript("OnLeave", function() glow:Hide() end)
+    else
+        f:SetScript("OnEnter", function() ns:SetBorderColor(box, "fel") end)
+        f:SetScript("OnLeave", function() ns:SetBorderColor(box, "border") end)
+    end
     f.OnRefresh = function() mark:SetShown(get() and true or false) end
     base(f, opts)
     tooltipOn(f)
@@ -229,30 +306,38 @@ function W:Slider(parent, text, min, max, step, get, set, width, opts)
     f.text:SetPoint("TOPLEFT", 0, 0)
     f.labelText = text
 
-    local s = CreateFrame("Slider", nil, f)
+    local gs
+    if game() then
+        -- Classic: the game's slider, its groove and its knob.
+        local ok, made = pcall(CreateFrame, "Slider", nil, f, "UISliderTemplate")
+        if ok and made then gs = made end
+    end
+    local s = gs or CreateFrame("Slider", nil, f)
     s:SetOrientation("HORIZONTAL")
-    s:SetPoint("TOPLEFT", 0, -18)
-    s:SetSize(width - 52, 12)
+    s:SetPoint("TOPLEFT", 0, gs and -16 or -18)
+    s:SetSize(width - 52, gs and 17 or 12)
     s:SetMinMaxValues(min, max)
     s:SetValueStep(step or 1)
     s:SetObeyStepOnDrag(true)
     s:EnableMouseWheel(true)
-    ns:SetTemplate(s, "Shadow")
-    local thumb = s:CreateTexture(nil, "OVERLAY")
-    thumb:SetSize(8, 14)
-    thumb:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 1)
-    Chrome:Register(thumb, "fel", "texture")
-    s:SetThumbTexture(thumb)
+    if not gs then
+        ns:SetTemplate(s, "Shadow")
+        local thumb = s:CreateTexture(nil, "OVERLAY")
+        thumb:SetSize(8, 14)
+        thumb:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(thumb, "fel", "texture")
+        s:SetThumbTexture(thumb)
+    end
     f.control = s
 
     local box = CreateFrame("EditBox", nil, f)
-    box:SetSize(44, 18)
-    box:SetPoint("LEFT", s, "RIGHT", 6, 0)
+    box:SetSize(44, gs and 20 or 18)
+    box:SetPoint("LEFT", s, "RIGHT", gs and 10 or 6, 0)
     box:SetAutoFocus(false)
     box:SetJustifyH("CENTER")
     ns.Media:SetFont(box, 11, "NONE")
     ns:TextColor(box, "text")
-    ns:SetTemplate(box, "Shadow")
+    if gs then inputArt(box, 5) else ns:SetTemplate(box, "Shadow") end
     f.parts = { box }
 
     local function fmt(v)
@@ -424,19 +509,37 @@ function W:Dropdown(parent, text, values, get, set, width, opts)
     f.labelText = text
 
     local b = CreateFrame("Button", nil, f)
-    b:SetPoint("TOPLEFT", 0, -16)
-    b:SetSize(width, 22)
-    ns:SetTemplate(b, "Shadow")
+    b:SetPoint("TOPLEFT", game() and 5 or 0, -16)
+    b:SetSize(game() and width - 5 or width, 22)
     b.value = label(b, "")
     b.value:SetPoint("LEFT", 6, 0)
-    b.value:SetPoint("RIGHT", -18, 0)
-    local arrow = label(b, "v")
-    arrow:SetPoint("RIGHT", -6, 0)
-    ns:TextColor(arrow, "fel")
+    b.value:SetPoint("RIGHT", game() and -26 or -18, 0)
+    if game() then
+        -- Classic: a field in the input box's art, and the game's down
+        -- arrow at its end, as its own drop-down lists have.
+        inputArt(b, 5)
+        local arrow = CreateFrame("Frame", nil, b)
+        arrow:SetSize(24, 24)
+        arrow:SetPoint("RIGHT", 2, 0)
+        local up = arrow:CreateTexture(nil, "ARTWORK")
+        up:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+        up:SetAllPoints()
+        local hl = arrow:CreateTexture(nil, "OVERLAY")
+        hl:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+        hl:SetBlendMode("ADD")
+        hl:SetAllPoints()
+        hl:Hide()
+        b:SetScript("OnEnter", function() if not f.disabled then hl:Show() end end)
+        b:SetScript("OnLeave", function() hl:Hide() end)
+    else
+        ns:SetTemplate(b, "Shadow")
+        local arrow = label(b, "v")
+        arrow:SetPoint("RIGHT", -6, 0)
+        ns:TextColor(arrow, "fel")
+        b:SetScript("OnEnter", function() if not f.disabled then ns:SetBorderColor(b, "fel") end end)
+        b:SetScript("OnLeave", function() ns:SetBorderColor(b, "border") end)
+    end
     f.control = b
-
-    b:SetScript("OnEnter", function() if not f.disabled then ns:SetBorderColor(b, "fel") end end)
-    b:SetScript("OnLeave", function() ns:SetBorderColor(b, "border") end)
     b:SetScript("OnClick", function()
         if f.disabled then return end
         if menu and menu:IsShown() and menu.owner == b then menu:Hide(); return end
@@ -480,7 +583,8 @@ function W:EditBox(parent, text, width, onCommit, opts)
     ns.Media:SetFont(f, 12, "NONE")
     ns:TextColor(f, "text")
     f:SetTextInsets(4, 4, 0, 0)
-    ns:SetTemplate(f, "Shadow")
+    -- Classic: the game's input box ends and middle.
+    if game() then inputArt(f, 5) else ns:SetTemplate(f, "Shadow") end
     if text and text ~= "" then
         f.text = label(f, text)
         f.text:SetPoint("RIGHT", f, "LEFT", -4, 0)
