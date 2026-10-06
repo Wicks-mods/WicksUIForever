@@ -66,6 +66,9 @@ function ModuleProto:db()
 end
 
 function ModuleProto:Enabled()
+    -- A module that only dresses the game's own frames in the Wick look
+    -- has nothing to do in Classic, which is the game's own look.
+    if self.gameLook and ns:Game() then return false end
     local d = self:db()
     return d and d.enable ~= false
 end
@@ -75,7 +78,8 @@ function ModuleProto:Print(msg) ns.A:Print(msg) end
 -- ns:NewModule("actionbars", { title = "Action Bars", defaults = {...} })
 function ns:NewModule(key, opts)
     opts = opts or {}
-    local m = setmetatable({ key = key, title = opts.title or key, order = opts.order or 100 }, ModuleProto)
+    local m = setmetatable({ key = key, title = opts.title or key, order = opts.order or 100,
+        gameLook = opts.gameLook }, ModuleProto)
     if opts.defaults then
         ns.defaults.profile[key] = opts.defaults
     end

@@ -21,7 +21,7 @@ local ADDON, ns = ...
 local Chrome = ns.Core.Chrome
 local C = Chrome.Colors
 
-local PS = ns:NewModule("panelskins", { title = "Windows", order = 96 })
+local PS = ns:NewModule("panelskins", { title = "Windows", order = 96, gameLook = true })
 ns.PanelSkins = PS
 
 ns.defaults.profile.panelskins = {
@@ -4451,6 +4451,7 @@ end
 ns.Config:AddPage("panelskins", "Windows", function(L)
     L:DB(db)
     L:Note("The game's own windows (character, spellbook and talents, friends, the game menu, the map, vendors, mail, settings and the rest) in the Wick look. Only their art changes: nothing about how they work is touched. Switching this off fully takes a reload.")
+    if ns:Game() then L:Note(Chrome:Esc("fel") .. "The Classic look leaves the game's windows as the game draws them, so these settings wait for another look.|r") end
     L:Toggle("Skin the windows", "enable")
     L:Slider("Background opacity", "alpha", 0.3, 1, 0.05)
     L:Toggle("Accent corners", "brackets", { tooltip = "Takes effect after a reload." })

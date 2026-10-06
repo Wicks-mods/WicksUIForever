@@ -45,6 +45,23 @@ local function roundMask()
 end
 local function db() return MM:db() end
 
+-- Classic is the game's own minimap: round in its ring, with its zone
+-- header, clock, zoom buttons and mail icon, where the game puts them.
+-- What the module adds besides the look, the flyout that gathers addon
+-- buttons, stays. The settings page still shows the player's own values,
+-- for the other looks.
+local GAME = { square = false, ring = true, fill = false, hideZoom = false, hideBlizzardText = false,
+    zone = false, clock = false, coords = false, mail = false, strip = false }
+local function opts()
+    local d = db()
+    if not ns:Game() then return d end
+    return setmetatable({}, { __index = function(_, k)
+        local v = GAME[k]
+        if v ~= nil then return v end
+        return d[k]
+    end })
+end
+
 local function ringArt()
     local out = {}
     for _, name in ipairs({ "MinimapCompassTexture", "MinimapCompassTextureUnderlay", "MinimapBorder", "MinimapBorderTop" }) do
@@ -102,7 +119,7 @@ local function restore()
 end
 
 function MM:Fill()
-    local d = db()
+    local d = opts()
     local cl = rawget(_G, "MinimapCluster")
     if not cl or InCombatLockdown() then return end
     remember()
@@ -140,7 +157,7 @@ function MM:Fill()
 end
 
 function MM:Shape()
-    local d = db()
+    local d = opts()
     self:Fill()
     if d.square then
         -- Modern rounds the square's corners with the same mask the icons use.
@@ -165,6 +182,8 @@ function MM:Shape()
     -- Our text shows on either shape; the corner brackets only suit the
     -- square one.
     self.chrome:Show()
+    -- Classic: the game's ring is the border; ours would be a square round it.
+    if ns:Game() then ns:SetBorderColor(self.chrome, { 0, 0, 0 }, 0) end
     for _, pair in pairs(self.chrome.brackets or {}) do
         for _, t in ipairs(pair) do t:SetShown(d.square and ns:G().brackets ~= false) end
     end
@@ -306,7 +325,7 @@ function MM:BuildText()
 end
 
 function MM:LayoutText()
-    local d = db()
+    local d = opts()
     self.zone:ClearAllPoints()
     if d.zoneInside then
         self.zone:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 4, -4)
@@ -602,7 +621,7 @@ end
 -- Lays the row out; false when there is no row (a round map, the option
 -- off, or Forever), so the caller places the pieces the old way.
 function MM:Strip()
-    local d = db()
+    local d = opts()
     local launcher = rawget(_G, "WickCoreMinimapButton")
     if not (d.enable and d.square and d.strip and classicPieces()) then
         if self.strip and self.strip:IsShown() then
@@ -663,7 +682,7 @@ end
 -- Addons that place buttons around the minimap (LibDBIcon and most others)
 -- ask this to know whether to follow a circle or the square's edge.
 function GetMinimapShape()
-    local p = MM.db and MM:db()
+    local p = MM.db and opts()
     return (p and p.square) and "SQUARE" or "ROUND"
 end
 
@@ -693,7 +712,7 @@ function MM:Initialize()
     self:BuildText()
     self:Update()
 
-    local function reshape() if db().square then MM:Shape() end end
+    local function reshape() if opts().square then MM:Shape() end end
     ns:On("PLAYER_ENTERING_WORLD", function()
         reshape(); MM:UpdateZone()
         -- Addons make their buttons at login and for a while after.
@@ -716,6 +735,9 @@ end
 ns.Config:AddPage("minimap", "Minimap", function(L)
     L:DB(db)
     L:Note("Move the minimap with Edit Mode. Its shape, ring and fill are kept for each look: set them in Wick Modern and in Wick OG, and each look comes back with its own.")
+    if ns:Game() then
+        L:Note(Chrome:Esc("fel") .. "The Classic look keeps the game's own minimap: round in its ring, with its zone, clock, zoom and mail. Gathering addon buttons still works.|r")
+    end
     L:Toggle("Square", "square", { tooltip = "Off gives back Blizzard's round map and its ring." })
     L:Toggle("Ring around the round map", "ring", { tooltip = "Blizzard's gold ring and north marker, on the round map only. With the ring the map keeps Blizzard's size so the ring fits; without it the map fills the box." })
     L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. The round map keeps Blizzard's size, so its ring fits." })

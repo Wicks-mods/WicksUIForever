@@ -49,6 +49,8 @@ local function panelFor(tt)
 end
 
 function TT:Skin(tt)
+    -- Classic keeps the game's tooltips as the game draws them.
+    if ns:Game() then return end
     if not tt or (tt.IsForbidden and tt:IsForbidden()) then return end
     local e = panelFor(tt)
     if tt.NineSlice then tt.NineSlice:SetAlpha(0) end
@@ -105,6 +107,10 @@ end
 function TT:StyleHealthBar()
     local bar = rawget(_G, "GameTooltipStatusBar")
     if not bar then return end
+    if ns:Game() then
+        bar:SetAlpha(db().healthBar and 1 or 0)
+        return
+    end
     local e = extras[bar] or {}
     extras[bar] = e
     bar:SetStatusBarTexture(ns.Media:Statusbar())
@@ -198,8 +204,12 @@ ns.Config:AddPage("tooltip", "Tooltips", function(L)
     L:Dropdown("Where tooltips appear", "anchor", { { "default", "Where Edit Mode puts them" }, { "cursor", "At the cursor" } })
     L:Slider("Across from the cursor", "cursorX", -100, 100, 1, { disabled = function() return db().anchor ~= "cursor" end })
     L:Slider("Up from the cursor", "cursorY", -100, 100, 1, { disabled = function() return db().anchor ~= "cursor" end })
-    L:Toggle("Class colour border on players", "classBorder")
-    L:Toggle("Quality colour border on items", "qualityBorder")
+    if ns:Game() then
+        L:Note(Chrome:Esc("fel") .. "The Classic look keeps the game's tooltips as the game draws them; where they appear is still yours.|r")
+    end
+    local lookOnly = function() return ns:Game() end
+    L:Toggle("Class colour border on players", "classBorder", { disabled = lookOnly })
+    L:Toggle("Quality colour border on items", "qualityBorder", { disabled = lookOnly })
     L:Toggle("Health bar under unit tooltips", "healthBar")
     L:Toggle("No unit tooltips in combat", "hideUnitsInCombat")
     L:Note("Item level, IDs and the other tooltip extras are in Wick's Comforts.")

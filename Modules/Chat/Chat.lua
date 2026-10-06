@@ -17,7 +17,7 @@ local Chrome = ns.Core.Chrome
 local C = Chrome.Colors
 local W = ns.Widgets
 
-local CH = ns:NewModule("chat", { title = "Chat", order = 50 })
+local CH = ns:NewModule("chat", { title = "Chat", order = 50, gameLook = true })
 ns.Chat = CH
 
 ns.defaults.profile.chat = {
@@ -461,6 +461,7 @@ end
 ns.Config:AddPage("chat", "Chat", function(L)
     L:DB(db)
     L:Note("The chat windows stay where Edit Mode puts them. Everything here is the look. Nothing in this module touches the messages themselves, which this client can hand over as secrets during an encounter.")
+    if ns:Game() then L:Note(Chrome:Esc("fel") .. "The Classic look leaves the chat as the game draws it, so these settings wait for another look.|r") end
     L:Toggle("Wick panel behind the chat", "panel")
     L:Toggle("Line up with the info panel", "alignToInfo", { tooltip = "The chat window is made as wide as the info panel under it and sits just above it. Off leaves it to Edit Mode (after a reload)." })
     L:Slider("Panel opacity", "panelAlpha", 0, 1, 0.05, { tooltip = "How solid the chat panel is. The damage meter's panel follows it, so the two match." })

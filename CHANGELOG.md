@@ -1,6 +1,15 @@
 # Wick's UI
 
-## 0.10.4 (unreleased)
+## 0.11.0 (unreleased)
+
+### Classic
+
+- A look in the game's own art, for players who want what Wick's UI
+  does without a look of its own (WickCore 0.12.0). Panels wear the
+  game's tooltip border, and the game's windows, frames, chat and
+  tooltips are left as the game draws them. The minimap is the game's,
+  round in its ring with its zone, clock, zoom and mail, and still
+  gathers addon buttons. Each client draws its own art.
 
 ### Combat text
 

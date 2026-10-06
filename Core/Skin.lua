@@ -31,6 +31,25 @@ function ns:Modern()
     return true
 end
 
+-- Classic: the game's own look, drawn in the client's art where it has some.
+function ns:Game()
+    local Chrome = ns.Core and ns.Core.Chrome
+    return Chrome and Chrome.Game and Chrome:Game() or false
+end
+
+-- Classic's border: the game's tooltip border round a frame big enough to
+-- carry it, and the flat line round anything smaller (a button, an icon,
+-- a thin bar). Decided again whenever the frame changes size, by the
+-- border's own frame, which follows it: a backdrop is often made before
+-- it is laid out.
+local function fitGame(holder)
+    local f = holder:GetParent()
+    local small = Chrome:GameSmall(holder)
+    for _, t in ipairs(holder.pieces) do t:SetShown(not small) end
+    if f.wuiBorder then for _, t in pairs(f.wuiBorder) do t:SetShown(small) end end
+    f.wuiGameOn = not small
+end
+
 local MODERN = {
     Default     = { bg = "void",   alpha = 0.74 },
     Transparent = { bg = "void",   alpha = 0.52 },
@@ -234,6 +253,14 @@ function ns:SetTemplate(f, template, opts)
     end
     if not f.wuiBorder then makeBorder(f) end
     layoutBorder(f)
+    if ns:Game() and not f.wuiGame and Chrome.GameBorder then
+        local holder = Chrome:GameBorder(f)
+        if holder then
+            f.wuiGame = holder
+            holder:SetScript("OnSizeChanged", fitGame)
+            fitGame(holder)
+        end
+    end
     ns:SetBorderColor(f, opts.border or "border")
     if opts.brackets and ns:G().brackets and not f.brackets then
         Chrome:AddBrackets(f)
@@ -269,6 +296,16 @@ function ns:SetBorderColor(f, color, alpha)
             r:Show()
         end
         return
+    end
+    -- Classic: the game's border in the art's own colour at rest, tinted
+    -- for anything else.
+    if f.wuiGame then
+        if color == "border" or color == nil then
+            Chrome:TintGameBorder(f.wuiGame, 1, 1, 1, alpha or 1)
+        else
+            local c = type(color) == "string" and (C[color] or C.fel) or color
+            Chrome:TintGameBorder(f.wuiGame, c[1] or c.r, c[2] or c.g, c[3] or c.b, alpha or 1)
+        end
     end
     local b = f.wuiBorder
     if not b then return end

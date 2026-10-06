@@ -15,7 +15,7 @@ local ADDON, ns = ...
 local Chrome = ns.Core.Chrome
 local C = Chrome.Colors
 
-local SK = ns:NewModule("skins", { title = "Blizzard frames", order = 95 })
+local SK = ns:NewModule("skins", { title = "Blizzard frames", order = 95, gameLook = true })
 ns.Skins = SK
 
 ns.defaults.profile.skins = {
@@ -683,6 +683,7 @@ end
 ns.Config:AddPage("skins", "Blizzard frames", function(L)
     L:DB(db)
     L:Note("Frames the game keeps and Edit Mode places, restyled in the Wick look. Switching a skin off fully takes a reload.")
+    if ns:Game() then L:Note(Chrome:Esc("fel") .. "The Classic look leaves these frames as the game draws them, so these settings wait for another look.|r") end
     L:Toggle("Objective tracker", "tracker")
     L:Slider("Tracker text size", "trackerFontSize", 8, 18, 1)
     L:Toggle("Damage meter window", "damageMeter", { tooltip = "The window, and its text in the Wick font. The bars show combat numbers the client keeps secret; those are never read, and nothing on the meter is touched in combat." })
