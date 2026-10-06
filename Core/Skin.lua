@@ -253,8 +253,15 @@ function ns:SetTemplate(f, template, opts)
     end
     if not f.wuiBorder then makeBorder(f) end
     layoutBorder(f)
-    if ns:Game() and not f.wuiGame and Chrome.GameBorder then
-        local holder = Chrome:GameBorder(f)
+    if ns:Game() and not f.wuiGame and Chrome.GameBorder and not opts.plain then
+        -- A window of our own wears the game's window frame; the rest the
+        -- tooltip border.
+        local window = Chrome.GameWindowish and Chrome:GameWindowish(f)
+        local holder = Chrome:GameBorder(f, window and "ButtonFrameTemplateNoPortrait" or nil)
+        if holder and window then
+            holder:SetFrameLevel(f:GetFrameLevel())
+            f.wuiGameWindow = Chrome:GameWindowBackground(f)
+        end
         if holder then
             f.wuiGame = holder
             holder:SetScript("OnSizeChanged", fitGame)
