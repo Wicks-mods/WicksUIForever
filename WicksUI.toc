@@ -32,6 +32,7 @@ Modules\ActionBars\AutoRank.lua
 
 Modules\UnitFrames\Tags.lua
 Modules\UnitFrames\UnitFrames.lua
+Modules\UnitFrames\Classic.lua
 Modules\UnitFrames\Groups.lua
 Modules\UnitFrames\Options.lua
 

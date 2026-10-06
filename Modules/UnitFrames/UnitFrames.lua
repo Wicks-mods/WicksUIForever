@@ -462,10 +462,15 @@ local function style(self, unit)
     self:SetScript("OnEnter", UF.OnEnter)
     self:SetScript("OnLeave", UF.OnLeave)
 
-    ns:SetTemplate(self, "Default")
-    if not ns:Modern() then
-        self.wuiBG:SetColorTexture(C.void[1], C.void[2], C.void[3], 1)
-        Chrome:Register(self.wuiBG, "void", "texture")
+    -- Classic draws the game's own frame for the units the game has one
+    -- for (Classic.lua); the rest keep a plain panel with a line round it.
+    local game = UF.GameLayout and UF:GameLayout(key)
+    if not game then
+        ns:SetTemplate(self, "Default", ns:Game() and { plain = true } or nil)
+        if not ns:Modern() then
+            self.wuiBG:SetColorTexture(C.void[1], C.void[2], C.void[3], 1)
+            Chrome:Register(self.wuiBG, "void", "texture")
+        end
     end
 
     -- Health
@@ -577,8 +582,12 @@ local function style(self, unit)
     local hl = overlay:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints(self)
     hl:SetColorTexture(1, 1, 1, 0.06)
+    self.wuiHighlight = hl
 
     self.Range = { insideAlpha = 1, outsideAlpha = UF:db().rangeAlpha }
+
+    -- The game's own frame, over what is built above (Classic.lua).
+    if game then UF:StyleGame(self, key, game) end
 
     -- Group frames add their own pieces (dispel slot, HoT corners).
     if UF.PostStyle[key] then UF.PostStyle[key](self, d) end
@@ -619,6 +628,7 @@ local function setElement(self, name, on)
         self:DisableElement(name)
     end
 end
+UF.SetElement = setElement
 
 function UF:LayoutClassPower(self, maxNum)
     local bars = self.wuiClassPower
@@ -924,6 +934,9 @@ function UF:Configure(self)
     end
 
     if self.wuiClassPower then UF:LayoutClassPower(self) end
+
+    -- Classic: the game's sizes and places over Wick's (Classic.lua).
+    if self.wuiGameUF and UF.ConfigureGame then UF:ConfigureGame(self) end
 
     if self.UpdateAllElements then self:UpdateAllElements("WicksUI_Configure") end
 end

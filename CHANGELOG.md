@@ -11,7 +11,12 @@
   round in its ring with its zone, clock, zoom and mail, and still
   gathers addon buttons. Action buttons keep the game's own art, with
   its number font and grey keybinds, and still fade with their bar and
-  shorten their keybinds. Each client draws its own art.
+  shorten their keybinds. The player, target, focus, their targets and
+  the pet are the game's own frames: the portrait set in the frame art,
+  the name, level, health and power where the game puts them, an elite
+  or rare target's dragon and its name band in its reaction colour, and
+  the game's threat flash. They keep fade, range, cast bars and auras.
+  Each client draws its own art.
 
 ### Combat text
 
