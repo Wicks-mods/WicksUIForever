@@ -1,6 +1,6 @@
 # Wick's UI
 
-## Unreleased
+## 0.11.1 (2026-10-07)
 
 ### Minimap
 
