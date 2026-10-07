@@ -33,6 +33,8 @@ ns.defaults.profile.minimap = {
     mail = true,
     collect = true,              -- gather addon buttons into a flyout
     strip = true,                -- the Classic layout's own buttons in a row under the map
+    volume = true,               -- a speaker on the map's edge for the game's sound
+    volumeAngle = 0,             -- where on the edge, in degrees; 0 is the right
 }
 
 local SQUARE = "Interface\\BUTTONS\\WHITE8X8"
@@ -97,11 +99,12 @@ local function remember()
     for i = 1, Minimap:GetNumPoints() do original.points[i] = { Minimap:GetPoint(i) } end
 end
 
--- WickCore's own button rides on the map's edge; it is placed again
--- whenever the map changes size or shape.
+-- WickCore's own button rides on the map's edge, and so does our volume
+-- speaker; both are placed again whenever the map changes size or shape.
 local function placeLauncher()
     local L = ns.Core and ns.Core.Launcher
     if L and L.PlaceMinimapButton then pcall(L.PlaceMinimapButton) end
+    if MM.PlaceVolume then MM:PlaceVolume() end
 end
 
 local function restore()
@@ -278,6 +281,8 @@ function MM:Tick()
     if self.mail then
         self.mail:SetShown(d.mail and HasNewMail and HasNewMail())
     end
+    -- The game's Sound options and its sound key change the same settings.
+    self:UpdateVolume()
 end
 
 function MM:BuildText()
@@ -677,6 +682,157 @@ function MM:Strip()
 end
 
 -- ============================================================
+-- Volume
+-- ============================================================
+-- A speaker on the map's edge for the game's sound: a click mutes and
+-- unmutes, the mouse wheel over it turns the master volume up and down, a
+-- twentieth a notch or a hundredth with Shift. Both are the game's own
+-- settings, so its Sound options and its sound key agree with the speaker.
+-- It sits on the edge as WickCore's launcher does and drags round it the
+-- same way. In the Classic look it is one of the game's round map buttons.
+local MUTE, VOLUME = "Sound_EnableAllSound", "Sound_MasterVolume"
+local CV = rawget(_G, "C_CVar")
+local function cvGet(n)
+    if CV and CV.GetCVar then return CV.GetCVar(n) end
+    local f = rawget(_G, "GetCVar")
+    return f and f(n)
+end
+local function cvSet(n, v)
+    local f = (CV and CV.SetCVar) or rawget(_G, "SetCVar")
+    if f then pcall(f, n, v) end
+end
+
+local function muted() return cvGet(MUTE) == "0" end
+local function volume() return math.max(0, math.min(1, tonumber(cvGet(VOLUME)) or 1)) end
+
+local function speakerGlyph()
+    if muted() then return "speaker-mute" end
+    local v = volume()
+    if v <= 0 then return "speaker-0" end
+    return v < 0.5 and "speaker-1" or "speaker-2"
+end
+
+function MM:BuildVolume()
+    if self.volume then return self.volume end
+    local b = CreateFrame("Button", "WicksUI_MinimapVolume", Minimap)
+    b:SetFrameStrata("MEDIUM")
+    b:SetFrameLevel(8)
+    b:RegisterForClicks("LeftButtonUp")
+    b:RegisterForDrag("LeftButton")
+    b:EnableMouseWheel(true)
+    b.game = ns:Game()
+    if b.game then
+        -- Built as the game builds a map button: a dark disc, the picture,
+        -- the gold ring over both, the round glow on mouseover.
+        b:SetSize(31, 31)
+        local bg = b:CreateTexture(nil, "BACKGROUND")
+        bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+        bg:SetSize(20, 20)
+        bg:SetPoint("TOPLEFT", 7, -5)
+        local icon = b:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(15, 15)
+        icon:SetPoint("CENTER", bg, "CENTER", 0, 0)
+        icon:SetVertexColor(C.text[1], C.text[2], C.text[3], 1)
+        Chrome:Register(icon, "text", "vertex", 1)
+        b.icon = icon
+        local ring = b:CreateTexture(nil, "OVERLAY")
+        ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+        ring:SetSize(53, 53)
+        ring:SetPoint("TOPLEFT")
+        b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    else
+        b:SetSize(22, 22)
+    end
+    b:SetScript("OnClick", function() MM:ToggleMute() end)
+    b:SetScript("OnMouseWheel", function(_, delta) MM:NudgeVolume(delta) end)
+    b:SetScript("OnEnter", function(s) MM:VolumeTooltip(s) end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:SetScript("OnDragStart", function(s)
+        GameTooltip:Hide()
+        s:SetScript("OnUpdate", function()
+            local mx, my = Minimap:GetCenter()
+            local cx, cy = GetCursorPosition()
+            local scale = Minimap:GetEffectiveScale()
+            db().volumeAngle = math.floor(math.deg(math.atan2(cy / scale - my, cx / scale - mx)) + 0.5)
+            MM:PlaceVolume()
+        end)
+    end)
+    b:SetScript("OnDragStop", function(s) s:SetScript("OnUpdate", nil) end)
+    self.volume = b
+    self:UpdateVolume()
+    return b
+end
+
+-- Round maps put it on a circle just outside the edge, square ones just
+-- inside the square's edge, at the same angle: the launcher's rule.
+function MM:PlaceVolume()
+    local b = self.volume
+    if not b then return end
+    local d = db()
+    b:SetShown(d.volume)
+    if not d.volume then return end
+    local angle = math.rad(d.volumeAngle or 0)
+    local c, s = math.cos(angle), math.sin(angle)
+    local half = (Minimap:GetWidth() or 140) / 2
+    local x, y
+    if GetMinimapShape() == "SQUARE" then
+        local m = math.max(math.abs(c), math.abs(s))
+        local r = half - b:GetWidth() / 2 - 2
+        x, y = c / m * r, s / m * r
+    else
+        x, y = c * (half + 6), s * (half + 6)
+    end
+    b:ClearAllPoints()
+    b:SetPoint("CENTER", Minimap, "CENTER", x, y)
+end
+
+-- The picture follows the sound, set only when it changes; this runs on
+-- the map's tick too.
+function MM:UpdateVolume()
+    local b = self.volume
+    if not b then return end
+    local g = speakerGlyph()
+    if b.glyph ~= g then
+        b.glyph = g
+        if b.game then b.icon:SetTexture(ns.Media:Glyph(g)) else ns:Glyph(b, g, { size = 14, tileSize = 22 }) end
+    end
+    if GameTooltip:IsOwned(b) then self:VolumeTooltip(b) end
+end
+
+function MM:ToggleMute()
+    cvSet(MUTE, muted() and "1" or "0")
+    self:UpdateVolume()
+end
+
+function MM:NudgeVolume(delta)
+    local step = IsShiftKeyDown() and 0.01 or 0.05
+    local v = volume() + (delta > 0 and step or -step)
+    v = math.max(0, math.min(1, math.floor(v * 100 + 0.5) / 100))
+    cvSet(VOLUME, ("%.2f"):format(v))
+    -- Turning it up brings the sound back if it was muted.
+    if delta > 0 and muted() then cvSet(MUTE, "1") end
+    self:UpdateVolume()
+end
+
+function MM:VolumeTooltip(b)
+    local tip = GameTooltip
+    tip:SetOwner(b, "ANCHOR_LEFT")
+    tip:SetText("Game volume")
+    local pct = math.floor(volume() * 100 + 0.5)
+    local hint = Chrome:Esc("muted")
+    if muted() then
+        tip:AddLine(("Muted. The volume is set to %d%%."):format(pct), 1, 1, 1)
+        tip:AddLine(hint .. "Click to bring the sound back.|r")
+    else
+        tip:AddLine(("%d%%"):format(pct), 1, 1, 1)
+        tip:AddLine(hint .. "Click to mute the game.|r")
+    end
+    tip:AddLine(hint .. "Mouse wheel for louder or quieter, Shift for small steps.|r")
+    tip:AddLine(hint .. "Drag it round the edge of the map to move it.|r")
+    tip:Show()
+end
+
+-- ============================================================
 -- Lifecycle
 -- ============================================================
 -- Addons that place buttons around the minimap (LibDBIcon and most others)
@@ -710,6 +866,7 @@ function MM:Initialize()
         chrome.wuiLift = s
     end
     self:BuildText()
+    self:BuildVolume()
     self:Update()
 
     local function reshape() if opts().square then MM:Shape() end end
@@ -743,6 +900,7 @@ ns.Config:AddPage("minimap", "Minimap", function(L)
     L:Toggle("Fill the minimap box", "fill", { tooltip = "The map grows to the full width of Blizzard's minimap box and sits in its top right corner, so it can go right into the corner of the screen. Move the box with Edit Mode. The round map keeps Blizzard's size, so its ring fits." })
     L:Toggle("Hide the zoom buttons", "hideZoom")
     L:Toggle("Hide Blizzard's zone header and clock", "hideBlizzardText")
+    L:Toggle("Volume button on the map", "volume", { tooltip = "A speaker on the map's edge. Click it to mute the game, and roll the mouse wheel over it to turn the game's volume up or down, five percent a notch, or one with Shift held. Drag it round the edge to move it." })
     L:Toggle("Gather addon buttons into a flyout", "collect", { tooltip = "Every addon's button round the map, under a + at the map's corner; pins drawn on the map itself are left alone. Stands down when another collector (MBB) is running. Takes effect after a reload when switched off." })
     if MM.ClassicPieces() then
         L:Toggle("The game's buttons in a row under the map", "strip", { tooltip = "Tracking, the group finder, a battleground queue, the day and night dial and Wick's launcher, in a row under the square map, with new mail at its end. Other addons' buttons stay in the flyout. Switched off, the buttons go back to the map's corners after a reload." })

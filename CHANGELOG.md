@@ -1,5 +1,18 @@
 # Wick's UI
 
+## Unreleased
+
+### Minimap
+
+- A volume speaker on the map's edge. Click it to mute the game and again
+  to bring the sound back; roll the mouse wheel over it to turn the
+  game's volume up or down, five percent a notch, or one with Shift held.
+  Turning it up while muted brings the sound back. Its picture shows how
+  loud the game is, and it follows the game's own Sound options and its
+  sound key. Drag it round the map's edge to move it, as with Wick's
+  launcher. In the Classic look it is one of the game's round map
+  buttons. Switch it off under Minimap in the settings.
+
 ## 0.11.0 (2026-10-06)
 
 ### Classic
