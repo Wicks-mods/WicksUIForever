@@ -69,6 +69,52 @@ function NP:GameLayout()
 end
 
 -- ============================================================
+-- Debuffs on the plate, as the game draws its own
+-- ============================================================
+-- 25 square at the game's own plate size (TBC Anniversary's Medium plates),
+-- three quarters of that on Forever's Small ones.
+function NP:GameAuraSize()
+    if not ns:Game() then return nil end
+    return tbc() and 25 or 19
+end
+
+-- The game's aura art on a button the client's container made: the icon
+-- in its rounded mask, the ring over it, the cooldown's own sweep, the
+-- count at the corner in the game's number font. Method calls on the
+-- button only; nothing is written into it.
+function NP:GameAura(button, size)
+    local k = (size or 25) / 25
+    local icon = button.Icon
+    if icon and button.CreateMaskTexture and icon.AddMaskTexture then
+        local m = button:CreateMaskTexture()
+        m:SetAtlas("UI-HUD-CoolDownManager-Mask")
+        m:SetAllPoints(icon)
+        icon:AddMaskTexture(m)
+    end
+    local ring = button:CreateTexture(nil, "OVERLAY")
+    ring:SetAtlas("UI-HUD-CoolDownManager-IconOverlay")
+    ring:SetPoint("TOPLEFT", button, "TOPLEFT", -6 * k, 5 * k)
+    ring:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 6 * k, -5 * k)
+    local cd = button.Cooldown
+    if cd and cd.SetSwipeTexture then
+        pcall(cd.SetSwipeTexture, cd, "Interface\\HUD\\UI-HUD-CoolDownManager-Icon-Swipe")
+        if cd.SetReverse then cd:SetReverse(true) end
+    end
+    local count = button.Count
+    if count and count.SetFont then
+        count:SetFont("Fonts\\ARIALN.TTF", math.max(9, math.floor(12 * k + 0.5)), "OUTLINE")
+        count:ClearAllPoints()
+        count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 3 * k, -2 * k)
+    end
+    local t = button.Time
+    if t and t.SetFont then
+        t:SetFont("Fonts\\ARIALN.TTF", math.max(8, math.floor(11 * k + 0.5)), "OUTLINE")
+        t:ClearAllPoints()
+        t:SetPoint("CENTER", button, "CENTER", 0, 0)
+    end
+end
+
+-- ============================================================
 -- Colours
 -- ============================================================
 -- The game's: the unit's reaction (its own colour for it), grey for a mob
@@ -295,6 +341,13 @@ function NP:ConfigureGame(self)
     if lv.wuiTagged then self:Untag(lv) end
     self:Tag(lv, "[wui:gamelevel]")
     lv.wuiTagged = true
+
+    -- Your debuffs in a row from the bar's left end, straight above the name.
+    if self.wuiDebuffs then
+        local above = (L == TBC and L.name.y or FOREVER.name.y) + ((L == TBC and L.name.size) or FOREVER.name.size) + 1
+        self.wuiDebuffs:ClearAllPoints()
+        self.wuiDebuffs:SetPoint("BOTTOMLEFT", h, "TOPLEFT", L == TBC and -3.5 or 0, above)
+    end
 
     -- The raid mark to the bar's left, as the game puts it.
     local raid = self.RaidTargetIndicator

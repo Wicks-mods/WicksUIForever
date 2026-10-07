@@ -400,24 +400,29 @@ local function style(self, unit)
     cb:HookScript("OnHide", function() NP:PlaceMarks(self) end)
     self.wuiCastbar = cb
 
-    -- Your debuffs on it, above the name.
+    -- Your debuffs on it, above the name. Classic draws them as the game
+    -- draws its own (NP.GameAura): its size, no gap, its icon art.
     if self.CreateAuras then
+        local game = NP.GameAuraSize and NP:GameAuraSize()
+        local size = game or d.debuffSize
+        local gap = game and 0 or 2
         local a = self:CreateAuras({ initialAnchor = "BOTTOMLEFT", growthX = "RIGHT", growthY = "UP",
-            layoutLimit = d.debuffCount * (d.debuffSize + 2) })
-        a.size = d.debuffSize
-        a.elementSpacing = 2
+            layoutLimit = d.debuffCount * (size + gap) })
+        a.size = size
+        a.elementSpacing = gap
         a.showCount = true
         -- Our own time text (the client's countdown is hidden: ns:AuraCountdown).
         a.showDuration = true
         a.disableMouse = true
         -- Before AddGroup, so the buttons it makes get it.
         a.PostCreateButton = function(_, button)
+            if game then NP:GameAura(button, size) return end
             ns:AuraCountdown(button, d.debuffSize, true)
             if button.Icon then ns:CropIcon(button.Icon) end
             ns:CreateBackdrop(button, "Default", edge())
         end
         a:AddGroup("HARMFUL|PLAYER", { maxFrameCount = d.debuffCount })
-        a:SetSize(d.debuffCount * (d.debuffSize + 2), d.debuffSize)
+        a:SetSize(d.debuffCount * (size + gap), size)
         self.wuiDebuffs = a
 
         -- Buffs worth knowing about on an enemy: stealable or purgeable.

@@ -139,6 +139,20 @@ local GROW = {
 }
 local COLUMN = { RIGHT = "LEFT", LEFT = "RIGHT", DOWN = "TOP", UP = "BOTTOM" }
 
+-- A group's settings, with the game's own size and gap in their place
+-- where Classic draws the game's frame for it (the party's).
+local function groupDB(key)
+    local d = UF:UnitDB(key)
+    local L = d and UF.GameLayout and UF:GameLayout(key)
+    if not L then return d end
+    local over = { width = L.w, height = L.h, spacing = L.gap or d.spacing, growth = "DOWN" }
+    return setmetatable({}, { __index = function(_, k)
+        local v = over[k]
+        if v ~= nil then return v end
+        return d[k]
+    end })
+end
+
 local function headerAttributes(key, d)
     local grow = GROW[d.growth] or GROW.DOWN
     local sort = SORT[d.sortBy] or SORT.ROLE
@@ -187,7 +201,7 @@ local function headerSize(key, d)
 end
 
 function G:Spawn(key)
-    local d = UF:UnitDB(key)
+    local d = groupDB(key)
     local header = oUF:SpawnHeader("WicksUI_" .. key:gsub("^%l", string.upper), nil, headerAttributes(key, d))
     header.wuiKey = key
     self.headers[key] = header
@@ -206,7 +220,7 @@ end
 function G:Layout(key)
     local header, holder = self.headers[key], self.holders[key]
     if not header then return end
-    local d = UF:UnitDB(key)
+    local d = groupDB(key)
     applyAttributes(header, key, d)
     holder:SetSize(headerSize(key, d))
     ns.Movers:Resize("uf_" .. key)
@@ -264,7 +278,7 @@ function G:SetTestMode(on)
     end
     self.testing = on
     for key, header in pairs(self.headers) do
-        local d = UF:UnitDB(key)
+        local d = groupDB(key)
         if on then
             header:SetAttribute("showSolo", true)
             header:SetAttribute("showPlayer", true)

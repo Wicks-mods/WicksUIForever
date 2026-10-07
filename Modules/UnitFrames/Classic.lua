@@ -81,6 +81,21 @@ local TBC = {
     focus = TBC_TARGET,
     targettarget = TBC_TOT,
     focustarget = TBC_TOT,
+    -- Each member as the game's party frame, stacked 10 apart. The game
+    -- writes no numbers on them; a healer's missing-health text, where it
+    -- is switched on, sits on the bar.
+    party = {
+        w = 128, h = 53, gap = 10,
+        art = { file = TF .. "UI-PartyFrame", x = 0, y = -2, w = 128, h = 64 },
+        portrait = { x = 7, y = -6, s = 37 },
+        health = { x = 47, y = -12, w = 70, h = 8 },
+        power = { x = 47, y = -21, w = 70, h = 8 },
+        name = { point = "BOTTOMLEFT", rel = "BOTTOMLEFT", x = 50, y = 43, w = 76, justify = "LEFT" },
+        healthText = { cx = 82, cy = -16, size = 9, keepTag = true },
+        leader = { x = 0, y = 0, s = 16 },
+        raidIcon = { cx = 25, cy = -4, s = 18 },
+        flash = { file = TF .. "UI-PartyFrame-Flash", x = -3, y = 2, w = 128, h = 64 },
+    },
     pet = {
         w = 128, h = 53,
         art = { file = TF .. "UI-SmallTargetingFrame", noPower = TF .. "UI-SmallTargetingFrame-NoMana",
@@ -166,6 +181,20 @@ local FOREVER = {
     targettarget = F_TOT,
     focustarget = F_TOT,
     pet = F_PET,
+    party = {
+        w = 120, h = 53, gap = 10, under = true,
+        art = { atlas = HUD .. "Party-PortraitOn", x = 1, y = -2, w = 120, h = 49 },
+        portrait = { x = 7, y = -6, s = 37, mask = true },
+        health = { x = 45, y = -19, w = 70, h = 10, atlas = HUD .. "Party-PortraitOn-Bar-Health",
+            mask = { atlas = HUD .. "Party-PortraitOn-Bar-Health-Mask", x = 16, y = -16, w = 128, h = 16 } },
+        power = { x = 41, y = -30, w = 74, h = 7, atlas = HUD .. "Party-PortraitOn-Bar-",
+            mask = { atlas = HUD .. "Party-PortraitOn-Bar-Mana-Mask", x = 14, y = -26, w = 128, h = 16 } },
+        name = { point = "TOPLEFT", rel = "TOPLEFT", x = 46, y = -6, w = 57, justify = "LEFT" },
+        healthText = { cx = 80, cy = -24, size = 9, keepTag = true },
+        leader = { x = 42, y = 10, s = 16, atlas = HUD .. "Player-Group-LeaderIcon" },
+        raidIcon = { cx = 25, cy = -5, s = 18 },
+        flash = { atlas = HUD .. "Party-PortraitOn-InCombat", x = 1, y = -2, w = 120, h = 49 },
+    },
 }
 
 -- The layout for a frame in Classic, or nil (a frame the game has none
@@ -461,13 +490,14 @@ function UF:ConfigureGame(self)
     for slot, place in pairs({ right = L.healthText, power = L.powerText }) do
         local fs = t[slot]
         local td = d and d.texts and d.texts[slot]
-        if place and (slot == "right" or (td and td.enable)) then
+        local own = place and place.keepTag and td and td.enable and td.tag ~= "" and td.tag
+        if place and (own or (not place.keepTag and (slot == "right" or (td and td.enable)))) then
             fs:SetFont(numFont, place.size or 10, "OUTLINE")
             ns:TextColor(fs, { 1, 1, 1 })
             fs:SetWidth(0)
             fs:SetJustifyH("CENTER")
             at(fs, self, place)
-            retag(fs, slot == "right" and "[wui:curmax]" or "[wui:curpp]")
+            retag(fs, own or (slot == "right" and "[wui:curmax]" or "[wui:curpp]"))
         else
             retag(fs, nil)
         end
