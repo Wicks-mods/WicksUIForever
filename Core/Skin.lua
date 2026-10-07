@@ -612,7 +612,7 @@ end
 function ns:TrackStatusBar(sb)
     if not sb then return sb end
     ns.statusbars = ns.statusbars or setmetatable({}, { __mode = "k" })
-    ns.statusbars[sb] = true
+    ns.statusbars[sb] = (Chrome.StyleID and Chrome:StyleID()) or true
     return sb
 end
 
@@ -639,7 +639,19 @@ end
 function ns:RefreshStatusbars()
     local path = ns.Media:Statusbar()
     if ns.statusbars then
-        for sb in pairs(ns.statusbars) do sb:SetStatusBarTexture(path) end
+        local here = Chrome.StyleID and Chrome:StyleID()
+        for sb, look in pairs(ns.statusbars) do
+            local p = path
+            -- A bar made in another look (the unit frames' own) takes that
+            -- look's texture.
+            if type(look) == "string" and look ~= here and not Chrome.forceStyle then
+                Chrome.forceStyle = look
+                local ok, other = pcall(ns.Media.Statusbar, ns.Media)
+                Chrome.forceStyle = nil
+                if ok and other then p = other end
+            end
+            sb:SetStatusBarTexture(p)
+        end
     end
     for tex in pairs(barTextures) do tex:SetTexture(path) end
 end

@@ -38,6 +38,7 @@ Modules\UnitFrames\Options.lua
 
 Modules\Nameplates\Nameplates.lua
 Modules\Nameplates\Classic.lua
+Modules\UnitFrames\OwnLook.lua
 Modules\Auras\AuraButton.xml
 Modules\Auras\Auras.lua
 Modules\Chat\Chat.lua

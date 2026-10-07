@@ -875,7 +875,7 @@ end
 -- ============================================================
 ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:DB(db)
-    if ns:Game() then
+    if ns:InUFLook(function() return ns:Game() end) then
         L:Note(Chrome:Esc("fel") .. "The Classic look draws the plates as the game does: its sizes, its art, its colours and its marks for your target. Your threat as a percent, quest marks, your debuffs, names only on friends and the opacity still follow these settings.|r")
     end
     -- The looks that draw the full cast bar, by name, for the settings that

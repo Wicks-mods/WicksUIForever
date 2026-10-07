@@ -24,6 +24,13 @@
   debuffs stay. The settings windows, the bags and Wick's own windows
   wear the game's frames and controls. Each client draws its own art.
 
+### Unit frames
+
+- The unit frames and nameplates can take a look of their own, apart
+  from the rest of the interface: the game's own frames under Wick
+  Modern, say, or Wick's frames under Classic. Look, at the top of the
+  Unit frames page; colours stay the suite's theme.
+
 ### Combat text
 
 - An aura fading is drawn darker than when it landed, so a buff or

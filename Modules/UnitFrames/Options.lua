@@ -5,6 +5,7 @@ local ADDON, ns = ...
 
 local UF = ns.UnitFrames
 local W = ns.Widgets
+local Chrome = ns.Core.Chrome
 
 local function update() UF:Update() end
 
@@ -17,6 +18,25 @@ local SIDES = { { "TOP", "Above" }, { "BOTTOM", "Below" }, { "LEFT", "Left" }, {
 
 ns.Config:AddPage("unitframes", "Unit frames", function(L)
     L:DB(function() return UF:db() end)
+    -- A look of their own for the unit frames and the nameplates, whatever
+    -- the suite is in (OwnLook.lua). Frames are built once, so it reloads.
+    L:Heading("Look")
+    L:Dropdown("Unit frames and nameplates", "unitFrameLook", function()
+        local out = { { "suite", "The suite's look" } }
+        for _, st in ipairs(Chrome.Styles or {}) do out[#out + 1] = { st.id, st.name } end
+        return out
+    end, {
+        get = function() return ns:G().unitFrameLook or "suite" end,
+        setter = function(v)
+            local want = (v ~= "suite") and v or nil
+            if want == ns:G().unitFrameLook then return end
+            local st = want and Chrome.StyleByID[want]
+            local what = st and (st.name .. ": " .. st.blurb) or "The suite's look."
+            W:Confirm(("%s\n\nThe unit frames and nameplates are built in their look, so the interface reloads. Reload now?"):format(what),
+                function() ns:G().unitFrameLook = want end, "Reload", nil, { reload = true })
+        end,
+        tooltip = "Draw the unit frames, party and raid frames and nameplates in a look of their own: the game's own frames under Wick Modern, or Wick's frames under Classic. Colours stay the suite's theme.",
+    })
     L:Heading("Colours")
     L:Dropdown("Health bars", "healthColor", {
         { "class", "Class and reaction" }, { "dark", "Dark" }, { "gradient", "Red to green by health" },
