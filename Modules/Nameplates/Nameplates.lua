@@ -412,7 +412,9 @@ local function style(self, unit)
         a.elementSpacing = gap
         a.showCount = true
         -- Our own time text (the client's countdown is hidden: ns:AuraCountdown).
-        a.showDuration = true
+        -- Classic keeps the game's own countdown instead, as its plates do,
+        -- so ours is not drawn at all: two timers on one icon otherwise.
+        a.showDuration = not game
         a.disableMouse = true
         -- Before AddGroup, so the buttons it makes get it.
         a.PostCreateButton = function(_, button)

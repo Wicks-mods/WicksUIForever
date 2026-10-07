@@ -83,6 +83,11 @@ end
 -- count at the corner in the game's number font. Method calls on the
 -- button only; nothing is written into it.
 function NP:GameAura(button, size)
+    -- A button the client makes mid-fight is locked until it is over.
+    if InCombatLockdown() then
+        ns:AfterCombat("gameaura:" .. tostring(button), function() NP:GameAura(button, size) end)
+        return
+    end
     local k = (size or 25) / 25
     local icon = button.Icon
     if icon and button.CreateMaskTexture and icon.AddMaskTexture then
@@ -106,11 +111,13 @@ function NP:GameAura(button, size)
         count:ClearAllPoints()
         count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 3 * k, -2 * k)
     end
-    local t = button.Time
-    if t and t.SetFont then
-        t:SetFont("Fonts\\ARIALN.TTF", math.max(8, math.floor(11 * k + 0.5)), "OUTLINE")
-        t:ClearAllPoints()
-        t:SetPoint("CENTER", button, "CENTER", 0, 0)
+    -- The time is the cooldown's own countdown, as on the game's plates
+    -- (ours is switched off on the row: showDuration), set a little
+    -- smaller than the client draws it, so it sits inside the icon.
+    if button.Time and button.Time.Hide then button.Time:Hide() end
+    local fs = cd and cd.GetCountdownFontString and cd:GetCountdownFontString()
+    if fs and fs.SetFont then
+        fs:SetFont("Fonts\\ARIALN.TTF", math.max(8, math.floor((size or 25) * 0.45 + 0.5)), "OUTLINE")
     end
 end
 
