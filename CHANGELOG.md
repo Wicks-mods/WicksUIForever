@@ -22,16 +22,12 @@
 
 - A switch for the glow on a tab with new messages, stopped through the
   game's own switch.
-- Class colours on names, on or off for every channel, and the Wick
-  channel colours (guild in the accent, whispers lilac, party sky, raid
-  amber, yell coral, system muted), both set through the game's own chat
-  settings so they show there and can be changed there. Off puts the
-  game's colours back.
+- Class colours on names, on or off for every channel, set through the
+  game's own chat settings so they show there and can be changed there.
 - Timestamps, through the game's own setting.
 - These and the game's own Chat Settings stay in step: a change made in
   the game's settings wins, and the Chat page then shows "the game's
-  setting" rather than putting its own value back. A channel colour you
-  changed there is not put back when the Wick colours go off.
+  setting" rather than putting its own value back.
 - A font size picked from the game's own Font Size menu on a chat tab is
   kept. It became the window's size until the next chat window update or
   login, when Wick's UI put its own size back; now it becomes the Chat

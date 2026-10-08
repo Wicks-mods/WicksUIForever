@@ -152,9 +152,12 @@ local function show(win, line, c)
     end
 end
 
+local count = 0
 local function newWindow(key, c)
     local d = db()
-    local win = CreateFrame("Frame", nil, UIParent)
+    -- Named, so Escape can close it (the game lists windows by name).
+    count = count + 1
+    local win = CreateFrame("Frame", "WicksUI_Whisper" .. count, UIParent)
     win.key, win.convo = key, c
     win:SetSize(d.width or 340, d.height or 220)
     win:SetFrameStrata("HIGH")
@@ -206,6 +209,8 @@ local function newWindow(key, c)
     fontFor(msg)
     win.msg = msg
 
+    -- The game makes a frame shown; this one waits to be placed by Open.
+    win:Hide()
     WH.windows[key] = win
     return win
 end
@@ -223,7 +228,8 @@ function WH:Open(key, c)
     local win = self:Window(key, c, true)
     win.convo = c
     win.title:SetText(colorCode(c.class) .. shortName(c) .. "|r")
-    if not win:IsShown() then
+    -- A window with no point is drawn nowhere, shown or not.
+    if not win:IsShown() or not win:GetPoint(1) then
         place(win, c)
         win:Show()
     end
