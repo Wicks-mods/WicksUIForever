@@ -32,6 +32,10 @@ ns.defaults.profile.chat = {
     copyButton = true,
     alignToInfo = true,       -- the chat's panel as wide as the info panel under it, sat on it
     maxLines = 500,
+    tabAlerts = true,         -- the game's glow on a tab with new messages
+    classNames = "game",      -- class colours on names: the game's setting, on, off
+    channelColors = false,    -- the Wick channel colours, set once through the game's own
+    timestamps = "game",      -- the game's setting, or a format for its showTimestamps
 }
 
 local function db() return CH:db() end
@@ -407,6 +411,98 @@ end
 -- ============================================================
 local HIDE = { "ChatFrameMenuButton", "ChatFrameChannelButton", "QuickJoinToastButton", "ChatFrameToggleVoiceDeafenButton", "ChatFrameToggleVoiceMuteButton" }
 
+-- ============================================================
+-- Colours and timestamps, through the game's own settings
+-- ============================================================
+-- Each is set through the game's own API once, when the setting changes,
+-- and the game keeps it from then on in its own chat settings, where any
+-- one of them can still be changed by hand. Nothing is put back at login.
+local PALETTE = {
+    SAY = "D4C8A1", EMOTE = "D4C8A1", TEXT_EMOTE = "D4C8A1",
+    YELL = "E9806E", RAID_WARNING = "E9806E",
+    WHISPER = "B3A6F0", WHISPER_INFORM = "B3A6F0", BN_WHISPER = "B3A6F0", BN_WHISPER_INFORM = "B3A6F0",
+    PARTY = "74B9E0", PARTY_LEADER = "74B9E0", INSTANCE_CHAT = "74B9E0", INSTANCE_CHAT_LEADER = "74B9E0",
+    RAID = "E3B256", RAID_LEADER = "E3B256",
+    GUILD = "accent", OFFICER = "3A9A5B",
+    SYSTEM = "8F8770",
+}
+
+local function rgb(hex)
+    return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
+end
+
+local function same(a, b) return a and b and math.abs(a - b) < 0.004 end
+
+-- A change made in the game's own Chat Settings wins: where the game no
+-- longer has what ours set, ours goes back to "the game's setting" (or off,
+-- for the channel colours) instead of putting its value back, so the two
+-- never fight and our page never says one thing while the game does another.
+function CH:SyncFromGame()
+    local d = db()
+    local info = rawget(_G, "ChatTypeInfo")
+    if d.classNamesApplied and info then
+        local want = d.classNamesApplied == "on"
+        for t, c in pairs(info) do
+            if type(c) == "table" and c.colorNameByClass ~= nil and (c.colorNameByClass and true or false) ~= want then
+                d.classNames, d.classNamesApplied = "game", nil
+                break
+            end
+        end
+    end
+    if d.timestampsApplied and rawget(_G, "GetCVar") then
+        local cur = GetCVar("showTimestamps")
+        if cur ~= nil and cur ~= d.timestampsApplied then d.timestamps, d.timestampsApplied = "game", nil end
+    end
+    if d.gameColors and info then
+        -- A colour changed in the game's settings is the player's now: it is
+        -- not put back when ours go off.
+        for t, hex in pairs(PALETTE) do
+            local cur = info[t]
+            if cur and cur.r and d.gameColors[t] then
+                local r, g, b
+                if hex == "accent" then r, g, b = C.fel[1], C.fel[2], C.fel[3] else r, g, b = rgb(hex) end
+                if not (same(cur.r, r) and same(cur.g, g) and same(cur.b, b)) then d.gameColors[t] = nil end
+            end
+        end
+    end
+end
+
+function CH:ApplyColors()
+    self:SyncFromGame()
+    local d = db()
+    local info = rawget(_G, "ChatTypeInfo")
+    if d.classNames ~= "game" and d.classNames ~= d.classNamesApplied and info and rawget(_G, "SetChatColorNameByClass") then
+        for t in pairs(info) do pcall(SetChatColorNameByClass, t, d.classNames == "on") end
+        d.classNamesApplied = d.classNames
+    elseif d.classNames == "game" then
+        d.classNamesApplied = nil
+    end
+    if info and rawget(_G, "ChangeChatColor") then
+        if d.channelColors and not d.gameColors then
+            -- The game's colours first, to come back to.
+            d.gameColors = {}
+            for t, hex in pairs(PALETTE) do
+                local cur = info[t]
+                if cur and cur.r then
+                    d.gameColors[t] = { cur.r, cur.g, cur.b }
+                    local r, g, b
+                    if hex == "accent" then r, g, b = C.fel[1], C.fel[2], C.fel[3] else r, g, b = rgb(hex) end
+                    pcall(ChangeChatColor, t, r, g, b)
+                end
+            end
+        elseif not d.channelColors and d.gameColors then
+            for t, c in pairs(d.gameColors) do pcall(ChangeChatColor, t, c[1], c[2], c[3]) end
+            d.gameColors = nil
+        end
+    end
+    if d.timestamps ~= "game" and d.timestamps ~= d.timestampsApplied and rawget(_G, "SetCVar") then
+        pcall(SetCVar, "showTimestamps", d.timestamps)
+        d.timestampsApplied = d.timestamps
+    elseif d.timestamps == "game" then
+        d.timestampsApplied = nil
+    end
+end
+
 function CH:StyleAll()
     for i = 1, (NUM_CHAT_WINDOWS or 10) do
         local f = _G["ChatFrame" .. i]
@@ -431,6 +527,14 @@ function CH:Initialize()
     self:Panel()
     ns:On("UPDATE_CHAT_WINDOWS", function() CH:StyleAll() end)
     ns:On("UPDATE_FLOATING_CHAT_WINDOWS", function() CH:StyleAll() end)
+    -- The game lights a tab up when a message lands in a window not in
+    -- front. Off is done through the game's own stop, so its own state
+    -- (the tab's alerting flag, the dock's overflow pulse) stays in step.
+    if rawget(_G, "FCF_StartAlertFlash") and rawget(_G, "FCF_StopAlertFlash") then
+        hooksecurefunc("FCF_StartAlertFlash", function(cf)
+            if not db().tabAlerts then FCF_StopAlertFlash(cf) end
+        end)
+    end
     -- The game's own Font Size menu, on a chat tab, is where players reach
     -- for a size. A size picked there becomes the setting, so it is kept
     -- across sessions instead of being put back by ours at the next chat
@@ -457,8 +561,14 @@ function CH:Initialize()
     if rawget(_G, "FCFTab_UpdateColors") then
         hooksecurefunc("FCFTab_UpdateColors", function(tab, selected) tabColour(tab, selected) end)
     end
+    self:ApplyColors()
     if Chrome.OnThemeChanged then
         Chrome:OnThemeChanged(function()
+            local d = db()
+            local info = rawget(_G, "ChatTypeInfo")
+            if d.channelColors and d.gameColors and d.gameColors.GUILD and info and rawget(_G, "ChangeChatColor") then
+                pcall(ChangeChatColor, "GUILD", C.fel[1], C.fel[2], C.fel[3])
+            end
             for i = 1, (NUM_CHAT_WINDOWS or 10) do
                 local tab = _G["ChatFrame" .. i .. "Tab"]
                 if tab then tabColour(tab, isSelected(tab)) end
@@ -470,9 +580,12 @@ end
 function CH:Update()
     for f in pairs(styled) do self:StyleFrame(f) end
     self:Panel()
+    self:ApplyColors()
+    if ns.Whispers and ns.Whispers.initialized then ns.Whispers:Update() end
 end
 
 ns.Config:AddPage("chat", "Chat", function(L)
+    if CH.initialized then CH:SyncFromGame() end
     L:DB(db)
     L:Note("The chat windows stay where Edit Mode puts them. Everything here is the look. Nothing in this module touches the messages themselves, which this client can hand over as secrets during an encounter.")
     if ns:Game() then L:Note(Chrome:Esc("fel") .. "The Classic look leaves the chat as the game draws it, so these settings wait for another look.|r") end
@@ -495,4 +608,10 @@ ns.Config:AddPage("chat", "Chat", function(L)
     L:Slider("Fade after, seconds", "fadeAfter", 5, 300, 5)
     L:Toggle("Type above the chat", "editBoxTop")
     L:Slider("Lines kept", "maxLines", 128, 2000, 16)
+    L:Heading("Alerts and colours")
+    L:Toggle("Glow on a tab with new messages", "tabAlerts", { tooltip = "The game lights a tab up when a message lands in a window you are not looking at. Off stops it through the game's own switch." })
+    L:Dropdown("Class colours on names", "classNames", { { "game", "The game's setting" }, { "on", "On for every channel" }, { "off", "Off for every channel" } }, { tooltip = "Set per channel through the game's own chat settings, which can still change any one of them." })
+    L:Toggle("Wick channel colours", "channelColors", { tooltip = "Guild in the accent, whispers lilac, party sky, raid amber, yell coral, system muted. Set once through the game's own chat colours, so its Chat Settings show them and can change any one. Off puts the game's colours back." })
+    L:Dropdown("Timestamps", "timestamps", { { "game", "The game's setting" }, { "none", "None" }, { "%H:%M ", "HH:MM" }, { "%H:%M:%S ", "HH:MM:SS" }, { "%I:%M %p ", "12-hour" } }, { tooltip = "The game's own timestamp setting, so its lines carry the time." })
+    L:Note("Whispers have a page of their own.")
 end, { onChange = function() CH:Update() end, order = 50 })

@@ -2,8 +2,36 @@
 
 ## Unreleased
 
+### Whispers
+
+- Each person you whisper with gets a window of their own, opened as a
+  whisper comes in or goes out, with the conversation kept between
+  sessions and across your characters. Enter sends from the window
+  through the game's own whisper; a slash command typed there goes to the
+  game's chat box. While Forever has chat locked down during an
+  encounter, the line goes to the game's own box with the whisper filled
+  in, as an addon may not send then. The line still lands in the chat
+  window and the game's
+  reply key still answers the last whisper. Battle.net whispers too. On
+  Forever a line the client hands over as secret during an encounter is
+  shown and never kept. Its own page under Wick's UI, with the window
+  size, the lines kept, and buttons to open every kept conversation or
+  forget them all.
+
 ### Chat
 
+- A switch for the glow on a tab with new messages, stopped through the
+  game's own switch.
+- Class colours on names, on or off for every channel, and the Wick
+  channel colours (guild in the accent, whispers lilac, party sky, raid
+  amber, yell coral, system muted), both set through the game's own chat
+  settings so they show there and can be changed there. Off puts the
+  game's colours back.
+- Timestamps, through the game's own setting.
+- These and the game's own Chat Settings stay in step: a change made in
+  the game's settings wins, and the Chat page then shows "the game's
+  setting" rather than putting its own value back. A channel colour you
+  changed there is not put back when the Wick colours go off.
 - A font size picked from the game's own Font Size menu on a chat tab is
   kept. It became the window's size until the next chat window update or
   login, when Wick's UI put its own size back; now it becomes the Chat
