@@ -431,6 +431,20 @@ function CH:Initialize()
     self:Panel()
     ns:On("UPDATE_CHAT_WINDOWS", function() CH:StyleAll() end)
     ns:On("UPDATE_FLOATING_CHAT_WINDOWS", function() CH:StyleAll() end)
+    -- The game's own Font Size menu, on a chat tab, is where players reach
+    -- for a size. A size picked there becomes the setting, so it is kept
+    -- across sessions instead of being put back by ours at the next chat
+    -- window update. Nothing else in the client sets the chat font: the
+    -- window update events read the saved size and never apply it.
+    if rawget(_G, "FCF_SetChatWindowFontSize") then
+        hooksecurefunc("FCF_SetChatWindowFontSize", function(_, frame, size)
+            frame = frame or (FCF_GetCurrentChatFrame and FCF_GetCurrentChatFrame())
+            size = tonumber(size) or (frame and frame.GetFont and select(2, frame:GetFont()))
+            if not size or size == db().fontSize then return end
+            db().fontSize = size
+            CH:Update()
+        end)
+    end
     -- Whisper windows are made on the fly.
     if FCF_OpenTemporaryWindow then
         hooksecurefunc("FCF_OpenTemporaryWindow", function() C_Timer.After(0, function() CH:StyleAll() end) end)

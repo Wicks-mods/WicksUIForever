@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Chat
+
+- A font size picked from the game's own Font Size menu on a chat tab is
+  kept. It became the window's size until the next chat window update or
+  login, when Wick's UI put its own size back; now it becomes the Chat
+  page's size, and is saved with it.
+
 ### Unit frames
 
 - Power bar height counts in every look. The Modern family had drawn the
