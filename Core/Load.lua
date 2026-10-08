@@ -283,6 +283,31 @@ function A:OnEnable()
         g.flatRestored = true
     end
     ns:ApplyStylePreset(false)
+    -- The Modern family had drawn the power bar as a 3px line whatever the
+    -- slider said. The slider counts now, so a profile that never saw its
+    -- value on a modern look keeps the line it had, once: the look in use
+    -- if it is modern, and every modern look's snapshot. Raid frames were
+    -- never clamped.
+    if not g.powerSlider then
+        local Chrome = ns.Core and ns.Core.Chrome
+        local function modernFamily(key)
+            local id = key == "wick" and "og" or key
+            for _, s in ipairs((Chrome and Chrome.Styles) or {}) do
+                if s.id == id then return s.family == "modern" end
+            end
+            return id == "modern"
+        end
+        local function thin(units)
+            for key, u in pairs(units or {}) do
+                if key ~= "raid" and type(u) == "table" and u.powerHeight and u.powerHeight > 3 then u.powerHeight = 3 end
+            end
+        end
+        if ns:Modern() then thin(ns.A.db.profile.unitframes and ns.A.db.profile.unitframes.units) end
+        for key, snap in pairs(g.styleSizes or {}) do
+            if modernFamily(key) then thin(snap.units) end
+        end
+        g.powerSlider = true
+    end
     -- Unit frames spent a day on Friz Quadrata while no good narrow face
     -- was bundled. Profiles still on that default move to the bundled one.
     local uf = ns.A.db.profile.unitframes

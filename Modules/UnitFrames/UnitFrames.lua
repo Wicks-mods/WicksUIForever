@@ -694,8 +694,9 @@ function UF:Configure(self)
 
     -- Crisp: health above, power below, one pixel apart, text in the bar.
     -- Modern: the frame is a glass panel with padding, the name and health
-    -- text sit in a row above a slim bar, and power is a thin line under
-    -- it. Raid frames keep their text on the bar, having no room above it.
+    -- text sit in a row above a slim bar, and power sits under it at the
+    -- height the slider says (a 3px line to start with). Raid frames keep
+    -- their text on the bar, having no room above it.
     local modern = ns:Modern() and key ~= "raid"
     local health, power = self.Health, self.Power
     local pad, nameRow = px, 0
@@ -704,7 +705,7 @@ function UF:Configure(self)
         local lt = d.texts and d.texts.left
         nameRow = ((lt and lt.size) or 12) + (h < 36 and 3 or 5)
     end
-    local ph = d.power and (modern and math.min(d.powerHeight, 3) or d.powerHeight) or 0
+    local ph = d.power and d.powerHeight or 0
     local gap = d.power and (modern and 3 or (d.powerGap or 1)) or 0
     health:ClearAllPoints()
     health:SetPoint("TOPLEFT", self, "TOPLEFT", pad + pl, -(pad + nameRow))

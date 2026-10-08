@@ -1,5 +1,13 @@
 # Wick's UI
 
+## Unreleased
+
+### Unit frames
+
+- Power bar height counts in every look. The Modern family had drawn the
+  power bar as a thin line whatever the slider said, so it never changed.
+  A frame that had the line keeps it until you move the slider.
+
 ## 0.11.1 (2026-10-07)
 
 ### Minimap
