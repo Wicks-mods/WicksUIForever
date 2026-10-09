@@ -58,6 +58,14 @@
   made. Sixty of those in a session, then the game closed. A plate from
   the pool makes no frames when it is handed over.
 
+### Auras
+
+- On Forever the game's own buff and debuff frames keep their events
+  while they sit out of sight, and stay hidden. The controller's radial
+  and shortcuts bar read the buff frame's aura list, which only the
+  frame's own update makes: with the events gone the list was never
+  made, and the radial errored every time it opened.
+
 ### Comforts
 
 - Wick's code no longer closes the game's own dialogs. Confirming a

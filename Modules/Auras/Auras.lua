@@ -313,9 +313,26 @@ end
 -- ============================================================
 -- The module
 -- ============================================================
+-- The game's buff and debuff frames go under the hider, hidden, and keep
+-- their events where the client has the aura container. On Forever's
+-- controller interface the shortcuts bar and the radial ask the buff
+-- frame whether it has an aura, and the list they read is only made by
+-- the frame's own update: with its events gone the list was nil and
+-- both errored, the radial every time it opened. The frame stays hidden
+-- so the shortcuts bar never lights a button for it.
+local function killAuraFrame(name)
+    local f = _G[name]
+    if not f then return end
+    ns:Kill(f, { keepEvents = ns.Core.Client.hasAuraContainer })
+    ns:AfterCombat("auras:hide:" .. name, function()
+        f:Hide()
+        f:HookScript("OnShow", f.Hide)
+    end)
+end
+
 function AU:Initialize()
-    ns:Kill(_G.BuffFrame)
-    ns:Kill(_G.DebuffFrame)
+    killAuraFrame("BuffFrame")
+    killAuraFrame("DebuffFrame")
     local d = db()
     if ns.Core.Client.hasAuraContainer then
         oUF:RegisterStyle("WicksUI_Auras", style)
