@@ -2319,8 +2319,13 @@ if SetItemButtonTexture then
     end)
 end
 
+-- Parts of a fully skinned window the walk leaves to the window's own pass
+-- (a talent tree, whose lines and nodes are art on plain frames).
+local noWalk = setmetatable({}, { __mode = "k" })
+PS.noWalk = noWalk
+
 local function walkProfessions(frame, depth, root)
-    if depth > 8 or not frame.GetChildren or notOurs(frame) then return end
+    if depth > 8 or not frame.GetChildren or notOurs(frame) or noWalk[frame] then return end
     root = root or frame
     local fk = frame:GetObjectType()
     if fk == "Frame" or fk == "ScrollFrame" then stripArt(frame, root) end
@@ -2362,9 +2367,10 @@ local function walkProfessions(frame, depth, root)
             elseif kind == "Button" and child.ButtonText and child.CollapseButton then
                 -- A recipe list category heading: its brown bar (one unnamed
                 -- atlas, drawn again on the highlight layer) goes, a card
-                -- takes it, with our hover; the collapse mark stays.
+                -- takes it, with our hover; the collapse mark stays, and so
+                -- does a mark a window's special keeps (an unseen marker).
                 for _, r in ipairs({ child:GetRegions() }) do
-                    if r:GetObjectType() == "Texture" and r:GetAtlas() and r:GetAlpha() > 0 then r:SetAlpha(0) end
+                    if r:GetObjectType() == "Texture" and r:GetAtlas() and r:GetAlpha() > 0 and not isOwn(child, r) then r:SetAlpha(0) end
                 end
                 child.ButtonText:SetTextColor(C.text[1], C.text[2], C.text[3])
                 if not done[child] then
@@ -3309,20 +3315,213 @@ PS.SPECIAL.ClickBindingFrame = function(frame)
 end
 
 -- The Legacy window (Blizzard_LegacySystem, this client's own; the older
--- builds' LegacyFrame stays on the list too). The common skin, with its
--- three page tabs drawn as the side tabs elsewhere, which they are built
--- from: styled before the common pass, so it leaves them be, and again on
--- every frame, since Blizzard resets a chosen tab's icon. Its pages keep
--- their own art until they have been seen in game.
+-- builds' LegacyFrame stays on the list too). The full skin: the reward
+-- track and the challenges lose their painted pages for the grey panel,
+-- their cards become ours and their bars go flat. Its three page tabs are
+-- drawn as the side tabs elsewhere, which they are built from, again on
+-- every frame, since Blizzard resets a chosen tab's icon. The tree page is
+-- a talent tree, its lines and nodes art on plain frames, so the walk
+-- leaves it and only its painted page goes.
+
+-- A category in the challenges list: a heading takes a grey pill, the
+-- chosen one a wash and a bar in the accent. Read from the row's own
+-- state on every frame, since the list hands its rows round.
+local function legacyRow(row)
+    local e = extras[row] or {}
+    extras[row] = e
+    -- The unseen-challenges mark is the game's news; the walk keeps it.
+    if row.NotificationIcon then e.note = row.NotificationIcon end
+    if not e.legacyRow then
+        e.legacyRow = true
+        local bd = backdrop(row, "Shadow", false, 1)
+        bd:SetFrameLevel(math.max(0, row:GetFrameLevel() - 1))
+        local sel = row:CreateTexture(nil, "BACKGROUND", nil, 2)
+        sel:SetPoint("TOPLEFT", 2, -2)
+        sel:SetPoint("BOTTOMRIGHT", -2, 2)
+        ns:Fill(sel, C.fel[1], C.fel[2], C.fel[3], 0.18)
+        e.sel = sel
+        local bar = row:CreateTexture(nil, "BACKGROUND", nil, 3)
+        bar:SetPoint("TOPLEFT", 2, -2)
+        bar:SetPoint("BOTTOMLEFT", 2, 2)
+        bar:SetWidth(2)
+        bar:SetColorTexture(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(bar, "fel", "texture", 1)
+        e.bar = bar
+    end
+    -- Its wooden bar (a heading's) or sub tab (a leaf's), set again as the
+    -- choice moves, goes on every frame rather than at the next walk.
+    for _, r in ipairs({ row:GetRegions() }) do
+        if r:GetObjectType() == "Texture" and r:GetAtlas() and r:GetAlpha() > 0 and not isOwn(row, r) then r:SetAlpha(0) end
+    end
+    local heading = row.collapsable and true or false
+    local chosen = row.selected and true or false
+    e.backdrop:SetShown(heading)
+    e.sel:SetShown(chosen)
+    e.bar:SetShown(chosen)
+end
+
+-- A challenge: Blizzard's wooden card (in pieces, stretched as it opens)
+-- for our card, the open one ringed in the accent; the icon on a tile, its
+-- round mask and frame gone; the red plus and minus for our marks.
+local function legacyChallenge(b)
+    local e = extras[b] or {}
+    extras[b] = e
+    for _, k in ipairs({ "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "TitleBar", "SelectedOverlay" }) do
+        local t = b[k]
+        if t and t:GetAlpha() > 0 then t:SetAlpha(0) end
+    end
+    local ic = b.Icon
+    if not e.legacyCard then
+        e.legacyCard = true
+        local bd = backdrop(b, "Default", false, 3)
+        ns:SetTemplate(bd, "Default", { alpha = 0.9, shadow = false })
+        local ring = b:CreateTexture(nil, "OVERLAY", nil, 2)
+        ns:SetRing(ring, bd)
+        ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(ring, "fel", "vertex", 1)
+        ring:SetAllPoints(bd)
+        e.ring = ring
+        local h = b:CreateTexture(nil, "HIGHLIGHT")
+        h:SetAllPoints(bd)
+        ns:Fill(h, C.fel[1], C.fel[2], C.fel[3], 0.08)
+        e.hover = h
+        local pic = ic and ic.texture
+        if pic then
+            local ie = extras[ic] or {}
+            extras[ic] = ie
+            ie.icon = pic
+            if ic.TextureMask and pic.RemoveMaskTexture then pcall(pic.RemoveMaskTexture, pic, ic.TextureMask) end
+            ns:CropIcon(pic)
+            local tile = CreateFrame("Frame", nil, ic)
+            tile:SetPoint("TOPLEFT", pic, "TOPLEFT", -2, 2)
+            tile:SetPoint("BOTTOMRIGHT", pic, "BOTTOMRIGHT", 2, -2)
+            tile:SetFrameLevel(math.max(0, ic:GetFrameLevel() - 1))
+            ns:SetTemplate(tile, "Default", { shadow = false })
+            ie.tile = tile
+        end
+    end
+    if ic and ic.frame and ic.frame:GetAlpha() > 0 then ic.frame:SetAlpha(0) end
+    e.ring:SetShown(b.SelectedOverlay and b.SelectedOverlay:IsShown() or false)
+    local sh = b.Shield
+    if sh and sh.CheckBackground and sh.CheckBackground:GetAlpha() > 0 then sh.CheckBackground:SetAlpha(0) end
+    local pm = b.PlusMinus
+    local a = pm and pm:GetAtlas()
+    if a then
+        pm:SetTexture(ns.Media:Glyph(a:find("minus") and "minus" or "plus"))
+        pm:SetVertexColor(C.text[1], C.text[2], C.text[3], 1)
+    end
+    -- An open challenge's objectives: their bars go, their ticks stay.
+    for _, c in ipairs({ b:GetChildren() }) do
+        if c.Check and c.Name and c.Background then
+            local ce = extras[c] or {}
+            extras[c] = ce
+            ce.check = c.Check
+            if c.Background:GetAlpha() > 0 then c.Background:SetAlpha(0) end
+        end
+    end
+end
+
+-- A reward on the track: our card in place of the painted one, the last
+-- reward earned ringed in the accent; the icon on a tile; the level in a
+-- diamond, in the accent once earned. Earned or not is read from the art
+-- Blizzard picks, which it sets again whenever the track moves.
+local function legacyReward(card)
+    local e = extras[card] or {}
+    extras[card] = e
+    local bg = card.RewardCardBG
+    if bg then
+        noCard[bg] = true
+        if cards[bg] then cards[bg]:Hide() end
+    end
+    e.check = card.EarnedCheckmark
+    for _, k in ipairs({ "RewardCardBG", "IconBorder", "LevelSquare" }) do
+        local t = card[k]
+        if t and t:GetAlpha() > 0 then t:SetAlpha(0) end
+    end
+    if not e.legacyReward then
+        e.legacyReward = true
+        -- Two levels under the card: the icon's tile sits between.
+        local lvl = card:GetFrameLevel()
+        local tile = CreateFrame("Frame", nil, card)
+        tile:SetPoint("TOPLEFT", 10, -4)
+        tile:SetPoint("BOTTOMRIGHT", -10, 6)
+        tile:SetFrameLevel(math.max(0, lvl - 2))
+        ns:SetTemplate(tile, "Default", { alpha = 0.9, shadow = false })
+        e.tile = tile
+        local ring = card:CreateTexture(nil, "OVERLAY", nil, 2)
+        ns:SetRing(ring, tile)
+        ring:SetVertexColor(C.fel[1], C.fel[2], C.fel[3], 1)
+        Chrome:Register(ring, "fel", "vertex", 1)
+        ring:SetAllPoints(tile)
+        e.ring = ring
+        if card.Icon then
+            ns:CropIcon(card.Icon)
+            local it = CreateFrame("Frame", nil, card)
+            it:SetPoint("TOPLEFT", card.Icon, "TOPLEFT", -2, 2)
+            it:SetPoint("BOTTOMRIGHT", card.Icon, "BOTTOMRIGHT", 2, -2)
+            it:SetFrameLevel(math.max(0, lvl - 1))
+            ns:SetTemplate(it, "Default", { shadow = false })
+            e.iconTile = it
+        end
+        if card.Level then
+            local d = card:CreateTexture(nil, "ARTWORK", nil, 2)
+            d:SetTexture(ns.Media:Glyph("diamond"))
+            d:SetSize(30, 30)
+            d:SetPoint("CENTER", card.Level, "CENTER", 0, 0)
+            e.diamond = d
+        end
+    end
+    local art = bg and bg:GetAtlas() or ""
+    local last = art:find("Green") and true or false
+    local earned = last or not art:find("Disable")
+    e.ring:SetShown(last)
+    if e.diamond then
+        local c = earned and C.fel or C.border
+        e.diamond:SetVertexColor(c[1], c[2], c[3], 1)
+    end
+end
+
+local function legacyPages(frame)
+    local tree = frame.TreePage
+    if tree and tree.Background and tree.Background:GetAlpha() > 0 then tree.Background:SetAlpha(0) end
+    local cp = frame.ChallengesPage
+    if cp and cp:IsShown() then
+        local list = cp.CategoryList and cp.CategoryList.ScrollBox
+        local target = list and list.ScrollTarget
+        if target then
+            for _, row in ipairs({ target:GetChildren() }) do
+                if row:IsShown() and row.ButtonText and row.CollapseButton then legacyRow(row) end
+            end
+        end
+        local pane = cp.DetailPane and cp.DetailPane.ScrollBox
+        target = pane and pane.ScrollTarget
+        if target then
+            for _, b in ipairs({ target:GetChildren() }) do
+                if b:IsShown() and b.Shield and b.Icon and b.TitleBar then legacyChallenge(b) end
+            end
+        end
+    end
+    local rp = frame.RewardTrackPage
+    local clip = rp and rp:IsShown() and rp.LegacyRewardProgressFrame and rp.LegacyRewardProgressFrame.ClipFrame
+    if clip then
+        for _, card in ipairs({ clip:GetChildren() }) do
+            if card.RewardCardBG and card:IsShown() then legacyReward(card) end
+        end
+    end
+end
+PS.legacyPages = legacyPages
+
 PS.SPECIAL.LegacySystemFrame = function(frame)
-    local function tabs(f)
+    if frame.TreePage then noWalk[frame.TreePage] = true end
+    local function each(f)
+        if not db().enable then return end
         for _, tab in ipairs(f.Tabs or {}) do
             if tab.Icon and tab:IsShown() then styleSideTab(tab) end
         end
+        legacyPages(f)
     end
-    tabs(frame)
-    local poll = CreateFrame("Frame", nil, frame)
-    poll:SetScript("OnUpdate", function() if db().enable then tabs(frame) end end)
+    each(frame)
+    fullSkin(frame, each)
     return "generic"
 end
 

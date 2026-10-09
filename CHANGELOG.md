@@ -33,6 +33,19 @@
   login, when Wick's UI put its own size back; now it becomes the Chat
   page's size, and is saved with it.
 
+### Windows
+
+- The Legacy window's pages are in the look, where they kept the game's
+  painted art inside our frame. The reward track and the challenges sit
+  on the window's panel; challenges and rewards are our cards, the open
+  challenge and the last reward earned ringed in the accent; icons sit
+  on tiles; the progress bars are flat. In the challenge list a heading
+  is a grey pill and the chosen category carries an accent wash and bar,
+  with the game's mark for unseen challenges kept. The red plus and
+  minus on a challenge are our marks. A reward's level sits on a
+  diamond, in the accent once earned. The tree page loses its painted
+  background and keeps its tree.
+
 ### Unit frames
 
 - Power bar height counts in every look. The Modern family had drawn the
