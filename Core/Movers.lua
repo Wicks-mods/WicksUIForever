@@ -44,9 +44,17 @@ Movers.OnPad = onPad
 -- The places a save or a reset works on: the controller's own while on it.
 local function activeMovers() return onPad() and padMovers() or profileMovers() end
 
+-- The shipped controller layout (Core/Layout.lua), where the player has
+-- not placed a frame for the controller themselves.
+local function shippedPad(name)
+    local t = ns.defaults.profile.moversPad
+    return t and t[name]
+end
+local function padPoint(name) return padMovers()[name] or shippedPad(name) end
+
 local function savedPoint(name)
     if onPad() then
-        local s = padMovers()[name]
+        local s = padPoint(name)
         if s then return s end
     end
     return profileMovers()[name]
@@ -134,7 +142,7 @@ function Movers:ClearOfPad()
     local lift, low = {}, nil
     for name, m in pairs(self.list) do
         local ml, mr, _, mb = rectIn(m)
-        if ml and not own[name] and not m.disabled and not m.groups.actionbars
+        if ml and not (own[name] or shippedPad(name)) and not m.disabled and not m.groups.actionbars
             and ml < zr and mr > zl and mb < half then
             lift[#lift + 1] = m
             if mb < zt + CLEAR_GAP and (not low or mb < low) then low = mb end
@@ -161,7 +169,7 @@ function Movers:KitsToTop()
     local own = padMovers()
     local names = {}
     for name, m in pairs(self.list) do
-        if m.groups.suite and not own[name] and not m.disabled then names[#names + 1] = name end
+        if m.groups.suite and not (own[name] or shippedPad(name)) and not m.disabled then names[#names + 1] = name end
     end
     table.sort(names)
     local y = TOP_Y

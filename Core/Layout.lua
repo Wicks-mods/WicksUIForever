@@ -553,6 +553,25 @@ local LAYOUT = {
         uf_target = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-505,228",
         uf_targettarget = "BOTTOM,UIParent,BOTTOM,105,190",
     },
+    -- Where the frames sit on the controller (Core/Pad.lua): clear of
+    -- the game's controller bars across the bottom. A frame not here is
+    -- lifted clear of them from its usual place.
+    moversPad = {
+        auras_buffs = "LEFT,UIParent,LEFT,255,-133",
+        auras_debuffs = "LEFT,UIParent,LEFT,307,-66",
+        bar_rep = "BOTTOM,UIParent,BOTTOM,0,28",
+        bar_xp = "BOTTOM,UIParent,BOTTOM,0,20",
+        castbar_player = "BOTTOM,UIParent,BOTTOM,0,324",
+        petbar = "BOTTOMLEFT,UIParent,BOTTOMLEFT,453,164",
+        threatbar = "CENTER,UIParent,CENTER,0,-131",
+        uf_focus = "LEFT,UIParent,LEFT,415,-21",
+        uf_party = "CENTER,UIParent,CENTER,0,-171",
+        uf_pet = "BOTTOMLEFT,UIParent,BOTTOMLEFT,471,245",
+        uf_player = "BOTTOMLEFT,UIParent,BOTTOMLEFT,323,293",
+        uf_raid = "LEFT,UIParent,LEFT,0,124",
+        uf_target = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-453,294",
+        uf_targettarget = "RIGHT,UIParent,RIGHT,-529,-73",
+    },
     nameplates = {
         buffSize = 18,
         buffs = false,
@@ -1529,7 +1548,7 @@ local LAYOUT = {
     },
 }
 
-local OPEN = { movers = true, styleSizes = true }
+local OPEN = { movers = true, moversPad = true, styleSizes = true }
 
 local function over(dst, src, open)
     for k, v in pairs(src) do

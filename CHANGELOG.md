@@ -25,6 +25,10 @@
 - The bars other Wick addons put on screen, such as a class kit's strip,
   go to the top middle of the screen on the controller, one under the
   next, leaving the bottom to the controller bars.
+- A controller layout ships with it: the player, target, pet and focus
+  frames, the cast bar, the threat bar, the buffs, the party and raid
+  frames, the pet bar and the experience bar each have a place clear of
+  the controller bars. Reset on the controller puts a frame back to it.
 - Each part can be switched off under Action bars, Controller.
 - Keys for the settings and for moving frames, under Key Bindings, Wick's
   UI. On the controller a typed command (/wui, or any addon's, or the
