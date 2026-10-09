@@ -40,14 +40,12 @@ function Q:Accept()
     callGame("AcceptQuest")
 end
 
--- An escort or a shared quest raises its own confirmation. Accepting is
--- still accepting, so the same setting covers it.
-function Q:ConfirmAccept()
-    if not on("autoAcceptQuests") then return end
-    callGame("ConfirmAcceptQuest")
-    local hide = rawget(_G, "StaticPopup_Hide")
-    if hide then Core.safe(hide, "QUEST_ACCEPT") end
-end
+-- An escort or a shared quest asks in a dialog of the game's own, and
+-- that one is left for you to answer. Accepting through the API left the
+-- dialog up, and hiding a game dialog from an addon taints the game's
+-- list of shown dialogs (on the controller its focus code then ran past
+-- the client's time limit in our name).
+function Q:ConfirmAccept() end
 
 -- The npc is telling you what it still wants. If you have it, ask for
 -- the reward screen; if you do not, there is nothing to do.

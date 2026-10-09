@@ -33,10 +33,11 @@ function L:Init()
 
     ns:On("LOOT_BIND_CONFIRM", function(_, slot)
         if not ns.db().confirmBoP then return end
-        -- Confirming is an ordinary call, but the dialog Blizzard raises
-        -- alongside it has to go or it sits there orphaned.
+        -- Confirming is an ordinary call. The dialog the game raises
+        -- alongside it is the game's to close, which it does as the loot
+        -- window goes: hiding a game dialog from an addon taints the
+        -- game's list of shown dialogs, and on the controller its focus
+        -- code then ran past the client's time limit in our name.
         if ConfirmLootSlot then Core.safe(ConfirmLootSlot, slot) end
-        local popup = rawget(_G, "StaticPopup_Hide")
-        if popup then Core.safe(popup, "LOOT_BIND") end
     end)
 end

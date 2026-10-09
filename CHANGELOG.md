@@ -33,6 +33,15 @@
   ran past the client's limit on how long an addon may run at once: the
   game lagged, then closed.
 
+### Comforts
+
+- Wick's code no longer closes the game's own dialogs. Confirming a
+  bind-on-pickup item left its dialog for the game to close, which it
+  does as the loot window goes. An escort or shared quest's dialog is
+  left for you to answer. Closing them from an addon tainted the game's
+  list of shown dialogs; on the controller the game's focus code then ran
+  past the client's time limit in Wick's name, and the game lagged.
+
 ### Settings
 
 - The settings search no longer stalls. Its list of every setting was
