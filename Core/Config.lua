@@ -346,7 +346,7 @@ function Config:AddPage(key, title, builder, opts)
     page.onChange = opts.onChange
     page.sort = opts.order or (#self.order * 10)
     page.built = nil
-    self.index = nil
+    self:DropIndex()
     return page
 end
 
@@ -374,7 +374,7 @@ function Config:Rebuild(key)
     page.content = nil
     page.layout = nil
     page.built = nil
-    self.index = nil
+    self:DropIndex()
     if self.current == key then self:Show(key) end
 end
 
@@ -457,32 +457,79 @@ local function allPages()
     return out
 end
 
-function Config:Index()
-    if self.index then return self.index end
+-- A page added or rebuilt: the list is made again, from the start if one
+-- was being made, for whoever was waiting on it.
+function Config:DropIndex()
+    self.index = nil
+    if self.indexing then
+        self.indexing = nil
+        C_Timer.After(0, function() Config:IndexAsync() end)
+    end
+end
+
+-- One page into the index. A builder that stops part way is indexed as
+-- far as it got.
+function Config:IndexPage(page, out, errors)
     if not self.probeHolder then
         self.probeHolder = CreateFrame("Frame")
         self.probeHolder:Hide()
     end
-    local out = {}
-    -- A builder that stops part way is indexed as far as it got.
-    self.probeErrors = {}
-    for _, page in ipairs(allPages()) do
-        local parent = page.parent and self.pages[page.parent]
-        local where = parent and (plain(parent.title) .. " > " .. plain(page.title)) or plain(page.title)
-        out[#out + 1] = { kind = "page", text = plain(page.title), tooltip = "", page = page,
-            path = parent and plain(parent.title) or "Page" }
-        local P = setmetatable({ page = page, content = self.probeHolder, x = 0, y = 0, col = 0, rowH = 0,
-            controls = {}, n = 0, found = {} }, Probe)
-        local ok, err = pcall(page.builder, P)
-        if not ok then self.probeErrors[#self.probeErrors + 1] = page.key .. ": " .. tostring(err) end
-        for _, e in ipairs(P.found) do
-            e.page = page
-            e.path = (e.heading and e.heading ~= e.text) and (where .. " > " .. e.heading) or where
-            out[#out + 1] = e
-        end
+    local parent = page.parent and self.pages[page.parent]
+    local where = parent and (plain(parent.title) .. " > " .. plain(page.title)) or plain(page.title)
+    out[#out + 1] = { kind = "page", text = plain(page.title), tooltip = "", page = page,
+        path = parent and plain(parent.title) or "Page" }
+    local P = setmetatable({ page = page, content = self.probeHolder, x = 0, y = 0, col = 0, rowH = 0,
+        controls = {}, n = 0, found = {} }, Probe)
+    local ok, err = pcall(page.builder, P)
+    if not ok then errors[#errors + 1] = page.key .. ": " .. tostring(err) end
+    for _, e in ipairs(P.found) do
+        e.page = page
+        e.path = (e.heading and e.heading ~= e.text) and (where .. " > " .. e.heading) or where
+        out[#out + 1] = e
     end
-    self.index = out
+end
+
+-- Every page at once.
+function Config:Index()
+    if self.index then return self.index end
+    local out, errors = {}, {}
+    for _, page in ipairs(allPages()) do self:IndexPage(page, out, errors) end
+    self.index, self.probeErrors, self.indexing = out, errors, nil
     return out
+end
+
+-- The window's way: one page a frame. Run all at once, the builders went
+-- past the client's limit on how long an addon may run in one go, worse
+-- on the controller, where the game looks over every frame an addon
+-- makes; and as the list was never finished, every key typed into the
+-- search began it again. done(index) runs when it is ready.
+function Config:IndexAsync(done)
+    if self.index then
+        if done then done(self.index) end
+        return
+    end
+    self.indexWaiters = self.indexWaiters or {}
+    if done then self.indexWaiters[#self.indexWaiters + 1] = done end
+    if self.indexing then return end
+    local job = { pages = allPages(), i = 0, out = {}, errors = {} }
+    self.indexing = job
+    local driver = self.indexDriver or CreateFrame("Frame")
+    self.indexDriver = driver
+    driver:SetScript("OnUpdate", function(f)
+        -- A page added or rebuilt meanwhile starts the list again.
+        if Config.indexing ~= job then f:SetScript("OnUpdate", nil) return end
+        job.i = job.i + 1
+        local page = job.pages[job.i]
+        if page then
+            Config:IndexPage(page, job.out, job.errors)
+            return
+        end
+        f:SetScript("OnUpdate", nil)
+        Config.index, Config.probeErrors, Config.indexing = job.out, job.errors, nil
+        local waiters = Config.indexWaiters
+        Config.indexWaiters = {}
+        for _, w in ipairs(waiters) do pcall(w, Config.index) end
+    end)
 end
 
 -- Every word typed has to be in the setting's name, its page or heading,
@@ -839,6 +886,11 @@ function Config:Show(key)
     self:RefreshPage(page)
     drawNav()
     frame:Show()
+    -- The search's list starts as the window opens, a page a frame, so it
+    -- is ready by the time anything is typed.
+    if not self.index and not self.indexing then
+        C_Timer.After(0.5, function() Config:IndexAsync() end)
+    end
 end
 
 -- The results, in place of the page: each a row with the setting's name
@@ -886,7 +938,20 @@ end
 
 function Config:ShowResults(query)
     if not frame then return end
-    local hits = self:Search(query)
+    -- Until the list is made the results say so, and fill in by themselves
+    -- once it is.
+    local typed = {}
+    for w in (query or ""):gmatch("%S+") do typed[#typed + 1] = w end
+    local pending = not self.index and #table.concat(typed, " ") >= 2
+    local hits
+    if pending then
+        hits = {}
+        self:IndexAsync(function()
+            if frame:IsShown() and Config.searchBox then Config:ShowResults(Config.searchBox:GetText()) end
+        end)
+    else
+        hits = self:Search(query)
+    end
     self.hits = hits
     if not hits then
         -- Nothing to search for: the page again.
@@ -915,7 +980,9 @@ function Config:ShowResults(query)
     local words = {}
     for w in query:lower():gmatch("%S+") do words[#words + 1] = w end
     local n = #hits
-    if n == 0 then
+    if pending then
+        r.count:SetText("Looking through every page...")
+    elseif n == 0 then
         r.count:SetText("Nothing matches. Try fewer letters, or another word for it.")
     elseif n > MAX_HITS then
         r.count:SetText(("%d found. The first %d are here; another word narrows them."):format(n, MAX_HITS))
@@ -1015,18 +1082,6 @@ function Config:Open(key)
         return
     end
     self:Show(key)
-end
-
--- The window opened on a search, as /wui <words> does.
-function Config:OpenSearch(query)
-    if InCombatLockdown() then
-        ns.A:Print("the settings will open when the fight is over.")
-        ns:AfterCombat("config", function() Config:OpenSearch(query) end)
-        return
-    end
-    self:Show()
-    self.searchBox:SetText(query or "")
-    self:ShowResults(query or "")
 end
 
 function Config:Hide()

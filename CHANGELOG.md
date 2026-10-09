@@ -26,6 +26,23 @@
   go to the top middle of the screen on the controller, one under the
   next, leaving the bottom to the controller bars.
 - Each part can be switched off under Action bars, Controller.
+- Switching between the controller and the mouse and keyboard is acted on
+  once the interface has settled on one, and only the bars' show and hide
+  changes. Typing with a controller in hand flips the interface back and
+  forth many times a second, and laying every bar out again on each flip
+  ran past the client's limit on how long an addon may run at once: the
+  game lagged, then closed.
+
+### Settings
+
+- The settings search no longer stalls. Its list of every setting was
+  made in one go the first time anything was typed, which on the
+  controller ran past the client's time limit and, never finishing,
+  started again with every key. It is now made a page a frame from the
+  moment the window opens; a search typed before it is ready says it is
+  looking and fills in by itself.
+- Searching is the box over the settings list alone. /wui followed by
+  other words lists the commands again, as before 0.12.0.
 
 ## 0.12.0 (2026-10-08)
 

@@ -215,6 +215,18 @@ function S:UpdateStance()
     end
 end
 
+-- The stance and pet bars' show and hide alone (AB:ApplyVisibility).
+function S:ApplyVisibility()
+    local d = AB:db().stance
+    if self.stance and d.enable and (GetNumShapeshiftForms() or 0) > 0 then
+        RegisterStateDriver(self.stance, "visibility", AB:Visibility(d.visibility))
+    end
+    d = AB:db().pet
+    if self.pet and d.enable then
+        RegisterStateDriver(self.pet, "visibility", AB:Visibility(d.visibility))
+    end
+end
+
 function S:LayoutStance()
     local bar = self.stance
     local d = AB:db().stance

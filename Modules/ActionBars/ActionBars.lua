@@ -634,6 +634,21 @@ function AB:Visibility(cond)
     return s
 end
 
+-- Only the bars' show and hide, for the interface changing between the
+-- controller and the mouse and keyboard.
+function AB:ApplyVisibility()
+    ns:AfterCombat("ab:visibility", function()
+        local g = self:db()
+        for _, id in ipairs(self.BAR_IDS) do
+            local bar, d = self.bars[id], g.bars[id]
+            if bar and d and d.enable then
+                RegisterStateDriver(bar, "visibility", self:Visibility(d.visibility or VIS_OTHER))
+            end
+        end
+        if ns.Special and ns.Special.ApplyVisibility then ns.Special:ApplyVisibility() end
+    end)
+end
+
 function AB:LayoutBar(id)
     local bar = self.bars[id]
     local d = self:db().bars[id]

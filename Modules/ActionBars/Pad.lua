@@ -220,30 +220,13 @@ end)
 -- ============================================================
 -- Switching
 -- ============================================================
-local function allBars()
-    local out = {}
-    for _, bar in pairs(AB.bars or {}) do out[#out + 1] = bar end
-    local S = ns.Special
-    if S then
-        if S.stance then out[#out + 1] = S.stance end
-        if S.pet then out[#out + 1] = S.pet end
-    end
-    return out
-end
-
+-- Only what differs between the two styles: the relay, and the bars'
+-- show and hide (in a fight that waits for it to end). A full layout of
+-- every bar on each change of style was too much to run at once.
 function PadBars:Changed(on)
     if not AB.initialized then return end
     self:Relay(on)
-    -- In a fight the bars cannot be hidden, only faded; the hiding waits.
-    if on and Pad:HideBars() and InCombatLockdown() then
-        for _, bar in ipairs(allBars()) do bar:SetAlpha(0) end
-    end
-    AB:Update()
-    if ns.Special and ns.Special.Update then ns.Special:Update() end
+    AB:ApplyVisibility()
 end
 
 Pad:OnChange(function(on) PadBars:Changed(on) end)
--- Already on the controller when the interface loads.
-ns:On("PLAYER_ENTERING_WORLD", function()
-    if Pad:Active() and not PadBars.relaying then PadBars:Changed(true) end
-end)

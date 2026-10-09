@@ -386,7 +386,6 @@ local HELP = {
     "/wui inspect Name.Key  the same for a frame by the name /fstack shows",
     "/wui inspect auras  the first aura on your target's frame (auras:player for yours)",
     "/wui unskin [name]  undo the last /wui skin, or the named one",
-    "/wui <words>  find a setting by name, as the search box over the settings list does",
 }
 
 local function slash(_, msg)
@@ -413,12 +412,8 @@ local function slash(_, msg)
         else
             for _, e in ipairs(ns.errors) do A:Print(e) end
         end
-    elseif cmd == "help" or cmd == "?" then
-        for _, line in ipairs(HELP) do A:Print(line) end
     else
-        -- Anything else is a search of the settings: /wui nameplate size.
-        local query = (msg or ""):gsub("^%s*search%s+", "")
-        ns.Config:OpenSearch(query)
+        for _, line in ipairs(HELP) do A:Print(line) end
     end
 end
 

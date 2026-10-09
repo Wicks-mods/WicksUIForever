@@ -41,8 +41,15 @@ function Pad:HideBars() return self:Active() and self:Settings().hideBars ~= fal
 -- fn(active) runs whenever the interface changes style.
 function Pad:OnChange(fn) self.listeners[#self.listeners + 1] = fn end
 
-function Pad:Changed()
+-- The style last acted on. The interface loads in the mouse and keyboard
+-- style's layout; a controller already in use is acted on as it enters
+-- the world.
+Pad.applied = false
+
+function Pad:Apply()
     local on = self:Active()
+    if on == self.applied then return end
+    self.applied = on
     for _, fn in ipairs(self.listeners) do
         local ok, err = pcall(fn, on)
         if not ok then
@@ -52,4 +59,19 @@ function Pad:Changed()
     end
 end
 
+-- With a controller in hand and the keyboard in use (typing), the
+-- interface can change style many times a second. Acting on each change
+-- went past the client's limit on how long an addon may run at once, and
+-- the game lagged and then closed. So a change is acted on once the style
+-- has held for a moment, and only if it differs from the one last acted
+-- on.
+local SETTLE = 0.4
+local gen = 0
+function Pad:Changed()
+    gen = gen + 1
+    local mine = gen
+    C_Timer.After(SETTLE, function() if mine == gen then Pad:Apply() end end)
+end
+
 ns:On("INPUT_DEVICE_INTERFACE_TRANSITION", function() Pad:Changed() end)
+ns:On("PLAYER_ENTERING_WORLD", function() Pad:Changed() end)
