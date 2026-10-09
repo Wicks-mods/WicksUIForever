@@ -1,5 +1,7 @@
 <Bindings>
-	<Binding name="WICKSUIBAR2BUTTON1" category="BINDING_HEADER_WICKSUI" header="WICKSUI"/>
+	<Binding name="WICKSUI_SETTINGS" category="BINDING_HEADER_WICKSUI" header="WICKSUI">WicksUI_ToggleSettings()</Binding>
+	<Binding name="WICKSUI_MOVE" category="BINDING_HEADER_WICKSUI">WicksUI_ToggleMovers()</Binding>
+	<Binding name="WICKSUIBAR2BUTTON1" category="BINDING_HEADER_WICKSUI"/>
 	<Binding name="WICKSUIBAR2BUTTON2" category="BINDING_HEADER_WICKSUI"/>
 	<Binding name="WICKSUIBAR2BUTTON3" category="BINDING_HEADER_WICKSUI"/>
 	<Binding name="WICKSUIBAR2BUTTON4" category="BINDING_HEADER_WICKSUI"/>

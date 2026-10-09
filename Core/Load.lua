@@ -388,8 +388,28 @@ local HELP = {
     "/wui unskin [name]  undo the last /wui skin, or the named one",
 }
 
+-- Keys for the settings and the movers (Bindings.xml), and the minimap
+-- button: ways in that never go through the chat box. On the controller
+-- the game runs a typed addon command, then hides its chat box, and that
+-- hide tears down the controller bindings and calls a protected function
+-- in the addon's name: blocked, and the controller interface left tainted
+-- until a reload (its focus work billed to the addon, its navigation
+-- erroring on nameplates). The game's own /console does the same. A game
+-- bug; the notice below steers round it.
+_G.BINDING_NAME_WICKSUI_SETTINGS = "Open the settings"
+_G.BINDING_NAME_WICKSUI_MOVE = "Move frames"
+function _G.WicksUI_ToggleSettings() ns.Config:Toggle() end
+function _G.WicksUI_ToggleMovers() ns.Movers:Toggle() end
+
+local function padNotice()
+    if not (ns.Pad and ns.Pad:Active()) or ns.padSlashWarned then return end
+    ns.padSlashWarned = true
+    A:Print("on the controller a typed command trips a bug in the game's controller interface, which can lag and crash until you reload. Open the settings from the minimap button or a key (Key Bindings, Wick's UI) instead.")
+end
+
 local function slash(_, msg)
     local cmd = (msg or ""):lower()
+    padNotice()
     -- The settings and the movers open on the next frame. Everything the
     -- game does after a slash command (closing the chat box, and on the
     -- controller moving its focus) counts as ours, and Forever stops an

@@ -26,6 +26,16 @@
   go to the top middle of the screen on the controller, one under the
   next, leaving the bottom to the controller bars.
 - Each part can be switched off under Action bars, Controller.
+- Keys for the settings and for moving frames, under Key Bindings, Wick's
+  UI. On the controller a typed command (/wui, or any addon's, or the
+  game's own /console) trips a bug in the game's controller interface:
+  after the command the game hides its chat box, which tears down the
+  controller bindings and calls a protected function in the addon's
+  name. The call is blocked and the controller interface is left tainted
+  until a reload: its focus work is billed to the addon and runs into the
+  client's time limit, its navigation errors on nameplates, and a click
+  on the ground can crash the game. Typing a command on the controller
+  now prints a notice, once, pointing to the minimap button and the keys.
 - Switching between the controller and the mouse and keyboard is acted on
   once the interface has settled on one, and only the bars' show and hide
   changes. Typing with a controller in hand flips the interface back and
