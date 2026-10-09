@@ -346,6 +346,7 @@ function Config:AddPage(key, title, builder, opts)
     page.onChange = opts.onChange
     page.sort = opts.order or (#self.order * 10)
     page.built = nil
+    self.index = nil
     return page
 end
 
@@ -373,7 +374,145 @@ function Config:Rebuild(key)
     page.content = nil
     page.layout = nil
     page.built = nil
+    self.index = nil
     if self.current == key then self:Show(key) end
+end
+
+-- ============================================================
+-- Search
+-- ============================================================
+-- Every setting on every page, found by its name. Pages are only built
+-- when they are opened, so the search runs each page's builder once
+-- against a probe: a layout that writes down what each control is called
+-- (its label, its tooltip, the heading over it, the page it is on) where
+-- the real one would make it. A frame a builder makes by hand goes on a
+-- hidden holder that is never shown. The list is kept until a page is
+-- added or rebuilt.
+local function plain(s)
+    if type(s) ~= "string" then return "" end
+    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", "")
+    return s
+end
+Config.Plain = plain
+
+-- What a builder gets back from a probed control: anything asked of it
+-- answers with itself, so a builder that sets something on its control
+-- runs on.
+local absorb
+absorb = setmetatable({}, { __index = function() return absorb end, __call = function() return absorb end })
+
+local Probe = setmetatable({}, { __index = Layout })
+Probe.__index = Probe
+
+-- Counts each control in the order the real layout places it, so a result
+-- finds its control on the built page.
+local function found(P, kind, text, tooltip)
+    P.n = P.n + 1
+    text = plain(text)
+    if text == "" then return absorb end
+    P.found[#P.found + 1] = { kind = kind, text = text, tooltip = plain(tooltip), heading = P.heading, index = P.n }
+    return absorb
+end
+
+function Probe:Place(f) self.n = self.n + 1; return f end
+function Probe:Heading(text)
+    self.heading = plain(text)
+    return found(self, "heading", text)
+end
+function Probe:Note() self.n = self.n + 1; return absorb end
+function Probe:Toggle(text, _, opts) return found(self, "setting", text, opts and opts.tooltip) end
+function Probe:Slider(text, _, _, _, _, opts) return found(self, "setting", text, opts and opts.tooltip) end
+function Probe:Dropdown(text, _, _, opts) return found(self, "setting", text, opts and opts.tooltip) end
+function Probe:Color(text, _, opts) return found(self, "setting", text, opts and opts.tooltip) end
+function Probe:Input(text, _, opts) return found(self, "setting", text, opts and opts.tooltip) end
+function Probe:TextArea(text, _, opts) return found(self, "setting", text, opts and opts.tooltip) end
+function Probe:Button(text, _, opts) return found(self, "button", text, opts and opts.tooltip) end
+function Probe:Custom(f) self.n = self.n + 1; return f end
+function Probe:CopyFrom() end
+function Probe:Finish() end
+
+-- The pages in the order the list shows them, children under their parent.
+local function allPages()
+    local roots, kids = {}, {}
+    for _, key in ipairs(Config.order) do
+        local p = Config.pages[key]
+        if p.parent then
+            kids[p.parent] = kids[p.parent] or {}
+            table.insert(kids[p.parent], p)
+        else
+            roots[#roots + 1] = p
+        end
+    end
+    local bySort = function(a, b) return a.sort < b.sort end
+    table.sort(roots, bySort)
+    local out = {}
+    for _, p in ipairs(roots) do
+        out[#out + 1] = p
+        local k = kids[p.key]
+        if k then
+            table.sort(k, bySort)
+            for _, c in ipairs(k) do out[#out + 1] = c end
+        end
+    end
+    return out
+end
+
+function Config:Index()
+    if self.index then return self.index end
+    if not self.probeHolder then
+        self.probeHolder = CreateFrame("Frame")
+        self.probeHolder:Hide()
+    end
+    local out = {}
+    -- A builder that stops part way is indexed as far as it got.
+    self.probeErrors = {}
+    for _, page in ipairs(allPages()) do
+        local parent = page.parent and self.pages[page.parent]
+        local where = parent and (plain(parent.title) .. " > " .. plain(page.title)) or plain(page.title)
+        out[#out + 1] = { kind = "page", text = plain(page.title), tooltip = "", page = page,
+            path = parent and plain(parent.title) or "Page" }
+        local P = setmetatable({ page = page, content = self.probeHolder, x = 0, y = 0, col = 0, rowH = 0,
+            controls = {}, n = 0, found = {} }, Probe)
+        local ok, err = pcall(page.builder, P)
+        if not ok then self.probeErrors[#self.probeErrors + 1] = page.key .. ": " .. tostring(err) end
+        for _, e in ipairs(P.found) do
+            e.page = page
+            e.path = (e.heading and e.heading ~= e.text) and (where .. " > " .. e.heading) or where
+            out[#out + 1] = e
+        end
+    end
+    self.index = out
+    return out
+end
+
+-- Every word typed has to be in the setting's name, its page or heading,
+-- or its tooltip. A name holding the whole search comes first, then one
+-- holding every word, then the rest.
+function Config:Search(query)
+    local words = {}
+    for w in (query or ""):lower():gmatch("%S+") do words[#words + 1] = w end
+    local q = table.concat(words, " ")
+    if #q < 2 then return nil end
+    local hits = {}
+    for i, e in ipairs(self:Index()) do
+        local name, where, tip = e.text:lower(), e.path:lower(), e.tooltip:lower()
+        local all, inName = true, true
+        for _, w in ipairs(words) do
+            local n = name:find(w, 1, true) ~= nil
+            if not n then inName = false end
+            if not (n or where:find(w, 1, true) or tip:find(w, 1, true)) then all = false; break end
+        end
+        if all then
+            local score = (name:find(q, 1, true) and 4) or (inName and 3) or (where:find(q, 1, true) and 2) or 1
+            if e.kind == "page" then score = score + 0.5 end
+            hits[#hits + 1] = { entry = e, score = score, order = i }
+        end
+    end
+    table.sort(hits, function(a, b)
+        if a.score ~= b.score then return a.score > b.score end
+        return a.order < b.order
+    end)
+    return hits
 end
 
 -- ============================================================
@@ -618,8 +757,39 @@ local function build()
         ns:SetTemplate(navBG, "None")
     end
 
+    -- The search box heads the page list; the list starts under it.
+    local search = W:EditBox(navBG, nil, NAV_W - 16, nil)
+    search:SetPoint("TOPLEFT", 8, -8)
+    local hint = ns:CreateText(search, 12, "LEFT", "NONE")
+    hint:SetPoint("LEFT", 6, 0)
+    hint:SetText("Search settings")
+    ns:TextColor(hint, "muted")
+    local function showHint() hint:SetShown(search:GetText() == "" and not search:HasFocus()) end
+    search:SetScript("OnTextChanged", function(self)
+        showHint()
+        Config:ShowResults(self:GetText())
+    end)
+    search:HookScript("OnEditFocusGained", function(self)
+        showHint()
+        -- Back into a box that still holds a search brings its results back.
+        if self:GetText() ~= "" then Config:ShowResults(self:GetText()) end
+    end)
+    search:HookScript("OnEditFocusLost", showHint)
+    -- Escape empties it and puts the page back; Enter opens the top result.
+    search:SetScript("OnEscapePressed", function(self)
+        self:SetText("")
+        self:ClearFocus()
+    end)
+    search:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+        local top = Config.hits and Config.hits[1]
+        if top then Config:Go(top.entry) end
+    end)
+    Config.searchBox = search
+
     nav = makeScroll(navBG)
-    nav:SetAllPoints()
+    nav:SetPoint("TOPLEFT", 0, -34)
+    nav:SetPoint("BOTTOMRIGHT")
     nav.child:SetWidth(NAV_W)
 
     scroll = makeScroll(frame)
@@ -639,6 +809,7 @@ function Config:Show(key)
     if self.current and self.pages[self.current] and self.pages[self.current].content then
         self.pages[self.current].content:Hide()
     end
+    if self.results then self.results:Hide() end
     self.current = key
 
     if not page.content then
@@ -670,6 +841,173 @@ function Config:Show(key)
     frame:Show()
 end
 
+-- The results, in place of the page: each a row with the setting's name
+-- (the words found in the accent) over where it lives. A click opens its
+-- page at the setting.
+local MAX_HITS = 40
+
+local function marked(text, words)
+    local low = text:lower()
+    local spans = {}
+    for _, w in ipairs(words) do
+        local s, e = low:find(w, 1, true)
+        if s then spans[#spans + 1] = { s, e } end
+    end
+    table.sort(spans, function(a, b) return a[1] < b[1] end)
+    local out, at = {}, 1
+    for _, sp in ipairs(spans) do
+        if sp[1] >= at then
+            out[#out + 1] = text:sub(at, sp[1] - 1)
+            out[#out + 1] = Chrome:Esc("fel") .. text:sub(sp[1], sp[2]) .. "|r"
+            at = sp[2] + 1
+        end
+    end
+    out[#out + 1] = text:sub(at)
+    return table.concat(out)
+end
+
+local function resultRow(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(COL_W * 2 + 24, 36)
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    ns:Fill(hl, C.fel[1], C.fel[2], C.fel[3], 0.12)
+    b.name = ns:CreateText(b, 13, "LEFT", "NONE")
+    b.name:SetPoint("TOPLEFT", 8, -4)
+    b.name:SetPoint("TOPRIGHT", -8, -4)
+    b.name:SetWordWrap(false)
+    b.path = ns:CreateText(b, 11, "LEFT", "NONE")
+    b.path:SetPoint("TOPLEFT", b.name, "BOTTOMLEFT", 0, -3)
+    b.path:SetPoint("TOPRIGHT", b.name, "BOTTOMRIGHT", 0, -3)
+    b.path:SetWordWrap(false)
+    b:SetScript("OnClick", function(self) if self.entry then Config:Go(self.entry) end end)
+    return b
+end
+
+function Config:ShowResults(query)
+    if not frame then return end
+    local hits = self:Search(query)
+    self.hits = hits
+    if not hits then
+        -- Nothing to search for: the page again.
+        if self.results and self.results:IsShown() then self:Show(self.current) end
+        return
+    end
+    local r = self.results
+    if not r then
+        r = CreateFrame("Frame", nil, scroll.child)
+        r:SetPoint("TOPLEFT")
+        r:SetWidth(WIDTH - NAV_W - 4)
+        r.title = ns:CreateText(r, 18, "LEFT", "NONE")
+        ns:HeadingFont(r.title, 18)
+        r.title:SetPoint("TOPLEFT", PAD, -PAD)
+        if Chrome.SetHeadingText then Chrome:SetHeadingText(r.title, "Search") else r.title:SetText("Search") end
+        if r.title.wickPlate then ns:HeadingColor(r.title) end
+        r.count = ns:CreateText(r, 12, "LEFT", "NONE")
+        r.count:SetPoint("TOPLEFT", PAD, -PAD - 30)
+        ns:TextColor(r.count, "muted")
+        r.rows = {}
+        self.results = r
+    end
+    if self.current and self.pages[self.current] and self.pages[self.current].content then
+        self.pages[self.current].content:Hide()
+    end
+    local words = {}
+    for w in query:lower():gmatch("%S+") do words[#words + 1] = w end
+    local n = #hits
+    if n == 0 then
+        r.count:SetText("Nothing matches. Try fewer letters, or another word for it.")
+    elseif n > MAX_HITS then
+        r.count:SetText(("%d found. The first %d are here; another word narrows them."):format(n, MAX_HITS))
+    else
+        r.count:SetText(n == 1 and "1 found." or ("%d found."):format(n))
+    end
+    local y = -PAD - 52
+    for i = 1, math.max(#r.rows, math.min(n, MAX_HITS)) do
+        local row = r.rows[i]
+        local hit = i <= MAX_HITS and hits[i]
+        if hit then
+            if not row then
+                row = resultRow(r)
+                r.rows[i] = row
+            end
+            local e = hit.entry
+            row.entry = e
+            row.name:SetText(marked(e.text, words))
+            ns:TextColor(row.name, "text")
+            local where = e.path
+            if e.kind == "page" then
+                where = e.path == "Page" and "A page" or ("A page under " .. e.path)
+            elseif e.kind == "heading" then
+                where = "A section of " .. e.path
+            end
+            row.path:SetText(where)
+            ns:TextColor(row.path, "muted")
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", r, "TOPLEFT", PAD, y)
+            row:Show()
+            y = y - 40
+        elseif row then
+            row:Hide()
+            row.entry = nil
+        end
+    end
+    r:SetHeight(-y + PAD)
+    r:Show()
+    scroll.child:SetHeight(r:GetHeight())
+    scroll:SetVerticalScroll(0)
+    if scroll.layoutBar then C_Timer.After(0, scroll.layoutBar) end
+end
+
+-- A result opened: its page, scrolled so the setting sits near the top,
+-- and the setting lit for a moment so the eye finds it.
+local spot
+local function light(f, content)
+    if not spot then
+        spot = CreateFrame("Frame")
+        local t = spot:CreateTexture(nil, "BACKGROUND")
+        t:SetAllPoints()
+        ns:Fill(t, C.fel[1], C.fel[2], C.fel[3], 0.2)
+        spot:SetScript("OnUpdate", function(self, e)
+            self.left = (self.left or 0) - e
+            if self.left <= 0 then self:Hide() return end
+            self:SetAlpha(math.min(1, self.left / 0.6))
+        end)
+    end
+    spot:SetParent(content)
+    spot:SetFrameLevel(math.max(0, f:GetFrameLevel() - 1))
+    spot:ClearAllPoints()
+    spot:SetPoint("TOPLEFT", f, "TOPLEFT", -6, 4)
+    spot:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 6, -4)
+    spot.left = 1.8
+    spot:SetAlpha(1)
+    spot:Show()
+end
+
+function Config:Go(entry)
+    local page = entry and entry.page
+    if not page then return end
+    self:Show(page.key)
+    if entry.kind == "page" or not entry.index then return end
+    local L = page.layout
+    if not L then return end
+    -- The control in the same place on the built page, checked by its
+    -- name; a page whose controls have moved since is searched by name.
+    local f = L.controls[entry.index]
+    if f and f.labelText and plain(f.labelText) ~= entry.text then f = nil end
+    if not f then
+        for _, c in ipairs(L.controls) do
+            if c.labelText and plain(c.labelText) == entry.text then f = c; break end
+        end
+    end
+    if not f then return end
+    local _, _, _, _, y = f:GetPoint(1)
+    local max = math.max(0, scroll.child:GetHeight() - scroll:GetHeight())
+    scroll:SetVerticalScroll(math.max(0, math.min(max, -(y or 0) - 40)))
+    if scroll.layoutBar then scroll.layoutBar() end
+    light(f, page.content)
+end
+
 function Config:Open(key)
     if InCombatLockdown() then
         ns.A:Print("the settings will open when the fight is over.")
@@ -677,6 +1015,18 @@ function Config:Open(key)
         return
     end
     self:Show(key)
+end
+
+-- The window opened on a search, as /wui <words> does.
+function Config:OpenSearch(query)
+    if InCombatLockdown() then
+        ns.A:Print("the settings will open when the fight is over.")
+        ns:AfterCombat("config", function() Config:OpenSearch(query) end)
+        return
+    end
+    self:Show()
+    self.searchBox:SetText(query or "")
+    self:ShowResults(query or "")
 end
 
 function Config:Hide()

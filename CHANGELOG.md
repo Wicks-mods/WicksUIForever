@@ -33,6 +33,17 @@
   login, when Wick's UI put its own size back; now it becomes the Chat
   page's size, and is saved with it.
 
+### Settings
+
+- A search box over the list of pages finds any setting by name. Every
+  word typed has to be in the setting's name, its page, its section or
+  its tooltip; a name holding the whole search comes first. Each result
+  says where the setting lives, and a click opens its page scrolled to
+  it, lit for a moment so the eye finds it. Enter opens the top result,
+  Escape clears the search and puts the page back. Pages and sections
+  are found too. Typing /wui followed by words opens the settings on
+  that search (/wui help lists the commands).
+
 ### Windows
 
 - The Legacy window's pages are in the look, where they kept the game's
