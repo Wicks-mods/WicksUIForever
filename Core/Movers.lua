@@ -29,6 +29,29 @@ local function profileMovers()
     return p.movers
 end
 
+-- Playing on a controller keeps places of its own: a frame moved while on
+-- the controller stays there for the controller only. Anything not placed
+-- for it takes its usual place, lifted clear of the controller bars.
+local function padMovers()
+    local p = ns.A.db and ns.A.db.profile
+    if not p then return {} end
+    p.moversPad = p.moversPad or {}
+    return p.moversPad
+end
+local function onPad() return ns.Pad and ns.Pad:Active() or false end
+Movers.OnPad = onPad
+
+-- The places a save or a reset works on: the controller's own while on it.
+local function activeMovers() return onPad() and padMovers() or profileMovers() end
+
+local function savedPoint(name)
+    if onPad() then
+        local s = padMovers()[name]
+        if s then return s end
+    end
+    return profileMovers()[name]
+end
+
 -- ============================================================
 -- Placement
 -- ============================================================
@@ -73,23 +96,88 @@ local function apply(mover, pointString)
     end
 end
 
+-- ------------------------------------------------------------
+-- Clear of the controller bars
+-- ------------------------------------------------------------
+-- The frames over the controller bars' width in the lower half of the
+-- screen (the player frame, its cast bar, the threat bar) go up together
+-- by the same amount, just enough for the lowest of them to clear the
+-- bars, so a stack of them keeps its spacing. Frames off to the sides
+-- (chat, party, the info panels) stay where they are. A frame the player
+-- has placed for the controller is left where they put it.
+local CLEAR_GAP = 8
+
+local function rectIn(f)
+    local l, r, t, b = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
+    if not (l and r and t and b) then return end
+    local s = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    return l * s, r * s, t * s, b * s
+end
+
+function Movers:ClearOfPad()
+    if not onPad() or ns.Pad:Settings().clearFrames == false then return end
+    local bars = ns.Pad:Bars()
+    if not bars then return end
+    local zl, zr, zt = rectIn(bars)
+    if not zl then return end
+    zl, zr = zl - CLEAR_GAP, zr + CLEAR_GAP
+    local own = padMovers()
+    local half = UIParent:GetHeight() / 2
+    local lift, low = {}, nil
+    for name, m in pairs(self.list) do
+        local ml, mr, _, mb = rectIn(m)
+        if ml and not own[name] and not m.disabled and not m.groups.actionbars
+            and ml < zr and mr > zl and mb < half then
+            lift[#lift + 1] = m
+            if mb < zt + CLEAR_GAP and (not low or mb < low) then low = mb end
+        end
+    end
+    if not low then return end
+    local d = math.floor(zt + CLEAR_GAP - low + 0.5)
+    for _, m in ipairs(lift) do
+        local p, rel, rp, x, y = m:GetPoint(1)
+        if p then
+            m:ClearAllPoints()
+            m:SetPoint(p, rel, rp, x, (y or 0) + d)
+        end
+    end
+    self.lifted = d
+end
+
+local function placeNow(name)
+    local m = Movers.list[name]
+    if m then apply(m, savedPoint(name) or m.default) end
+end
+
+-- Every frame at once, then the lift on the controller.
+function Movers:PlaceAll()
+    ns:AfterCombat("movers:all", function()
+        self.lifted = nil
+        for name in pairs(self.list) do placeNow(name) end
+        self:ClearOfPad()
+    end)
+end
+
+-- On the controller one frame placed alone puts the whole layout through
+-- the lift again, on the next frame, so the stack moves as one.
+local padPending
 function Movers:Place(name)
     local m = self.list[name]
     if not m then return end
     ns:AfterCombat("mover:" .. name, function()
-        apply(m, profileMovers()[name] or m.default)
+        placeNow(name)
+        if onPad() and not padPending then
+            padPending = true
+            C_Timer.After(0, function() padPending = nil; Movers:PlaceAll() end)
+        end
     end)
-end
-
-function Movers:PlaceAll()
-    for name in pairs(self.list) do self:Place(name) end
 end
 
 function Movers:Save(name)
     local m = self.list[name]
     local point, x, y = anchorFor(m)
     local s = ("%s,UIParent,%s,%d,%d"):format(point, point, x, y)
-    profileMovers()[name] = s
+    activeMovers()[name] = s
     apply(m, s)
     if self.nudge and selected == m then self.nudge:Refresh() end
 end
@@ -97,19 +185,23 @@ end
 function Movers:Reset(name)
     local m = self.list[name]
     if not m then return end
-    profileMovers()[name] = nil
+    activeMovers()[name] = nil
     self:Place(name)
     if self.nudge and selected == m then self.nudge:Refresh() end
 end
 
 function Movers:ResetAll(group)
+    local t = activeMovers()
     for name, m in pairs(self.list) do
         if not group or m.groups[group] then
-            profileMovers()[name] = nil
+            t[name] = nil
         end
     end
     self:PlaceAll()
 end
+
+-- The interface changing style puts every frame in that style's place.
+if ns.Pad then ns.Pad:OnChange(function() Movers:PlaceAll() end) end
 
 -- Keep the mover the size of the frame. Modules call this after a layout.
 function Movers:Resize(name)
@@ -305,6 +397,9 @@ function Movers:Unlock()
     end
     self:ShowGrid(ns:G().gridSize or 32)
     self:ShowPanel()
+    if onPad() then
+        ns.A:Print("you are on the controller: a frame moved now keeps that place for the controller only. Reset puts it back where it sits on the mouse and keyboard, clear of the controller bars.")
+    end
 end
 
 function Movers:Lock()

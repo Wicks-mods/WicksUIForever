@@ -21,6 +21,7 @@ Core\Init.lua
 Core\Util.lua
 Core\Media.lua
 Core\Skin.lua
+Core\Pad.lua
 Core\Movers.lua
 Core\Widgets.lua
 Core\Config.lua
@@ -29,6 +30,7 @@ Modules\ActionBars\ActionBars.lua
 Modules\ActionBars\Special.lua
 Modules\ActionBars\Keybind.lua
 Modules\ActionBars\AutoRank.lua
+Modules\ActionBars\Pad.lua
 
 Modules\UnitFrames\Tags.lua
 Modules\UnitFrames\UnitFrames.lua

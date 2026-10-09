@@ -116,6 +116,8 @@ end
 
 local defaults = {
     enable = true,
+    -- Playing on a controller (Core/Pad.lua, Pad.lua here).
+    pad = { hideBars = true, skin = true, clearFrames = true },
     -- Text on buttons
     font          = "Wick",
     hotkeySize    = 12,
@@ -624,6 +626,14 @@ local function activePages(paging)
     return pages
 end
 
+-- A bar's visibility condition, or hide while the game's controller bars
+-- are up in its place.
+function AB:Visibility(cond)
+    if ns.Pad and ns.Pad:HideBars() then return "hide" end
+    local s = (cond or "show"):gsub("[\r\n]", " ")
+    return s
+end
+
 function AB:LayoutBar(id)
     local bar = self.bars[id]
     local d = self:db().bars[id]
@@ -692,7 +702,7 @@ function AB:LayoutBar(id)
     end
 
     if d.enable then
-        RegisterStateDriver(bar, "visibility", (d.visibility or VIS_OTHER):gsub("[\r\n]", " "))
+        RegisterStateDriver(bar, "visibility", AB:Visibility(d.visibility or VIS_OTHER))
         ns.Movers:SetEnabled("bar" .. id, true)
     else
         UnregisterStateDriver(bar, "visibility")
@@ -915,7 +925,27 @@ ns.Config:AddPage("actionbars", "Action bars", function(L)
     L:Note("Bars set to follow the global fade sit at the opacity below, and come up together when any of the reasons you pick is true. Health cannot be one of the reasons: this client keeps your health from addons.")
     L:Slider("Faded opacity", "fadeAlpha", 0, 1, 0.05)
     L:Input("Come up for", "fadeIn", { tooltip = "Any of: combat, target, focus, casting, mouseover. Separate with commas." })
-end, { onChange = onChange, order = 10 })
+
+    -- Only where the client has a controller interface.
+    if rawget(_G, "C_InputInterfaceStyle") then
+        local function pad() return AB:db().pad end
+        local function flag(key) return {
+            get = function() return pad()[key] ~= false end,
+            setter = function(v) pad()[key] = v and true or false end,
+        } end
+        L:Heading("Controller")
+        L:Note("When you play on a controller the game shows its own controller bars, the D-pad and face button clusters, in place of its usual bars. These follow it, and go back the moment you take up the mouse and keyboard.")
+        local o = flag("hideBars")
+        o.tooltip = "Wick's action, stance and pet bars stand aside while the controller is in use, so the game's controller bars are the only ones on screen."
+        L:Toggle("Make way for the controller bars", nil, o)
+        o = flag("skin")
+        o.tooltip = "The controller buttons on tiles in the look, square on the D-pad side and round on the face buttons, with the game's ornate backings gone. The marks for which controller button fires what stay. The Classic look keeps the game's own. Switching it off takes a reload."
+        L:Toggle("Controller bars in the look", nil, o)
+        o = flag("clearFrames")
+        o.tooltip = "The player frame and anything else over the controller bars' width near the bottom goes up together, just clear of them. A frame you move while on the controller keeps that place for the controller only."
+        L:Toggle("Keep frames clear of them", nil, o)
+    end
+end, { onChange = function() onChange(); ns.Movers:PlaceAll() end, order = 10 })
 
 local function barPage(id)
     ns.Config:AddPage("actionbars.bar" .. id, AB:Label(id), function(L)

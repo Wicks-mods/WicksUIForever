@@ -221,7 +221,7 @@ function S:LayoutStance()
     local num = GetNumShapeshiftForms() or 0
     layout(bar, d, num)
     if d.enable and num > 0 then
-        RegisterStateDriver(bar, "visibility", (d.visibility or "show"):gsub("[\r\n]", " "))
+        RegisterStateDriver(bar, "visibility", AB:Visibility(d.visibility))
         ns.Movers:SetEnabled("stancebar", true)
     else
         UnregisterStateDriver(bar, "visibility")
@@ -279,7 +279,7 @@ function S:LayoutPet()
     local d = AB:db().pet
     layout(bar, d)
     if d.enable then
-        RegisterStateDriver(bar, "visibility", (d.visibility or "show"):gsub("[\r\n]", " "))
+        RegisterStateDriver(bar, "visibility", AB:Visibility(d.visibility))
         ns.Movers:SetEnabled("petbar", true)
     else
         UnregisterStateDriver(bar, "visibility")

@@ -1,5 +1,28 @@
 # Wick's UI
 
+## Unreleased
+
+### Controller
+
+- Playing on a controller on Forever, Wick's UI follows the game's
+  controller interface. Its action, stance and pet bars stand aside for
+  the game's controller bars, the D-pad and face button clusters, and
+  come back the moment you take up the mouse and keyboard. They were
+  left up under the controller bars, doubling them.
+- The controller bars wear the look: each button on a tile, square on
+  the D-pad side and round on the face buttons, with the game's ornate
+  rings, shadows and backings gone. The marks for which controller
+  button fires what stay, and a chosen button's ring takes the accent.
+  The Classic look keeps the game's own.
+- The controller buttons get their casts, charges and glows again. Wick's
+  UI had switched off the game's action button events along with its
+  bars, and the controller bars run on the same buttons.
+- The player frame and anything else over the controller bars near the
+  bottom of the screen goes up together, just clear of them. A frame you
+  move while on the controller keeps that place for the controller only,
+  and Reset there gives back its usual place.
+- Each part can be switched off under Action bars, Controller.
+
 ## 0.12.0 (2026-10-08)
 
 ### Whispers
