@@ -117,7 +117,7 @@ end
 local defaults = {
     enable = true,
     -- Playing on a controller (Core/Pad.lua, Pad.lua here).
-    pad = { hideBars = true, skin = true, clearFrames = true },
+    pad = { hideBars = true, skin = true, clearFrames = true, kitsTop = true },
     -- Text on buttons
     font          = "Wick",
     hotkeySize    = 12,
@@ -944,6 +944,9 @@ ns.Config:AddPage("actionbars", "Action bars", function(L)
         o = flag("clearFrames")
         o.tooltip = "The player frame and anything else over the controller bars' width near the bottom goes up together, just clear of them. A frame you move while on the controller keeps that place for the controller only."
         L:Toggle("Keep frames clear of them", nil, o)
+        o = flag("kitsTop")
+        o.tooltip = "The bars other Wick addons put on screen (a class kit's strip) go to the top middle of the screen, one under the next, leaving the bottom to the controller bars. One you move while on the controller keeps that place instead."
+        L:Toggle("Kit bars to the top", nil, o)
     end
 end, { onChange = function() onChange(); ns.Movers:PlaceAll() end, order = 10 })
 

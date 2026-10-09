@@ -18,9 +18,13 @@
   UI had switched off the game's action button events along with its
   bars, and the controller bars run on the same buttons.
 - The player frame and anything else over the controller bars near the
-  bottom of the screen goes up together, just clear of them. A frame you
-  move while on the controller keeps that place for the controller only,
-  and Reset there gives back its usual place.
+  bottom of the screen goes up together, just clear of the controller
+  buttons themselves. A frame you move while on the controller keeps
+  that place for the controller only, and Reset there gives back its
+  usual place.
+- The bars other Wick addons put on screen, such as a class kit's strip,
+  go to the top middle of the screen on the controller, one under the
+  next, leaving the bottom to the controller bars.
 - Each part can be switched off under Action bars, Controller.
 
 ## 0.12.0 (2026-10-08)

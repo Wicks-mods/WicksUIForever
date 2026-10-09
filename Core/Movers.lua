@@ -114,11 +114,19 @@ local function rectIn(f)
     return l * s, r * s, t * s, b * s
 end
 
+-- Where the controller bars are: their buttons where they show, the frame
+-- round them until they do.
+local function padZone()
+    local zl, zr, zt
+    if ns.PadBars and ns.PadBars.Zone then zl, zr, zt = ns.PadBars:Zone() end
+    if zl then return zl, zr, zt end
+    local bars = ns.Pad:Bars()
+    if bars then return rectIn(bars) end
+end
+
 function Movers:ClearOfPad()
     if not onPad() or ns.Pad:Settings().clearFrames == false then return end
-    local bars = ns.Pad:Bars()
-    if not bars then return end
-    local zl, zr, zt = rectIn(bars)
+    local zl, zr, zt = padZone()
     if not zl then return end
     zl, zr = zl - CLEAR_GAP, zr + CLEAR_GAP
     local own = padMovers()
@@ -144,16 +152,39 @@ function Movers:ClearOfPad()
     self.lifted = d
 end
 
+-- On the controller the bottom of the screen is the controller bars', so
+-- the other Wick addons' bars (a kit's strip) go to the top middle, one
+-- under the next, unless placed for the controller.
+local TOP_Y, STACK_GAP = -60, 6
+function Movers:KitsToTop()
+    if not onPad() or ns.Pad:Settings().kitsTop == false then return end
+    local own = padMovers()
+    local names = {}
+    for name, m in pairs(self.list) do
+        if m.groups.suite and not own[name] and not m.disabled then names[#names + 1] = name end
+    end
+    table.sort(names)
+    local y = TOP_Y
+    for _, name in ipairs(names) do
+        local m = self.list[name]
+        m:ClearAllPoints()
+        m:SetPoint("TOP", UIParent, "TOP", 0, y)
+        y = y - (m:GetHeight() or 20) - STACK_GAP
+    end
+end
+
 local function placeNow(name)
     local m = Movers.list[name]
     if m then apply(m, savedPoint(name) or m.default) end
 end
 
--- Every frame at once, then the lift on the controller.
+-- Every frame at once, then on the controller the kits to the top and the
+-- lift.
 function Movers:PlaceAll()
     ns:AfterCombat("movers:all", function()
         self.lifted = nil
         for name in pairs(self.list) do placeNow(name) end
+        self:KitsToTop()
         self:ClearOfPad()
     end)
 end
@@ -200,8 +231,15 @@ function Movers:ResetAll(group)
     self:PlaceAll()
 end
 
--- The interface changing style puts every frame in that style's place.
-if ns.Pad then ns.Pad:OnChange(function() Movers:PlaceAll() end) end
+-- The interface changing style puts every frame in that style's place:
+-- at once, and again a moment later, once the game has drawn its
+-- controller bars and their buttons can be measured.
+if ns.Pad then
+    ns.Pad:OnChange(function()
+        Movers:PlaceAll()
+        C_Timer.After(0.3, function() Movers:PlaceAll() end)
+    end)
+end
 
 -- Keep the mover the size of the frame. Modules call this after a layout.
 function Movers:Resize(name)

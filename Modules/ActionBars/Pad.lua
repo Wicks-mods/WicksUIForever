@@ -148,7 +148,7 @@ local function skinButton(b)
     e.round:SetShown(round)
 end
 
-function PadBars:Skin()
+function PadBars:Collect()
     local root = Pad:Bars()
     if not root then return end
     local now = GetTime()
@@ -157,6 +157,40 @@ function PadBars:Skin()
         collect(root, 1, self.buttons, self.bars)
         self.scanned = now
     end
+    return root
+end
+
+-- Where the controller bars really are, in UIParent's units: the buttons
+-- showing and the marks beside them. The frame round them reaches higher,
+-- for shoulder art the skin clears away, and frames lifted clear of the
+-- frame sat well above the buttons. nil until the buttons show.
+local function rectIn(f)
+    local l, r, t, b = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
+    if not (l and r and t and b) then return end
+    local s = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    return l * s, r * s, t * s, b * s
+end
+
+function PadBars:Zone()
+    if not self:Collect() then return end
+    local zl, zr, zt, zb
+    local function add(f)
+        if not (f and f.IsVisible and f:IsVisible()) then return end
+        local l, r, t, b = rectIn(f)
+        if not l or r - l < 1 then return end
+        zl, zr = math.min(zl or l, l), math.max(zr or r, r)
+        zt, zb = math.max(zt or t, t), math.min(zb or b, b)
+    end
+    for _, b in ipairs(self.buttons) do
+        add(b)
+        add(b.ButtonIcon)
+    end
+    return zl, zr, zt, zb
+end
+
+function PadBars:Skin()
+    local root = self:Collect()
+    if not root then return end
     for _, b in ipairs(self.buttons) do skinButton(b) end
     for _, bar in ipairs(self.bars) do
         for _, k in ipairs(BAR_ART) do off(bar[k]) end
