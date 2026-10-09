@@ -1,5 +1,9 @@
 # Wick's UI
 
+## 0.12.0 — 2026-10-09
+
+- (edit this entry with the actual changes)
+
 ## Unreleased
 
 ### Whispers
