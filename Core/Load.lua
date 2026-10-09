@@ -23,34 +23,6 @@ local function cvar(name, value)
     if CV and CV.SetCVar then return pcall(CV.SetCVar, name, value) end
 end
 
--- ============================================================
--- Chasing the controller freezes (take out before a release)
--- ============================================================
--- The client stops writing its general log some sessions, and a freeze
--- loses what it buffered. Its taint log is written as it goes and
--- survives. While this is on, the game logs every blocked call with its
--- full stack to Logs/taint.log, and a blocked call blamed on Wick's UI
--- is named in chat with the three frames above it.
-ns.LOG_TAINT = true
-if ns.LOG_TAINT and ns.Core.Client.hasAuraContainer then
-    ns:On("PLAYER_LOGIN", function()
-        local CV = rawget(_G, "C_CVar")
-        if CV and CV.GetCVar and CV.GetCVar("taintLog") ~= "1" then cvar("taintLog", "1") end
-    end)
-    ns:On("ADDON_ACTION_BLOCKED", function(_, addon, fn)
-        if addon ~= ADDON then return end
-        local stack = debugstack(3, 3, 0) or ""
-        stack = stack:gsub("Interface/AddOns/", ""):gsub("\n+$", "")
-        A:Print(("blocked: %s\n%s"):format(tostring(fn), stack))
-    end)
-    ns:On("ADDON_ACTION_FORBIDDEN", function(_, addon, fn)
-        if addon ~= ADDON then return end
-        local stack = debugstack(3, 3, 0) or ""
-        stack = stack:gsub("Interface/AddOns/", ""):gsub("\n+$", "")
-        A:Print(("forbidden: %s\n%s"):format(tostring(fn), stack))
-    end)
-end
-
 function ns:PixelPerfectScale()
     local _, h = GetPhysicalScreenSize()
     if not h or h == 0 then return 1 end
