@@ -23,6 +23,34 @@ local function cvar(name, value)
     if CV and CV.SetCVar then return pcall(CV.SetCVar, name, value) end
 end
 
+-- ============================================================
+-- Chasing the controller freezes (take out before a release)
+-- ============================================================
+-- The client stops writing its general log some sessions, and a freeze
+-- loses what it buffered. Its taint log is written as it goes and
+-- survives. While this is on, the game logs every blocked call with its
+-- full stack to Logs/taint.log, and a blocked call blamed on Wick's UI
+-- is named in chat with the three frames above it.
+ns.LOG_TAINT = true
+if ns.LOG_TAINT and ns.Core.Client.hasAuraContainer then
+    ns:On("PLAYER_LOGIN", function()
+        local CV = rawget(_G, "C_CVar")
+        if CV and CV.GetCVar and CV.GetCVar("taintLog") ~= "1" then cvar("taintLog", "1") end
+    end)
+    ns:On("ADDON_ACTION_BLOCKED", function(_, addon, fn)
+        if addon ~= ADDON then return end
+        local stack = debugstack(3, 3, 0) or ""
+        stack = stack:gsub("Interface/AddOns/", ""):gsub("\n+$", "")
+        A:Print(("blocked: %s\n%s"):format(tostring(fn), stack))
+    end)
+    ns:On("ADDON_ACTION_FORBIDDEN", function(_, addon, fn)
+        if addon ~= ADDON then return end
+        local stack = debugstack(3, 3, 0) or ""
+        stack = stack:gsub("Interface/AddOns/", ""):gsub("\n+$", "")
+        A:Print(("forbidden: %s\n%s"):format(tostring(fn), stack))
+    end)
+end
+
 function ns:PixelPerfectScale()
     local _, h = GetPhysicalScreenSize()
     if not h or h == 0 then return 1 end
@@ -318,13 +346,19 @@ function A:OnEnable()
     -- Another addon doing a job of ours (other nameplates, other action
     -- bars) is asked about in the setup; until then ours stands down, so
     -- the two never run at once.
-    if ns.Install then
+    -- On the controller, with Stand aside on, nothing of ours is built.
+    if ns.Pad:Active() and ns.Pad:StandAside() then ns.Pad.standingAside = true end
+    if ns.Install and not ns.Pad.standingAside then
         local okD, errD = pcall(ns.Install.Detect, ns.Install)
         if not okD then self:Print("|cffff6060setup check failed|r: " .. tostring(errD)) end
     end
     local ok, err = xpcall(function()
         ns:UpdatePixel()
         ns:ApplyScale()
+        if ns.Pad.standingAside then
+            self:Print("standing aside for the controller: the game's own interface runs. It comes back with a reload once you take up the mouse and keyboard. To run it on the controller, switch Stand aside off under Action bars, Controller.")
+            return
+        end
         ns:InitializeModules()
         ns.Movers:AdoptSuite()
         ns.Movers:PlaceAll()
@@ -355,7 +389,7 @@ function A:OnEnable()
         y = O:Button(page, "Move frames", function() ns.Movers:Unlock() end, y - 2, 150)
     end)
 
-    if ns.Install then
+    if ns.Install and not ns.Pad.standingAside then
         -- Wick's Bags on B, if a reload came before the key change could.
         local ch = self.db.char
         if ch and ch.bagKeys == "wicks" and ch.bagKeysSet == false then ns.Install:ApplyBagKeys() end

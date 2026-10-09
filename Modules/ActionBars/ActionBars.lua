@@ -117,7 +117,7 @@ end
 local defaults = {
     enable = true,
     -- Playing on a controller (Core/Pad.lua, Pad.lua here).
-    pad = { hideBars = true, skin = true, clearFrames = true, kitsTop = true },
+    pad = { standAside = true, hideBars = true, skin = true, clearFrames = true, kitsTop = true },
     -- Text on buttons
     font          = "Wick",
     hotkeySize    = 12,
@@ -950,7 +950,19 @@ ns.Config:AddPage("actionbars", "Action bars", function(L)
         } end
         L:Heading("Controller")
         L:Note("When you play on a controller the game shows its own controller bars, the D-pad and face button clusters, in place of its usual bars. These follow it, and go back the moment you take up the mouse and keyboard.")
-        local o = flag("hideBars")
+        local o = {
+            get = function() return pad().standAside ~= false end,
+            setter = function(v)
+                pad().standAside = v and true or false
+                if ns.Pad:Active() then
+                    ns.Core.Chrome:ReloadPrompt(v and "Wick's UI stands aside on the controller after a reload."
+                        or "Wick's UI runs on the controller after a reload.")
+                end
+            end,
+            tooltip = "Logged in on the controller, Wick's UI builds nothing and the game's own interface runs, which is the safe way to play on one while the controller interface is new. Taking up the mouse and keyboard, or the controller, asks for a reload. Off, Wick's UI runs on the controller with the settings below.",
+        }
+        L:Toggle("Stand aside on the controller", nil, o)
+        o = flag("hideBars")
         o.tooltip = "Wick's action, stance and pet bars stand aside while the controller is in use, so the game's controller bars are the only ones on screen."
         L:Toggle("Make way for the controller bars", nil, o)
         o = flag("skin")

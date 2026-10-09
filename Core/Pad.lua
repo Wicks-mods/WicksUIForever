@@ -41,6 +41,22 @@ function Pad:HideBars() return self:Active() and self:Settings().hideBars ~= fal
 -- fn(active) runs whenever the interface changes style.
 function Pad:OnChange(fn) self.listeners[#self.listeners + 1] = fn end
 
+-- Whether Wick's UI stands aside on the controller: at a login on the
+-- controller it builds nothing and the game's own interface runs, and a
+-- change of interface asks for a reload. The client's controller
+-- interface is new, and it watches, walks and tears down frames in ways
+-- an addon's frames and taint trip; until those are all found, this is
+-- the safe way to play on a controller. On by default.
+function Pad:StandAside() return self:Settings().standAside ~= false end
+
+-- True for this session when it logged in standing aside.
+Pad.standingAside = false
+
+local function reloadPrompt(text)
+    local Chrome = ns.Core and ns.Core.Chrome
+    if Chrome and Chrome.ReloadPrompt then Chrome:ReloadPrompt(text) end
+end
+
 -- The style last acted on. The interface loads in the mouse and keyboard
 -- style's layout; a controller already in use is acted on as it enters
 -- the world.
@@ -50,6 +66,15 @@ function Pad:Apply()
     local on = self:Active()
     if on == self.applied then return end
     self.applied = on
+    if self.standingAside then
+        -- Nothing of ours is built. Back on the mouse and keyboard, a
+        -- reload brings it back.
+        if not on then reloadPrompt("Wick's UI comes back with a reload.") end
+        return
+    end
+    if on and self:StandAside() then
+        reloadPrompt("Wick's UI stands aside on the controller. Reload for the game's own interface, or switch that off under Action bars, Controller.")
+    end
     for _, fn in ipairs(self.listeners) do
         local ok, err = pcall(fn, on)
         if not ok then

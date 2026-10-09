@@ -116,6 +116,7 @@ end
 -- Initialize is called once. Update runs on every settings change, and
 -- the module decides whether it can apply now or after combat.
 function ns:InitializeModules()
+    if ns.Pad and ns.Pad.standingAside then return end
     for _, m in ipairs(sortedModules()) do
         if m:Enabled() and not m.initialized then
             m.initialized = ns:Call(m, "Initialize")
@@ -124,6 +125,7 @@ function ns:InitializeModules()
 end
 
 function ns:UpdateAll()
+    if ns.Pad and ns.Pad.standingAside then return end
     for _, m in ipairs(sortedModules()) do
         if m.initialized then
             ns:Call(m, "Update")

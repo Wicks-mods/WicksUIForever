@@ -434,6 +434,10 @@ end
 function Movers:IsUnlocked() return unlocked end
 
 function Movers:Unlock()
+    if ns.Pad and ns.Pad.standingAside then
+        ns.A:Print("standing aside for the controller: nothing of Wick's UI is on screen to move until a reload off it.")
+        return
+    end
     if InCombatLockdown() then
         ns.A:Print("frames cannot be moved in combat. Try again once the fight is over.")
         return

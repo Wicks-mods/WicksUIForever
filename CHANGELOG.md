@@ -4,6 +4,14 @@
 
 ### Controller
 
+- Wick's UI stands aside on the controller: logged in with one in hand
+  it builds nothing and the game's own interface runs, and taking up the
+  mouse and keyboard, or the controller, asks for a reload. The client's
+  controller interface is new, and it watches, walks and tears down
+  frames in ways an addon's frames and taint trip, with the game freezing
+  at the end of it. Until every one of those is found this is the safe
+  way to play on a controller. Stand aside on the controller, under
+  Action bars, Controller, switches it off, for everything below.
 - Playing on a controller on Forever, Wick's UI follows the game's
   controller interface. Its action, stance and pet bars stand aside for
   the game's controller bars, the D-pad and face button clusters, and
