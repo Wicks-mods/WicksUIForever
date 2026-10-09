@@ -297,6 +297,9 @@ local function newBar(parent)
     return ns:TrackStatusBar(sb)
 end
 
+-- How many plates are made ahead at login; the game shows up to forty.
+NP.POOL = 40
+
 local function style(self, unit)
     NP.plates[self] = true
     local d = db()
@@ -788,6 +791,18 @@ function NP:Initialize()
         driver:SetCVars(self:CVars())
         driver:SetAddedCallback(function(frame) NP:Refresh(frame) end)
         driver:SetTargetCallback(function() NP:RefreshAll() end)
+        -- Forever: plates made ahead at login, while no window is open (see
+        -- PrefillNamePlates in oUF). The game's controller navigation walks
+        -- every frame an addon makes while a window is open, and a plate's
+        -- aura frames sit in a container forbidden to it.
+        if driver.PrefillNamePlates and rawget(_G, "C_InputInterfaceStyle") then
+            local once
+            ns:On("PLAYER_ENTERING_WORLD", function()
+                if once then return end
+                once = true
+                driver:PrefillNamePlates(NP.POOL, 2)
+            end)
+        end
     end
     -- Unit frames spawned before us; put their style back as the active one
     -- for anything spawned later.

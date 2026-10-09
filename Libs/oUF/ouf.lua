@@ -974,6 +974,45 @@ do
 		updateDriver(self)
 	end
 
+	-- Wick's UI: plates made ahead, under a holder of ours, while no window
+	-- is open. On Forever's controller interface the game's navigation
+	-- watches every frame an addon makes and walks its parents; the aura
+	-- container a plate's icons live in is forbidden to addons, so the walk
+	-- errors inside the game's own batch of aura frames and leaves the
+	-- plate half made (sixty of those in a session, then the client
+	-- crashed). A plate from the pool is only parented to its nameplate,
+	-- which makes no frames. count plates, perFrame of them a frame.
+	local platePool, plateMade = {}, 0
+	local plateHolder, platePooler
+	function nameplateDriverMixin:PrefillNamePlates(count, perFrame)
+		if(not plateHolder) then
+			plateHolder = CreateFrame('Frame', nil, UIParent)
+			plateHolder:Hide()
+			platePooler = CreateFrame('Frame')
+		end
+		self.platePooler = platePooler
+		-- walkObject reads the style off the parent.
+		plateHolder.style = self.style
+		local driver, left = self, count or 30
+		perFrame = perFrame or 2
+		platePooler:SetScript('OnUpdate', function(pooler)
+			for _ = 1, perFrame do
+				if(left <= 0) then break end
+				left = left - 1
+				plateMade = plateMade + 1
+				local frame = CreateFrame('Button', driver.prefix .. 'Plate' .. plateMade, plateHolder, Private.hasPing and 'PingableUnitFrameTemplate' or nil)
+				frame:EnableMouse(false)
+				frame.isNamePlate = true
+				Private.UpdateUnits(frame, 'nameplate1')
+				walkObject(frame, 'nameplate1')
+				frame:Hide()
+				table.insert(platePool, frame)
+			end
+			if(left <= 0) then pooler:SetScript('OnUpdate', nil) end
+		end)
+	end
+	function nameplateDriverMixin:PooledNamePlates() return #platePool end
+
 	local function driverEventHandler(self, event, unit)
 		if(event == 'PLAYER_LOGIN') then
 			updateDriver(self)
@@ -1000,14 +1039,24 @@ do
 			if(not nameplate.unitFrame) then
 				nameplate.style = self.style
 
-				nameplate.unitFrame = CreateFrame('Button', self.prefix .. nameplate:GetName(), nameplate, Private.hasPing and 'PingableUnitFrameTemplate' or nil)
-				nameplate.unitFrame:EnableMouse(false)
-				nameplate.unitFrame:SetAllPoints()
-				nameplate.unitFrame.isNamePlate = true
+				-- Wick's UI: a plate made ahead (PrefillNamePlates), where there is one.
+				local pooled = table.remove(platePool)
+				if(pooled) then
+					nameplate.unitFrame = pooled
+					pooled:SetParent(nameplate)
+					pooled:SetAllPoints()
+					pooled:Show()
+					Private.UpdateUnits(pooled, unit)
+				else
+					nameplate.unitFrame = CreateFrame('Button', self.prefix .. nameplate:GetName(), nameplate, Private.hasPing and 'PingableUnitFrameTemplate' or nil)
+					nameplate.unitFrame:EnableMouse(false)
+					nameplate.unitFrame:SetAllPoints()
+					nameplate.unitFrame.isNamePlate = true
 
-				Private.UpdateUnits(nameplate.unitFrame, unit)
+					Private.UpdateUnits(nameplate.unitFrame, unit)
 
-				walkObject(nameplate.unitFrame, unit)
+					walkObject(nameplate.unitFrame, unit)
+				end
 
 				-- re-parent other elements directly to the nameplate frame, as there doesn't seem
 				-- to be any downsides to be parented there than to the unit frame within,

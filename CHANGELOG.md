@@ -47,6 +47,17 @@
   ran past the client's limit on how long an addon may run at once: the
   game lagged, then closed.
 
+### Nameplates
+
+- On Forever the plates are made ahead at login, forty of them under a
+  holder of their own, and handed to nameplates as they appear. On the
+  controller the game's navigation watches every frame an addon makes
+  while a window is open and walks its parents, and the container a
+  plate's aura icons live in is off limits to addons: a plate made then
+  errored inside the game's own batch of aura frames and was left half
+  made. Sixty of those in a session, then the game closed. A plate from
+  the pool makes no frames when it is handed over.
+
 ### Comforts
 
 - Wick's code no longer closes the game's own dialogs. Confirming a
