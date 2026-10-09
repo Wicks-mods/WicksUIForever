@@ -42,6 +42,12 @@
   list of shown dialogs; on the controller the game's focus code then ran
   past the client's time limit in Wick's name, and the game lagged.
 
+### Combat text
+
+- The box for your own combat text, and the sample that runs in it, only
+  show in /wui move while your own combat text is switched on in the
+  game's settings. With it off there is nothing of Wick's to place.
+
 ### Settings
 
 - The settings search no longer stalls. Its list of every setting was
@@ -50,6 +56,11 @@
   started again with every key. It is now made a page a frame from the
   moment the window opens; a search typed before it is ready says it is
   looking and fills in by itself.
+- On the controller each settings page is built a few controls a frame,
+  where it was built all at once: the game looks over every frame an
+  addon makes there, and a whole page at once ran past the client's time
+  limit as /wui opened. A search result whose page is still being built
+  goes to its setting as soon as it is.
 - Searching is the box over the settings list alone. /wui followed by
   other words lists the commands again, as before 0.12.0.
 

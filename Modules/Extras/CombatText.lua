@@ -155,12 +155,13 @@ local function life()
 end
 
 -- While the frames are unlocked, a sample plays now and then, so the box
--- is seen with the text running in it.
+-- is seen with the text running in it. Only while your own combat text is
+-- on (CT:Showing): with it off there is nothing of ours to place.
 local DEMO_EVERY = 2.5
 local demo = 0
 local function onUpdate(_, elapsed)
     local m = frame and frame.mover
-    if m and m:IsShown() and ns.Movers:IsUnlocked() then
+    if m and m:IsShown() and ns.Movers:IsUnlocked() and CT:Showing() then
         demo = demo - elapsed
         if demo <= 0 then
             demo = DEMO_EVERY
@@ -298,6 +299,16 @@ function CT:Drawing()
     return db().enable ~= false and ns:G().combatTextFont ~= false
 end
 
+-- Drawing, and your own combat text switched on in the game's settings:
+-- without that the game hands us none of yours, so the box and its
+-- sample stay out of /wui move.
+function CT:Showing()
+    if not self:Drawing() then return false end
+    local CV = rawget(_G, "C_CVar")
+    local get = (CV and CV.GetCVar) or rawget(_G, "GetCVar")
+    return not get or get("enableFloatingCombatText") == "1"
+end
+
 -- ============================================================
 -- The game's own
 -- ============================================================
@@ -425,7 +436,7 @@ function CT:Layout()
     local w = d.direction == "arc" and math.max(220, d.distance * 1.4 + 120) or 220
     frame:SetSize(w, d.distance + d.critSize + 10)
     ns.Movers:Resize("combattext")
-    ns.Movers:SetEnabled("combattext", self:Drawing())
+    ns.Movers:SetEnabled("combattext", self:Showing())
     -- Lines already up take the new font and size.
     for _, line in ipairs(active) do
         local size = line.crit and d.critSize or d.size
@@ -438,6 +449,11 @@ function CT:Layout()
 end
 
 function CT:Initialize()
+    -- Your own combat text switched on or off in the game's settings puts
+    -- the box in /wui move or takes it out.
+    ns:On("CVAR_UPDATE", function(_, name)
+        if name == "enableFloatingCombatText" then CT:Layout() end
+    end)
     frame = CreateFrame("Frame", "WicksUI_CombatText", UIParent)
     frame:SetFrameStrata("HIGH")
     frame:EnableMouse(false)

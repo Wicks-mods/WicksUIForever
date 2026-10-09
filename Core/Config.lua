@@ -85,6 +85,15 @@ function Layout:Place(f, span, key)
         if self.col >= 2 then newRow(self) end
     end
     self.controls[#self.controls + 1] = f
+    -- Built in steps on the controller (Config:BuildInSteps): a pause
+    -- every few controls, the rest next frame.
+    if self.co then
+        self.since = (self.since or 0) + 1
+        if self.since >= Config.BUILD_STEP then
+            self.since = 0
+            coroutine.yield()
+        end
+    end
     return f
 end
 
@@ -845,6 +854,57 @@ local function build()
     scroll.child:SetWidth(WIDTH - NAV_W - 4)
 end
 
+-- A page's builder has run (or stopped with an error): the page is sized
+-- and, if it failed, says so.
+function Config:FinishBuild(page, L, ok, err)
+    page.buildError = not ok and tostring(err) or nil
+    if not ok then
+        L:Note("|cffff6060This page failed to build:|r " .. tostring(err))
+    end
+    L:Finish()
+end
+
+-- On the controller a page is built a few controls a frame. The game looks
+-- over every frame an addon makes there, and a page made all at once (with
+-- the page list round it) ran past the client's limit on how long an addon
+-- may run at once. The builder runs as a coroutine that the layout pauses
+-- every few controls (Layout:Place).
+local BUILD_STEP = 6
+Config.BUILD_STEP = BUILD_STEP
+function Config:BuildInSteps(page, L)
+    local content = page.content
+    local co = coroutine.create(function() page.builder(L) end)
+    L.co = co
+    page.building = co
+    local function step()
+        -- Rebuilt meanwhile: this one is let go.
+        if page.content ~= content then return true end
+        local ok, err = coroutine.resume(co)
+        if coroutine.status(co) ~= "dead" then return false end
+        L.co = nil
+        page.building = nil
+        Config:FinishBuild(page, L, ok, err)
+        if Config.current == page.key and content:IsShown() then
+            scroll.child:SetHeight(content:GetHeight())
+            if scroll.layoutBar then scroll.layoutBar() end
+            Config:RefreshPage(page)
+        end
+        local waiting = page.whenBuilt
+        page.whenBuilt = nil
+        for _, fn in ipairs(waiting or {}) do pcall(fn) end
+        return true
+    end
+    if step() then return end
+    local driver = CreateFrame("Frame")
+    page.buildDriver = driver
+    driver:SetScript("OnUpdate", function(f)
+        if step() then
+            f:SetScript("OnUpdate", nil)
+            if page.buildDriver == f then page.buildDriver = nil end
+        end
+    end)
+end
+
 function Config:Show(key)
     if not frame then build() end
     key = key or self.current or (self.order[1])
@@ -872,12 +932,11 @@ function Config:Show(key)
         if Chrome.SetHeadingText then Chrome:SetHeadingText(title, page.title) else title:SetText(page.title) end
         if title.wickPlate then ns:HeadingColor(title) end
         L.y = -PAD - 30
-        local ok, err = pcall(page.builder, L)
-        page.buildError = not ok and tostring(err) or nil
-        if not ok then
-            L:Note("|cffff6060This page failed to build:|r " .. tostring(err))
+        if ns.Pad and ns.Pad:Active() then
+            self:BuildInSteps(page, L)
+        else
+            self:FinishBuild(page, L, pcall(page.builder, L))
         end
-        L:Finish()
     end
     page.content:Show()
     scroll.child:SetHeight(page.content:GetHeight())
@@ -1056,6 +1115,18 @@ function Config:Go(entry)
     if not page then return end
     self:Show(page.key)
     if entry.kind == "page" or not entry.index then return end
+    -- A page still being built (on the controller) is gone to once it is.
+    if page.building then
+        page.whenBuilt = page.whenBuilt or {}
+        page.whenBuilt[#page.whenBuilt + 1] = function() Config:Reveal(entry) end
+        return
+    end
+    self:Reveal(entry)
+end
+
+function Config:Reveal(entry)
+    local page = entry.page
+    if self.current ~= page.key then return end
     local L = page.layout
     if not L then return end
     -- The control in the same place on the built page, checked by its
