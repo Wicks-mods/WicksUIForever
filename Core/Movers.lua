@@ -182,10 +182,12 @@ end
 -- lift.
 function Movers:PlaceAll()
     ns:AfterCombat("movers:all", function()
+        ns:Begin("placing frames")
         self.lifted = nil
         for name in pairs(self.list) do placeNow(name) end
         self:KitsToTop()
         self:ClearOfPad()
+        ns:End()
     end)
 end
 

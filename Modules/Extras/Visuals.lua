@@ -320,7 +320,7 @@ ns.Config:AddPage("combattext", "Combat text", function(L)
         tooltip = "A line of each kind, to see your settings without a fight.",
     })
     L:Button("Move it", function() ns.Config:Hide(); ns.Movers:Unlock() end, {
-        tooltip = "Unlocks the frames. Drag the box marked Your combat text; the text runs inside it, and a sample plays while it is unlocked.",
+        tooltip = "Unlocks the frames. Drag the box marked Your combat text; the text runs inside it. Show a sample plays some there.",
     })
     L:Heading("Colours of your own text")
     for _, k in ipairs(CT.KINDS) do

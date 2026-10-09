@@ -129,6 +129,9 @@ local function tileFor(b)
 end
 
 local function skinButton(b)
+    -- The tiles hang on the game's buttons, which are protected: none is
+    -- made during a fight, and the button waits for it to end.
+    if not tiles[b] and InCombatLockdown() then return end
     local e = tileFor(b)
     for _, k in ipairs(FADE) do off(b[k]) end
     off(b.GetNormalTexture and b:GetNormalTexture())
@@ -209,7 +212,9 @@ local ticker = CreateFrame("Frame")
 ticker:SetScript("OnUpdate", function()
     local root = Pad:Bars()
     if not (root and root:IsVisible() and PadBars:Skinning()) then return end
+    ns:Begin("controller bars skin")
     local ok, err = pcall(PadBars.Skin, PadBars)
+    ns:End()
     if not ok and not PadBars.failed then
         PadBars.failed = true
         ns.errors = ns.errors or {}

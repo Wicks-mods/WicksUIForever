@@ -530,7 +530,9 @@ function Config:IndexAsync(done)
         job.i = job.i + 1
         local page = job.pages[job.i]
         if page then
+            ns:Begin("search list " .. page.key)
             Config:IndexPage(page, job.out, job.errors)
+            ns:End()
             return
         end
         f:SetScript("OnUpdate", nil)
@@ -603,7 +605,13 @@ end
 
 Config.expanded = {}
 
+local drawNavNow
 local function drawNav()
+    ns:Begin("settings page list")
+    drawNavNow()
+    ns:End()
+end
+function drawNavNow()
     local entries, children = navEntries()
     nav.buttons = nav.buttons or {}
     for _, b in ipairs(nav.buttons) do b:Hide() end
@@ -879,7 +887,9 @@ function Config:BuildInSteps(page, L)
     local function step()
         -- Rebuilt meanwhile: this one is let go.
         if page.content ~= content then return true end
+        ns:Begin("settings page " .. page.key)
         local ok, err = coroutine.resume(co)
+        ns:End()
         if coroutine.status(co) ~= "dead" then return false end
         L.co = nil
         page.building = nil
@@ -906,6 +916,12 @@ function Config:BuildInSteps(page, L)
 end
 
 function Config:Show(key)
+    ns:Begin("settings window")
+    self:ShowNow(key)
+    ns:End()
+end
+
+function Config:ShowNow(key)
     if not frame then build() end
     key = key or self.current or (self.order[1])
     local page = self.pages[key]

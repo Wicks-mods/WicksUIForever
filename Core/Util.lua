@@ -17,13 +17,53 @@ events:SetScript("OnEvent", function(_, event, ...)
     local list = handlers[event]
     if not list then return end
     for i = 1, #list do
+        ns:Begin(event)
         local ok, err = pcall(list[i], event, ...)
+        ns:End()
         if not ok then
             ns.errors = ns.errors or {}
             ns.errors[#ns.errors + 1] = event .. ": " .. tostring(err)
             if ns.A then ns.A:Debug(event .. ": " .. tostring(err)) end
         end
     end
+end)
+
+-- ============================================================
+-- Run-time watch
+-- ============================================================
+-- Forever stops an addon whose code runs too long at once and names only
+-- the addon. Longer pieces of work mark themselves with ns:Begin and
+-- ns:End: one that finishes slow is noted with its time, and one the
+-- client stops part way leaves its mark, which the next frame finds and
+-- notes as stopped. /wui errors lists them.
+local SLOW_MS = 12
+local marks = {}
+local clock = rawget(_G, "debugprofilestop")
+local seen = {}
+local function note(text)
+    ns.errors = ns.errors or {}
+    if seen[text] then
+        local e = ns.errors[seen[text]]
+        if e then ns.errors[seen[text]] = e:gsub(" %(x%d+%)$", "") .. (" (x%d)"):format((tonumber(e:match("%(x(%d+)%)$")) or 1) + 1) end
+        return
+    end
+    ns.errors[#ns.errors + 1] = text
+    seen[text] = #ns.errors
+end
+function ns:Begin(label)
+    marks[#marks + 1] = { label = label, t = clock and clock() or 0 }
+end
+function ns:End()
+    local m = table.remove(marks)
+    if not (m and clock) then return end
+    local ms = clock() - m.t
+    if ms > SLOW_MS then note(("slow: %s, %d ms"):format(m.label, ms)) end
+end
+local watcher = CreateFrame("Frame")
+watcher:SetScript("OnUpdate", function()
+    if #marks == 0 then return end
+    for _, m in ipairs(marks) do note("stopped part way: " .. m.label) end
+    for i = #marks, 1, -1 do marks[i] = nil end
 end)
 
 function ns:On(event, fn)

@@ -390,10 +390,15 @@ local HELP = {
 
 local function slash(_, msg)
     local cmd = (msg or ""):lower()
+    -- The settings and the movers open on the next frame. Everything the
+    -- game does after a slash command (closing the chat box, and on the
+    -- controller moving its focus) counts as ours, and Forever stops an
+    -- addon that runs too long at once; building a window on top of it
+    -- went over.
     if cmd == "" or cmd == "config" or cmd == "options" then
-        ns.Config:Toggle()
+        C_Timer.After(0, function() ns.Config:Toggle() end)
     elseif cmd == "move" or cmd == "moveui" or cmd == "unlock" then
-        ns.Movers:Toggle()
+        C_Timer.After(0, function() ns.Movers:Toggle() end)
     elseif cmd == "kb" or cmd == "bind" or cmd == "keybind" then
         if ns.Keybind then ns.Keybind:Toggle() end
     elseif cmd == "reset" then

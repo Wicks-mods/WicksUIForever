@@ -154,22 +154,11 @@ local function life()
     return math.max(0.2, db().duration or 1.9)
 end
 
--- While the frames are unlocked, a sample plays now and then, so the box
--- is seen with the text running in it. Only while your own combat text is
--- on (CT:Showing): with it off there is nothing of ours to place.
-local DEMO_EVERY = 2.5
-local demo = 0
+-- The box shows in /wui move, labelled, while your own combat text is on
+-- (CT:Showing). Samples play only when asked for (Show a sample under
+-- Combat text); playing them by themselves while the frames were
+-- unlocked looked like a button had been pressed.
 local function onUpdate(_, elapsed)
-    local m = frame and frame.mover
-    if m and m:IsShown() and ns.Movers:IsUnlocked() and CT:Showing() then
-        demo = demo - elapsed
-        if demo <= 0 then
-            demo = DEMO_EVERY
-            CT:Sample()
-        end
-    else
-        demo = 0
-    end
     if #active == 0 then return end
     local d = db()
     local span = life()
