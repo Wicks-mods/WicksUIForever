@@ -863,6 +863,13 @@ local function scanButtons(frame, depth)
             elseif kind == "Frame" and child.Fill and child.Mask and child.Text
                 and child.Fill.GetObjectType and child.Fill:GetObjectType() == "Texture" then
                 paintFill(child)
+            elseif kind == "CheckButton" and ns.Core.Client.classicWindows and child.GetCheckedTexture
+                and child:GetCheckedTexture() and child:GetCheckedTexture():GetBlendMode() == "ADD" then
+                -- An old icon tab (the spell book's skill lines): its icon is
+                -- its normal texture, set only once the book fills it, and
+                -- its check an additive glow. Taken for a check box before
+                -- then, its icon was faded for good; PanelsClassic.lua tiles
+                -- it once the icon is there.
             elseif kind == "CheckButton" and w <= 36 and h <= 36 and not (child.Icon or child.icon) then
                 styleCheck(child)
             elseif isButton and (child.Icon or child.icon) and not child.Left and not child.Name
