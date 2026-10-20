@@ -3582,8 +3582,17 @@ local function styleRoleButton(b, atlas)
         if b.Background then b.Background:SetAlpha(0) end
         if b.cover then b.cover:SetAlpha(0) end
         local nt = b.GetNormalTexture and b:GetNormalTexture()
-        if nt and atlas then
+        -- The Classic kind (TBC Anniversary) draws the role from a sheet of
+        -- four, cut out by tex coords: it keeps its own picture, since an
+        -- atlas laid over that cut showed one corner of the sheet blown up.
+        local sheet = ns.Core.Client.classicWindows and nt and not (nt.GetAtlas and nt:GetAtlas())
+        if nt and atlas and not sheet then
             nt:SetAtlas(atlas)
+            nt:ClearAllPoints()
+            nt:SetPoint("CENTER", b, "CENTER", 0, 0)
+            nt:SetSize(34, 34)
+        elseif sheet and b.roleID and GetTexCoordsForRole then
+            nt:SetTexCoord(GetTexCoordsForRole(b.roleID))
             nt:ClearAllPoints()
             nt:SetPoint("CENTER", b, "CENTER", 0, 0)
             nt:SetSize(34, 34)
