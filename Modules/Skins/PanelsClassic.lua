@@ -139,6 +139,18 @@ end
 -- for one; it is left for the check box style in Panels.lua.
 local function isCheckBox(b, kind)
     if kind ~= "CheckButton" then return false end
+    -- The old file-drawn box (UI-CheckBox-Up, the group finder's role
+    -- boxes): GetTexture gives a file id here too, and as a "picture" its
+    -- check mark became a ring round the box, so a ticked box never showed.
+    local ct = b.GetCheckedTexture and b:GetCheckedTexture()
+    local w, h = b:GetSize()
+    -- Small, and its check drawn plainly: an icon tab (the spell book's
+    -- skill lines) is 32 across and lights up by an additive glow.
+    if ct and w and h and w <= 26 and h <= 26 and not (b.icon or b.Icon or b.IconTexture)
+        and not (ct.GetAtlas and ct:GetAtlas()) and ct:GetBlendMode() ~= "ADD" then
+        local fs = b.Text or (b.GetFontString and b:GetFontString())
+        if not (fs and fs.GetText and (fs:GetText() or "") ~= "") then return true end
+    end
     for _, get in ipairs({ "GetNormalTexture", "GetCheckedTexture" }) do
         local t = b[get] and b[get](b)
         local a = t and t.GetAtlas and t:GetAtlas()
