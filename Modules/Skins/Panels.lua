@@ -1035,7 +1035,11 @@ end
 -- bags have their own layout.
 local NOT_MOVED = { WorldMapFrame = true, ContainerFrameCombinedBags = true }
 local function movable(n)
-    return not NOT_MOVED[n] and not n:find("^ContainerFrame%d")
+    -- Popups (StaticPopupN) and loot rolls (GroupLootFrameN, in
+    -- GroupLootContainer) are stacked by Blizzard, each under the last; one
+    -- held at a dragged spot pinned every later one there too.
+    return not NOT_MOVED[n] and not n:find("^ContainerFrame%d") and not n:find("^StaticPopup%d")
+        and not n:find("^GroupLootFrame%d")
 end
 
 local function windowPos(n)
