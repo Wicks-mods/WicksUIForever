@@ -599,6 +599,9 @@ function PSC:Attach(frame, spec)
     spec = spec or PSC.ATTACH[frame:GetName() or ""]
     if polls[frame] then return end
     local poll = CreateFrame("Frame", nil, frame)
+    -- No anchors: a window that sizes itself to its children (the popups)
+    -- took it for a frame at the screen's corner and stretched down to it.
+    poll.ignoreInLayout = true
     polls[frame] = poll
     local acc, last = 0, nil
     poll:SetScript("OnUpdate", function(_, e)

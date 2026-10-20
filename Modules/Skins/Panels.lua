@@ -91,6 +91,9 @@ local function backdrop(frame, template, brackets, inset)
     extras[frame] = e
     if e.backdrop then return e.backdrop end
     local bd = CreateFrame("Frame", nil, frame)
+    -- Ours, so it is left out when a window sizes itself to its children
+    -- (the popups are ResizeLayoutFrames): counted, it stretched the popup.
+    bd.ignoreInLayout = true
     local o = inset or 0
     bd:SetPoint("TOPLEFT", o, -o)
     bd:SetPoint("BOTTOMRIGHT", -o, o)
@@ -106,6 +109,7 @@ local function card(parent, key, a1, r1, a2, r2, x1, y1, x2, y2)
     extras[parent] = e
     if e[key] then return e[key] end
     local c = CreateFrame("Frame", nil, parent)
+    c.ignoreInLayout = true
     c:SetPoint(a1, r1, a1, x1 or 0, y1 or 0)
     c:SetPoint(a2, r2, a2, x2 or 0, y2 or 0)
     c:SetFrameLevel(math.max(0, parent:GetFrameLevel() - 1))
@@ -1002,6 +1006,7 @@ local function mapMover(frame)
     local bf = frame.BorderFrame or frame
     local title = bf.TitleContainer
     local m = CreateFrame("Frame", nil, frame)
+    m.ignoreInLayout = true
     if title then
         m:SetPoint("TOPLEFT", title, "TOPLEFT", 0, 0)
         m:SetPoint("BOTTOMRIGHT", title, "BOTTOMRIGHT", -60, 0)
@@ -1103,6 +1108,7 @@ local function windowMover(n, frame)
     -- Our own strip over the title bar, clear of the close and size
     -- buttons in the corner; nothing is written to Blizzard's frame.
     local m = CreateFrame("Frame", nil, frame)
+    m.ignoreInLayout = true
     if title then
         m:SetPoint("TOPLEFT", title, "TOPLEFT", 0, 0)
         m:SetPoint("BOTTOMRIGHT", title, "BOTTOMRIGHT", -40, 0)
@@ -1217,6 +1223,7 @@ PS.SPECIAL.WorldMapFrame = function(frame)
     -- Open windowed: the client keeps the last size in this setting.
     if db().mapWindowed and SetCVar then pcall(SetCVar, "miniWorldMap", "1") end
     local watch = CreateFrame("Frame", nil, frame)
+    watch.ignoreInLayout = true
     watch:SetScript("OnUpdate", function()
         local maxed = mapMaximized(frame)
         -- The black around a maximised map.
@@ -1316,6 +1323,7 @@ PS.SPECIAL.WorldMapFrame = function(frame)
             end
         end
         local poll = CreateFrame("Frame", nil, ql)
+        poll.ignoreInLayout = true
         local acc = 0.4
         poll:SetScript("OnUpdate", function(_, e)
             acc = acc + e
@@ -1345,6 +1353,7 @@ PS.SPECIAL.WorldMapFrame = function(frame)
     -- a black card with its crumbs as grey pills, and the gamepad-era
     -- backing that shows past the map's edges gone.
     local flip = CreateFrame("Frame", nil, frame)
+    flip.ignoreInLayout = true
     flip:SetScript("OnUpdate", function()
         local win = extras[frame] and extras[frame].backdrop
         if win and win.wuiTemplate ~= "Shadow" then ns:SetTemplate(win, "Shadow", { shadow = true }) end
@@ -1571,6 +1580,7 @@ local function skinSpellBook(sb, host)
     end
     if sb.TopBar then fadeRegions(sb.TopBar) end
     local poll = CreateFrame("Frame", nil, sb)
+    poll.ignoreInLayout = true
     local acc = 0.3
     poll:SetScript("OnUpdate", function(_, e)
         acc = acc + e
@@ -1826,6 +1836,7 @@ PS.SPECIAL.CharacterFrame = function(frame)
     -- Every frame: slots, stats and bars are redrawn by Blizzard as pages
     -- change and items move, and a slower pass shows its art for a moment.
     local poll = CreateFrame("Frame", nil, frame)
+    poll.ignoreInLayout = true
     poll:SetScript("OnUpdate", function()
         paintSlots()
         styleStats()
@@ -1857,6 +1868,7 @@ PS.SPECIAL.CharacterFrame = function(frame)
     -- The character's name in the title in their class colour, like the
     -- unit frames; other tabs' titles keep the accent.
     local flip = CreateFrame("Frame", nil, frame)
+    flip.ignoreInLayout = true
     local _, class = UnitClass("player")
     local me = UnitName("player")
     flip:SetScript("OnUpdate", function()
@@ -2524,6 +2536,7 @@ end
 
 local function fullSkin(frame, each)
     local poll = CreateFrame("Frame", nil, frame)
+    poll.ignoreInLayout = true
     local acc, last = 0.5, nil
     local targets = {}
     poll:SetScript("OnUpdate", function(_, e)
@@ -3973,6 +3986,7 @@ end
 -- kept drawn, and held so (Blizzard redraws it as the map opens).
 PS.SPECIAL.TaxiFrame = function(frame)
     local keep = CreateFrame("Frame", nil, frame)
+    keep.ignoreInLayout = true
     keep:SetScript("OnUpdate", function()
         local map = frame.InsetBg or rawget(_G, "TaxiFrameInsetBg")
         if map and map:GetAlpha() < 1 then map:SetAlpha(1) end
@@ -4166,6 +4180,7 @@ PS.SPECIAL.PlayerSpellsFrame = function(frame)
     local tf = frame.TalentsFrame
     if tf then
         local poll = CreateFrame("Frame", nil, tf)
+        poll.ignoreInLayout = true
         local acc = 0.5
         poll:SetScript("OnUpdate", function(_, e)
             -- The window is the grey panel while the talents show, as in

@@ -344,6 +344,7 @@ local backdrops = setmetatable({}, { __mode = "k" })
 function ns:CreateBackdrop(host, template, inset, opts)
     if backdrops[host] then return backdrops[host] end
     local bd = CreateFrame("Frame", nil, host)
+    bd.ignoreInLayout = true  -- not measured by a host that sizes to its children
     local o = inset or 0
     bd:SetPoint("TOPLEFT", host, "TOPLEFT", -o, o)
     bd:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", o, -o)
@@ -533,6 +534,7 @@ function ns:Glow(frame, spread, opts)
         g = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
     else
         local layer = CreateFrame("Frame", nil, frame)
+        layer.ignoreInLayout = true
         layer:SetAllPoints(frame)
         layer:SetFrameLevel(frame:GetFrameLevel() + 8)
         g = layer:CreateTexture(nil, "OVERLAY", nil, 7)
@@ -677,6 +679,7 @@ function ns:Follow(frame, read, paint)
         list = {}
         follows[frame] = list
         local poll = CreateFrame("Frame", nil, frame)
+        poll.ignoreInLayout = true
         list.poll = poll
         local acc = 0.15
         poll:SetScript("OnUpdate", function(_, e)
