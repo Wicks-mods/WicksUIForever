@@ -337,7 +337,8 @@ end
 local ourFont
 local function isOurs(path)
     if not ourFont then ourFont = ns.Media:Font():lower():gsub("/", "\\") end
-    return path and path:lower():gsub("/", "\\") == ourFont
+    -- A font set by file ID reports a number, never ours.
+    return type(path) == "string" and path:lower():gsub("/", "\\") == ourFont
 end
 local fontSet = setmetatable({}, { __mode = "k" })
 local function styleFont(fs)

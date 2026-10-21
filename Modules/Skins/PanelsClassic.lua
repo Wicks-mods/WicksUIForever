@@ -605,7 +605,11 @@ function PSC:Attach(frame, spec)
         if not PS:db().enable then return end
         acc = acc + e
         local parts = {}
-        for _, c in ipairs({ frame:GetChildren() }) do parts[#parts + 1] = c:IsShown() and "1" or "0" end
+        for _, c in ipairs({ frame:GetChildren() }) do
+            -- Some children reject IsShown ("bad self"); counted as hidden.
+            local ok, on = pcall(c.IsShown, c)
+            parts[#parts + 1] = (ok and on) and "1" or "0"
+        end
         local sig = table.concat(parts)
         if sig ~= last or acc >= 0.5 then
             last, acc = sig, 0

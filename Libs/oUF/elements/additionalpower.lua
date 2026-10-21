@@ -392,7 +392,9 @@ local function Enable(self, unit)
 		self:RegisterEvent('UNIT_DISPLAYPOWER', VisibilityPath)
 
 		if(not element.displayPairs) then
-			element.displayPairs = CopyTable(ALT_POWER_BAR_PAIR_DISPLAY_INFO)
+			-- Classic has no ALT_POWER_BAR_PAIR_DISPLAY_INFO: mana in bear and cat.
+			element.displayPairs = CopyTable(ALT_POWER_BAR_PAIR_DISPLAY_INFO
+				or { DRUID = { [Enum.PowerType.Rage] = true, [Enum.PowerType.Energy] = true } })
 		end
 
 		if(element:IsObjectType('StatusBar') and not element:GetStatusBarTexture()) then
