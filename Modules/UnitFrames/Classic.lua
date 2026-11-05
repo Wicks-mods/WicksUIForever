@@ -476,8 +476,8 @@ function UF:ConfigureGame(self)
         end
     end
     local name = t.left
-    name:SetFont(Chrome.FONT, 10, "")
-    name:SetShadowOffset(1, -1)
+    ns.Media:Face(name, Chrome.FONT, 10, "")
+    ns.Media:Shadow(name)
     name:SetShadowColor(0, 0, 0, 1)
     ns:TextColor(name, NAME_GOLD)
     name:SetWidth(L.name.w)
@@ -492,7 +492,7 @@ function UF:ConfigureGame(self)
         local td = d and d.texts and d.texts[slot]
         local own = place and place.keepTag and td and td.enable and td.tag ~= "" and td.tag
         if place and (own or (not place.keepTag and (slot == "right" or (td and td.enable)))) then
-            fs:SetFont(numFont, place.size or 10, "OUTLINE")
+            ns.Media:Face(fs, numFont, place.size or 10, "OUTLINE")
             ns:TextColor(fs, { 1, 1, 1 })
             fs:SetWidth(0)
             fs:SetJustifyH("CENTER")
@@ -505,11 +505,11 @@ function UF:ConfigureGame(self)
     local lv = self.wuiGameLevel
     if lv then
         if L.level.white then
-            lv:SetFont(Chrome.FONT, 14, "")
+            ns.Media:Face(lv, Chrome.FONT, 14, "")
         else
-            lv:SetFont(Chrome.FONT, 10, "")
+            ns.Media:Face(lv, Chrome.FONT, 10, "")
         end
-        lv:SetShadowOffset(1, -1)
+        ns.Media:Shadow(lv)
         lv:SetShadowColor(0, 0, 0, 1)
         if L.level.gold then lv:SetTextColor(1, 0.82, 0) else lv:SetTextColor(1, 1, 1) end
         at(lv, self, L.level)

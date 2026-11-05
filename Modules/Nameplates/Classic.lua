@@ -107,7 +107,7 @@ function NP:GameAura(button, size)
     end
     local count = button.Count
     if count and count.SetFont then
-        count:SetFont("Fonts\\ARIALN.TTF", math.max(9, math.floor(12 * k + 0.5)), "OUTLINE")
+        ns.Media:Face(count, "Fonts\\ARIALN.TTF", math.max(9, math.floor(12 * k + 0.5)), "OUTLINE")
         count:ClearAllPoints()
         count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 3 * k, -2 * k)
     end
@@ -117,7 +117,7 @@ function NP:GameAura(button, size)
     if button.Time and button.Time.Hide then button.Time:Hide() end
     local fs = cd and cd.GetCountdownFontString and cd:GetCountdownFontString()
     if fs and fs.SetFont then
-        fs:SetFont("Fonts\\ARIALN.TTF", math.max(8, math.floor((size or 25) * 0.45 + 0.5)), "OUTLINE")
+        ns.Media:Face(fs, "Fonts\\ARIALN.TTF", math.max(8, math.floor((size or 25) * 0.45 + 0.5)), "OUTLINE")
     end
 end
 
@@ -268,10 +268,10 @@ function NP:ConfigureGame(self)
         b:SetSize(L.border.w, L.border.h)
         b:ClearAllPoints()
         b:SetPoint("CENTER", h, "CENTER", L.border.x, 0)
-        lv:SetFont(face, L.level.size, "OUTLINE")
+        ns.Media:Face(lv, face, L.level.size, "OUTLINE")
         lv:ClearAllPoints()
         lv:SetPoint("CENTER", h, "CENTER", L.level.x, 0)
-        name:SetFont(face, L.name.size, "")
+        ns.Media:Face(name, face, L.name.size, "")
         -- Cast bar under the bar, in its border, the icon in the border's box.
         cb:ClearAllPoints()
         cb:SetPoint("TOPLEFT", h, "BOTTOMLEFT", L.cast.x, L.cast.y)
@@ -289,7 +289,7 @@ function NP:ConfigureGame(self)
         cb.wuiGameShield:SetPoint("BOTTOMRIGHT", cb, "BOTTOMRIGHT", 13, -13)
         cb.Text:ClearAllPoints()
         cb.Text:SetPoint("CENTER", cb, "CENTER", 0, -1)
-        cb.Text:SetFont(face, L.cast.text, "OUTLINE")
+        ns.Media:Face(cb.Text, face, L.cast.text, "OUTLINE")
         cb.Text:SetJustifyH("CENTER")
     else
         local bg = self.wuiGameBG
@@ -308,10 +308,10 @@ function NP:ConfigureGame(self)
         badge:SetSize(L.badge.w, L.badge.h)
         badge:ClearAllPoints()
         badge:SetPoint("LEFT", h, "RIGHT", L.badge.gap, 0)
-        lv:SetFont(face, L.badge.size, "")
+        ns.Media:Face(lv, face, L.badge.size, "")
         lv:ClearAllPoints()
         lv:SetPoint("CENTER", badge, "CENTER", 0, 0)
-        name:SetFont(face, L.name.size, L.name.outline)
+        ns.Media:Face(name, face, L.name.size, L.name.outline)
         -- The thin cast line under the bar, the icon and spell under it.
         cb:ClearAllPoints()
         cb:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, L.cast.y)
@@ -325,7 +325,7 @@ function NP:ConfigureGame(self)
         cb.wuiGameShield:SetPoint("RIGHT", ih, "RIGHT", 0, 0)
         cb.Text:ClearAllPoints()
         cb.Text:SetPoint("LEFT", ih, "RIGHT", 2, 0)
-        cb.Text:SetFont(face, L.cast.text, "OUTLINE")
+        ns.Media:Face(cb.Text, face, L.cast.text, "OUTLINE")
         cb.Text:SetJustifyH("LEFT")
     end
     name:SetShadowOffset(0, 0)

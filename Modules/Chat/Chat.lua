@@ -197,8 +197,8 @@ function CH:StyleFrame(frame)
     local _, size = frame:GetFont()
     local outline = d.fontOutline
     if outline == "look" then outline = Chrome:StyleDef().textOutline or "NONE" end
-    frame:SetFont(ns.Media:Font(d.font), d.fontSize or size or 13, outline == "NONE" and "" or outline)
-    if frame.SetShadowOffset then frame:SetShadowOffset(1, -1) end
+    ns.Media:Face(frame, ns.Media:Font(d.font), d.fontSize or size or 13, outline == "NONE" and "" or outline)
+    if frame.SetShadowOffset then ns.Media:Shadow(frame) end
     if frame.SetFading then frame:SetFading(d.fade) end
     if frame.SetTimeVisible then frame:SetTimeVisible(d.fadeAfter) end
     if frame.SetMaxLines and (frame:GetMaxLines() or 0) < d.maxLines then frame:SetMaxLines(d.maxLines) end

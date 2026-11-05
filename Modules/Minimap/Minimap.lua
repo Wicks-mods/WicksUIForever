@@ -342,7 +342,7 @@ function MM:LayoutText()
     ns.Media:SetFont(self.zone, d.zoneSize)
     self.zone:SetShown(d.zone)
     for _, fs in ipairs({ self.zone, self.clock, self.coords }) do
-        fs:SetShadowOffset(1, -1)
+        ns.Media:Shadow(fs)
         fs:SetShadowColor(0, 0, 0, 1)
     end
     self.topBand:SetShown(d.zone and d.zoneInside)

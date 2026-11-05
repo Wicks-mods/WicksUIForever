@@ -144,7 +144,7 @@ function SK:QuestWatch()
                 local want = title and size + 1 or size
                 local f, s = line:GetFont()
                 if f ~= font or math.floor((s or 0) + 0.5) ~= want then
-                    line:SetFont(font, want, "OUTLINE")
+                    ns.Media:Face(line, font, want, "OUTLINE")
                     line:SetShadowOffset(0, 0)
                 end
                 ns:TextColor(line, token)
@@ -186,7 +186,7 @@ function SK:Tracker()
             strip(h)
             local text = h.Text
             if text then
-                text:SetFont(font, size + 2, "OUTLINE")
+                ns.Media:Face(text, font, size + 2, "OUTLINE")
                 text:SetTextColor(C.fel[1], C.fel[2], C.fel[3])
                 Chrome:Register(text, C.fel, "text")
             end
@@ -209,7 +209,7 @@ function SK:Tracker()
         local f = rawget(_G, fo)
         if f and f.SetFont then
             local _, s = f:GetFont()
-            f:SetFont(font, fo == "ObjectiveTrackerHeaderFont" and (size + 1) or size, "OUTLINE")
+            ns.Media:Face(f, font, fo == "ObjectiveTrackerHeaderFont" and (size + 1) or size, "OUTLINE")
             if f.SetShadowOffset then f:SetShadowOffset(0, 0) end
         end
     end
@@ -299,8 +299,8 @@ local function meterFont(fs)
     local want = ns.Media:Font()
     if path:lower():gsub("/", "\\") == want:lower():gsub("/", "\\") then return end
     local target = meterFonts[fs] or math.floor(size + 1.5)
-    if pcall(fs.SetFont, fs, want, target, flags or "") then
-        pcall(fs.SetShadowOffset, fs, 1, -1)
+    if pcall(ns.Media.Face, ns.Media, fs, want, target, flags or "") then
+        pcall(ns.Media.Shadow, ns.Media, fs)
         pcall(fs.SetShadowColor, fs, 0, 0, 0, 0.8)
         meterFonts[fs] = target
     end

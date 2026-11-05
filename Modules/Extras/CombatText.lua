@@ -219,7 +219,7 @@ function CT:Add(message, r, g, b, displayType, staggered, fading)
     if not path then
         -- A font that would not load (a shared one since removed): the Wick
         -- one, or the line cannot take text at all.
-        fs:SetFont(ns.Media.fonts.Wick, size, "OUTLINE")
+        ns.Media:Face(fs, ns.Media.fonts.Wick, size, "OUTLINE")
         path, h = fs:GetFont()
     end
     -- The size the font came out at: a look can set the Wick font larger.

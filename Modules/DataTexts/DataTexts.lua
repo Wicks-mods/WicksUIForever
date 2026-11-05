@@ -352,7 +352,7 @@ function DT:LayoutPanel(key)
             s:ClearAllPoints()
             s:SetSize(d.width / n, d.height)
             s:SetPoint("LEFT", p, "LEFT", (i - 1) * d.width / n, 0)
-            ns.Media:SetFont(s.text, db().fontSize)
+            ns.Media:SetFontIn(s.text, db().fontSize, d.height)
             s.def = self.registry[list[i]]
             s:Show()
             slotUpdate(s)

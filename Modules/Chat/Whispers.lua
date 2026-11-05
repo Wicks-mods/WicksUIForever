@@ -110,8 +110,8 @@ local function fontFor(msg)
     local size = cd and cd.fontSize or 13
     local outline = cd and cd.fontOutline or "NONE"
     if outline == "look" then outline = Chrome:StyleDef().textOutline or "NONE" end
-    msg:SetFont(ns.Media:Font(face), size, outline == "NONE" and "" or outline)
-    if msg.SetShadowOffset then msg:SetShadowOffset(1, -1) end
+    ns.Media:Face(msg, ns.Media:Font(face), size, outline == "NONE" and "" or outline)
+    if msg.SetShadowOffset then ns.Media:Shadow(msg) end
 end
 
 local function place(win, c)

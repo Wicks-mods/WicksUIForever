@@ -444,7 +444,7 @@ local noCountdown
 local function invisibleFont()
     if noCountdown then return noCountdown end
     noCountdown = CreateFont("WicksUI_NoCountdown")
-    noCountdown:SetFont("Fonts\\ARIALN.TTF", 8, "")
+    ns.Media:Face(noCountdown, "Fonts\\ARIALN.TTF", 8, "")
     noCountdown:SetTextColor(0, 0, 0, 0)
     noCountdown:SetShadowColor(0, 0, 0, 0)
     return noCountdown
@@ -487,7 +487,7 @@ function ns:AuraCountdown(button, iconSize, show)
     local t = button and button.Time
     if t then
         local size = math.max(8, math.floor((iconSize or 24) * 0.42 + 0.5))
-        t:SetFont(ns.Media:Font(), size, "OUTLINE")
+        ns.Media:Face(t, ns.Media:Font(), size, "OUTLINE")
         t:SetShadowOffset(0, 0)
         t:ClearAllPoints()
         t:SetPoint("CENTER", button, "CENTER", 0, 0)
@@ -585,7 +585,7 @@ end
 function ns:HeadingFont(fs, size)
     local st = Chrome.StyleDef and Chrome:StyleDef()
     if st and st.headingFont then
-        fs:SetFont(st.headingFont, size + (st.headingBump or 0), "")
+        ns.Media:Face(fs, st.headingFont, (st.bump and st.bump(size) or size) + (st.headingBump or 0), st.textFlags or "")
     end
 end
 

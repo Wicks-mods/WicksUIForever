@@ -94,6 +94,45 @@ local function merged(own, kind)
     return out
 end
 
+-- M:SetFont for text in a box of fixed height (an info bar slot). In a
+-- pixel look the size is the largest ladder step that fits the box;
+-- everywhere else this is M:SetFont exactly.
+function M:SetFontIn(fs, size, boxH, outline, face)
+    local Chrome = ns.Core and ns.Core.Chrome
+    local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    if st and st.snap and (face or ns:G().font) == "Wick" then
+        local pick = Chrome:PixelSizeIn(fs, size or ns:G().fontSize, boxH)
+        if pick then size = pick end
+    end
+    return self:SetFont(fs, size, outline, face)
+end
+
+-- fs:SetFont for code that names the font file itself. In a look with a
+-- pixel face, that face is set on the look's size ladder with the look's
+-- flags; anything else is set exactly as asked.
+function M:Face(fs, path, size, flags)
+    local Chrome = ns.Core and ns.Core.Chrome
+    local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    if st and st.snap and size and Chrome:IsLookFace(path) then
+        size = Chrome:PixelSize(fs, size)
+        flags = Chrome:WithLookFlags(flags)
+    end
+    return fs:SetFont(path, size, flags)
+end
+
+-- The soft one-pixel drop shadow the skins give their text, or, on text
+-- in a pixel look's own face, the look's shadow (whole dots).
+function M:Shadow(fs, alpha)
+    local Chrome = ns.Core and ns.Core.Chrome
+    local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    local o = 1
+    if st and st.snap and st.shadowOffset and fs.GetFont and Chrome:IsLookFace((fs:GetFont())) then
+        o = st.shadowOffset
+    end
+    fs:SetShadowOffset(o, -o)
+    if alpha then fs:SetShadowColor(0, 0, 0, alpha) end
+end
+
 function M:Font(name)
     name = name or ns:G().font
     -- The Wick font is the style's own where the style has one.
@@ -144,14 +183,22 @@ function M:SetFont(fs, size, outline, face, unit)
     if st and (face or g.font) == "Wick" then
         if unit and st.unitFont then
             path, size = st.unitFont, size + (st.unitBump or 0)
+        elseif st.snap then
+            -- A pixel face: the size goes on its ladder.
+            size = Chrome:PixelSize(fs, size)
         elseif st.uiBump then
             -- A look whose face runs small sets the Wick font a little larger.
-            size = size + st.uiBump
+            size = type(st.uiBump) == "function" and st.uiBump(size) or size + st.uiBump
         end
     end
+    local plain = outline == ""
+    if st and st.textFlags and (face or g.font) == "Wick" then
+        outline = Chrome:WithLookFlags(outline)
+    end
     fs:SetFont(path or self:Font(face), size, outline)
-    if outline == "" then
-        fs:SetShadowOffset(1, -1)
+    if plain then
+        local o = st and st.shadowOffset or 1
+        fs:SetShadowOffset(o, -o)
         fs:SetShadowColor(0, 0, 0, 1)
     else
         fs:SetShadowOffset(0, 0)
@@ -174,7 +221,17 @@ local function face(name, path)
     local fo = rawget(_G, name)
     if not (fo and fo.GetFont and fo.SetFont) then return end
     local _, size, flags = fo:GetFont()
-    if size and size > 0 then fo:SetFont(path, size, flags or "") end
+    if not (size and size > 0) then return end
+    -- A pixel face keeps the game's size over the world, rounded to whole
+    -- dots of the face's em (two dots at least), with its flags.
+    local Chrome = ns.Core and ns.Core.Chrome
+    local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    if st and st.snap and Chrome:IsLookFace(path) then
+        local em = st.pixelEm or 11
+        size = math.max(em * 2, math.floor(size / em + 0.5) * em)
+        flags = Chrome:WithLookFlags(flags)
+    end
+    fo:SetFont(path, size, flags or "")
 end
 -- The game's own combat text fonts, as they were before we touched them,
 -- and what we set: with another combat text addon kept in the setup,

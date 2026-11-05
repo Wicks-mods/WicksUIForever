@@ -1,5 +1,21 @@
 # Wick's UI
 
+## Unreleased
+
+### Added
+
+- The interface scale goes down to 0.40. The game's own setting stops at
+  0.64, so below that Wick's UI shrinks the interface itself, outside
+  combat, and keeps it there when the game puts its own scale back. The
+  slider now shows the scale in use, and a Use the game's scale button
+  hands it back to the game. Dragging the slider all the way down no
+  longer resets it to the game's setting.
+- Ready for Cartridge, WickCore's 16-bit look: every text Wick's UI sets,
+  the dressed game windows, the quest tracker, chat and the names over
+  the world included, goes on the look's pixel sizes, and the info bar
+  takes the largest size that fits its height. Every other look draws
+  exactly as before.
+
 ## 0.13.0 (2026-10-09)
 
 ### Controller

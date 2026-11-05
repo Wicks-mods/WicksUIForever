@@ -14,13 +14,66 @@ local W = ns.Widgets
 -- ============================================================
 -- UI scale
 -- ============================================================
--- The game's own scale setting, set from here. Below 0.64 the game will
--- not go, so a pixel-perfect scale on a 1440p or 4k screen stops there,
--- and the borders stay one pixel anyway because they are drawn at the
--- physical pixel size rather than a fixed one.
+-- The game's own scale setting, set from here. The game will not go
+-- below 0.64, which on a large screen is still too big for some players.
+-- Below it the setting stays at the game's floor and the interface's
+-- root frame is scaled the rest of the way, only ever out of combat, and
+-- again whenever the game puts its own scale back (a scale change, a new
+-- screen size, a loading screen). Borders stay one pixel at any scale,
+-- because they are drawn at the physical pixel size, not a fixed one.
+ns.SCALE_MIN, ns.SCALE_FLOOR, ns.SCALE_MAX = 0.4, 0.64, 1.15
+
 local function cvar(name, value)
     local CV = rawget(_G, "C_CVar")
     if CV and CV.SetCVar then return pcall(CV.SetCVar, name, value) end
+end
+
+-- 0 means leave the game's scale alone; anything else is held to the
+-- range, typed numbers included.
+function ns:ClampScale(s)
+    s = tonumber(s) or 0
+    if s <= 0 then return 0 end
+    return math.max(ns.SCALE_MIN, math.min(ns.SCALE_MAX, s))
+end
+
+-- The root frame's scale before Wick's UI first took it below the floor,
+-- so leaving the scale to the game hands it back without a reload.
+local gameScale
+
+-- The scale the game's own setting asks for, or the one the root frame
+-- had before, where the game's setting is off.
+local function gameOwnScale()
+    local CV = rawget(_G, "C_CVar")
+    local get = (CV and CV.GetCVar) or rawget(_G, "GetCVar")
+    if get and get("useUiScale") == "1" then
+        local v = tonumber(get("uiScale"))
+        if v then return math.max(ns.SCALE_FLOOR, math.min(ns.SCALE_MAX, v)) end
+    end
+    return gameScale
+end
+
+-- Standing aside for the controller, the game's interface runs as the
+-- game made it, so nothing goes below the game's floor.
+local function standingAside() return ns.Pad and ns.Pad.standingAside end
+
+local function belowFloor()
+    local s = ns:ClampScale(ns:G().uiScale)
+    if s == 0 or s >= ns.SCALE_FLOOR or standingAside() then return nil end
+    return s
+end
+
+-- Below the floor, the root frame to the setting. This sets no game
+-- variable, so the events that call it cannot loop.
+local function holdBelowFloor()
+    if not belowFloor() then return end
+    ns:AfterCombat("uiscale-root", function()
+        local s = belowFloor()   -- the setting as it is when the fight ends
+        if not s or math.abs((UIParent:GetScale() or 0) - s) < 0.0001 then return end
+        if not gameScale then gameScale = UIParent:GetScale() end
+        UIParent:SetScale(s)
+        ns:UpdatePixel()
+        ns:RefreshBorders()
+    end)
 end
 
 function ns:PixelPerfectScale()
@@ -30,19 +83,37 @@ function ns:PixelPerfectScale()
 end
 
 function ns:ApplyScale()
-    local s = ns:G().uiScale or 0
+    local g = ns:G()
+    local s = ns:ClampScale(g.uiScale)
+    if (g.uiScale or 0) ~= s then g.uiScale = s end
     if s > 0 then
         ns:AfterCombat("uiscale", function()
             cvar("useUiScale", "1")
-            cvar("uiScale", tostring(s))
+            cvar("uiScale", tostring(math.max(s, ns.SCALE_FLOOR)))
+            -- Back above the floor: the root frame follows the setting
+            -- again, as the game would have it.
+            if s >= ns.SCALE_FLOOR and gameScale then
+                UIParent:SetScale(s)
+                gameScale = nil
+            end
+        end)
+        holdBelowFloor()
+    elseif gameScale then
+        ns:AfterCombat("uiscale", function()
+            local v = gameOwnScale()
+            if v then UIParent:SetScale(v) end
+            gameScale = nil
+            ns:UpdatePixel()
+            ns:RefreshBorders()
         end)
     end
     ns:UpdatePixel()
     ns:RefreshBorders()
 end
 
-ns:On("UI_SCALE_CHANGED", function() ns:UpdatePixel(); ns:RefreshBorders() end)
-ns:On("DISPLAY_SIZE_CHANGED", function() ns:UpdatePixel(); ns:RefreshBorders() end)
+ns:On("UI_SCALE_CHANGED", function() holdBelowFloor(); ns:UpdatePixel(); ns:RefreshBorders() end)
+ns:On("DISPLAY_SIZE_CHANGED", function() holdBelowFloor(); ns:UpdatePixel(); ns:RefreshBorders() end)
+ns:On("PLAYER_ENTERING_WORLD", function() holdBelowFloor() end)
 
 -- ============================================================
 -- Style presets
@@ -476,10 +547,21 @@ end
 ns.Config:AddPage("general", "General", function(L)
     L:DB(function() return ns:G() end)
     L:Heading("Scale")
-    L:Note("The game's own interface scale. 0 leaves it alone. Pixel perfect picks the scale that makes one interface pixel one screen pixel, as near as the game allows.")
-    L:Slider("Interface scale", "uiScale", 0, 1.15, 0.01, { set = function() ns:ApplyScale() end })
+    L:Note("The interface scale, from 0.40 to 1.15. The game's own setting stops at 0.64, so below that Wick's UI shrinks the interface itself, outside combat. Pixel perfect picks the scale that makes one interface pixel one screen pixel. Use the game's scale hands it back to the game's own setting.")
+    L:Slider("Interface scale", "uiScale", ns.SCALE_MIN, ns.SCALE_MAX, 0.01, {
+        -- Left to the game, the slider shows the scale the game is using.
+        get = function()
+            local s = ns:G().uiScale or 0
+            if s > 0 then return s end
+            return ns:Round(UIParent:GetScale() or 1, 2)
+        end,
+        set = function() ns:ApplyScale() end })
     L:Button("Pixel perfect", function()
         ns:G().uiScale = ns:Round(ns:PixelPerfectScale(), 4)
+        ns:ApplyScale()
+    end)
+    L:Button("Use the game's scale", function()
+        ns:G().uiScale = 0
         ns:ApplyScale()
     end)
     L:Toggle("Crisp borders", "pixelPerfect", { tooltip = "Draw borders one physical pixel wide at any scale.", set = function() ns:UpdatePixel(); ns:RefreshBorders() end })

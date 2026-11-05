@@ -120,8 +120,8 @@ end
 local function styleText(fs, size, color)
     if not fs or not fs.SetFont then return end
     local _, cur = fs:GetFont()
-    fs:SetFont(ns.Media:Font(), size or cur or 12, "")
-    fs:SetShadowOffset(1, -1)
+    ns.Media:Face(fs, ns.Media:Font(), size or cur or 12, "")
+    ns.Media:Shadow(fs)
     if color then
         fs:SetTextColor(color[1], color[2], color[3])
         -- A palette colour (a window title in the accent) follows the
@@ -345,8 +345,8 @@ local function styleFont(fs)
     -- A string with no font yet reports nil and a garbage height; leave it.
     if not path or not size or size < 1 or size > 64 or isOurs(path) then return end
     local want = fontSet[fs] and fontSet[fs] or math.floor(size + 1.5)
-    fs:SetFont(ns.Media:Font(), want, flags or "")
-    fs:SetShadowOffset(1, -1)
+    ns.Media:Face(fs, ns.Media:Font(), want, flags or "")
+    ns.Media:Shadow(fs)
     fs:SetShadowColor(0, 0, 0, 0.8)
     fontSet[fs] = want
 end
@@ -1959,10 +1959,10 @@ local function flatRankBar(bar)
         e.text = tf
         e.name = ns:CreateText(tf, 12, "LEFT", "NONE")
         e.name:SetPoint("TOPLEFT", PAD + 3, -PAD - 1)
-        e.name:SetShadowOffset(1, -1)
+        ns.Media:Shadow(e.name)
         e.value = ns:CreateText(tf, 12, "RIGHT", "NONE")
         e.value:SetPoint("TOPRIGHT", -PAD - 3, -PAD - 1)
-        e.value:SetShadowOffset(1, -1)
+        ns.Media:Shadow(e.value)
     end
     local width
     local l, r = fill:GetLeft(), bar:GetRight()
@@ -2824,7 +2824,7 @@ PS.SPECIAL.SettingsPanel = function(frame)
         local text = tab.Text or (tab.GetFontString and tab:GetFontString())
         if text then
             fontSet[text] = 14
-            text:SetFont(ns.Media:Font(), 14, "")
+            ns.Media:Face(text, ns.Media:Font(), 14, "")
             text:ClearAllPoints()
             text:SetPoint("CENTER", tab, "CENTER", 0, 0)
         end
@@ -2922,8 +2922,8 @@ local function tabFont(which)
         if not f then return nil end
         tabFonts[which] = f
     end
-    f:SetFont(ns.Media:Font(), 11, "")
-    f:SetShadowOffset(1, -1)
+    ns.Media:Face(f, ns.Media:Font(), 11, "")
+    ns.Media:Shadow(f)
     f:SetShadowColor(0, 0, 0, 1)
     local c = (which == "on" and C.fel) or (which == "hover" and C.text) or C.muted
     f:SetTextColor(c[1], c[2], c[3])
@@ -3737,7 +3737,7 @@ PS.SPECIAL.FriendsFrame = function(frame)
         local fo = rawget(_G, name)
         if fo and fo.GetFont and fo.SetFont then
             local _, size, flags = fo:GetFont()
-            if size and size > 0 then fo:SetFont(ns.Media:Font(), size, flags or "") end
+            if size and size > 0 then ns.Media:Face(fo, ns.Media:Font(), size, flags or "") end
         end
     end
     fullSkin(frame, function(f)

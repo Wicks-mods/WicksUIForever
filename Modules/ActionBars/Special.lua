@@ -173,7 +173,7 @@ local function layout(bar, d, shown)
         b:SetShown(i <= n)
         if b.wuiHotKey then
             if ns:Game() then
-                b.wuiHotKey:SetFont(AB.GAME_NUMBER_FONT, g.hotkeySize, "OUTLINE")
+                ns.Media:Face(b.wuiHotKey, AB.GAME_NUMBER_FONT, g.hotkeySize, "OUTLINE")
             else
                 ns.Media:SetFont(b.wuiHotKey, g.hotkeySize, g.fontOutline, g.font)
             end
