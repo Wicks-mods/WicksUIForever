@@ -1,6 +1,6 @@
 # Wick's UI
 
-## Unreleased
+## 0.15.0 (2026-11-05)
 
 ### Fixed
 
