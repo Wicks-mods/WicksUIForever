@@ -1,5 +1,13 @@
 # Wick's UI
 
+## Unreleased
+
+### Fixed
+
+- A Lua error that repeated every frame while a game window was open. The
+  game can name a font by its file number instead of a path, and the
+  window skinner expected a path.
+
 ## 0.15.0 (2026-11-05)
 
 ### Fixed

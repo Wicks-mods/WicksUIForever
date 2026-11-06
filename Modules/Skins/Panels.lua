@@ -337,7 +337,9 @@ end
 local ourFont
 local function isOurs(path)
     if not ourFont then ourFont = ns.Media:Font():lower():gsub("/", "\\") end
-    return path and path:lower():gsub("/", "\\") == ourFont
+    -- The game can report a font by its file number rather than a path:
+    -- never ours, so the string is restyled.
+    return type(path) == "string" and path:lower():gsub("/", "\\") == ourFont
 end
 local fontSet = setmetatable({}, { __mode = "k" })
 local function styleFont(fs)

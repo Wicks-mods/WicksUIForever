@@ -68,7 +68,7 @@ local function describeUnsafe(obj, parent, indent)
     elseif kind == "FontString" then
         parts[#parts + 1] = " text=" .. safeText(obj:GetText())
         local font, size = obj:GetFont()
-        parts[#parts + 1] = (" font=%s/%s"):format(safeText(font and font:match("[^\/]+$") or font), fmt(size))
+        parts[#parts + 1] = (" font=%s/%s"):format(safeText(type(font) == "string" and font:match("[^\/]+$") or font), fmt(size))
     else
         if obj.GetFrameLevel then parts[#parts + 1] = " lvl=" .. obj:GetFrameLevel() end
     end
