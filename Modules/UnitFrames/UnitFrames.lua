@@ -331,6 +331,7 @@ local function buildCastbar(self, key)
     icon:SetPoint("TOPLEFT", 1, -1)
     icon:SetPoint("BOTTOMRIGHT", -1, 1)
     ns:CropIcon(icon)
+    ns:PixelIcon(icon)
     cb.Icon = icon
     cb.wuiIconHolder = iconHolder
 
@@ -387,7 +388,7 @@ local function buildAuras(self, which, d)
     a.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, d.size, d.showDuration)
         -- Our border on the client's button: a backdrop child a level down.
-        if button.Icon then ns:CropIcon(button.Icon) end
+        if button.Icon then ns:CropIcon(button.Icon); if ns:PixelAuras() then ns:PixelIcon(button.Icon) end end
         ns:CreateBackdrop(button, "Default", ns.mult)
         if button.Count then ns.Media:SetFont(button.Count, math.max(9, math.floor(d.size * 0.42)), "OUTLINE") end
     end
@@ -751,6 +752,8 @@ function UF:Configure(self)
         local td = d.texts and d.texts[slot]
         if fs.wuiTag then self:Untag(fs); fs.wuiTag = nil end
         if td and td.enable and td.tag and td.tag ~= "" then
+            -- Sized for narrow fonts: a wide pixel face stays small here.
+            if ns.Core.Chrome.Compact then ns.Core.Chrome:Compact(fs) end
             ns.Media:SetFont(fs, td.size, g.fontOutline, g.font, true)
             local anchorTo = (slot == "power" and d.power) and power or health
             if modern and slot ~= "power" then
@@ -875,6 +878,7 @@ function UF:Configure(self)
         cb.Text:SetShown(cd.showName)
         cb.Time:SetShown(cd.showTime)
         local cs = cd.fontSize or math.max(9, math.min(14, ch - 6))
+        if ns.Core.Chrome.Compact then ns.Core.Chrome:Compact(cb.Text); ns.Core.Chrome:Compact(cb.Time) end
         ns.Media:SetFont(cb.Text, cs, g.fontOutline, g.font, true)
         ns.Media:SetFont(cb.Time, cs, g.fontOutline, g.font, true)
         cb.Spark:SetHeight(ch)

@@ -352,6 +352,7 @@ function DT:LayoutPanel(key)
             s:ClearAllPoints()
             s:SetSize(d.width / n, d.height)
             s:SetPoint("LEFT", p, "LEFT", (i - 1) * d.width / n, 0)
+            if ns.Core.Chrome.Compact then ns.Core.Chrome:Compact(s.text) end
             ns.Media:SetFontIn(s.text, db().fontSize, d.height)
             s.def = self.registry[list[i]]
             s:Show()

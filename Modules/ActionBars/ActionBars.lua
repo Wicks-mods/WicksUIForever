@@ -370,6 +370,7 @@ function AB:StyleButton(button)
     -- the tile's shaped top; its masks then cover all of it.
     local tabbed = Chrome.TabIcon and Chrome:TabIcon(icon, button)
     ns:CropIcon(icon, nil, tabbed)
+    ns:PixelIcon(icon)
     icon:SetDrawLayer("BACKGROUND", 7)
 
     local bg = button:CreateTexture(nil, "BACKGROUND", nil, -1)
@@ -528,6 +529,16 @@ local function buttonConfig(db, bar)
             },
         },
     }
+    -- A pixel face goes on whole screen pixels a dot, at the small size a
+    -- button's corner has room for, with the look's flags: the library
+    -- sets these itself, past Media:SetFont.
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    if st and st.snap and Chrome.CompactSize and Chrome:IsLookFace(font) then
+        for _, part in pairs(cfg.text) do
+            part.font.size = Chrome:CompactSize(part.font.size)
+            part.font.flags = Chrome:WithLookFlags(part.font.flags)
+        end
+    end
     if ns:Game() then
         local t = cfg.text
         t.hotkey.font = { font = AB.GAME_NUMBER_FONT, size = g.hotkeySize, flags = "OUTLINE" }

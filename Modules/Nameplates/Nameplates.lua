@@ -202,7 +202,13 @@ end
 -- rounded corner. It has no soft shadow: plates crowd, and their shadows
 -- would pool. The OG family keeps the bordered bar.
 local CARD_PAD, CAST_LINE = 3, 5
-local function cardPad() return ns:Modern() and CARD_PAD or 0 end
+-- A look may want more room round the bar (Cartridge: four pixels, so the
+-- capsule's ends are half circles at the plate's height).
+local function lookPad()
+    local st = Chrome.StyleDef and Chrome:StyleDef()
+    return st and st.platePad or CARD_PAD
+end
+local function cardPad() return ns:Modern() and lookPad() or 0 end
 
 -- Under the bar's left end; while the mob casts, under the cast bar, clear
 -- of the spell's name.
@@ -218,7 +224,7 @@ local function placeThreat(self)
 end
 NP.PlaceThreat = placeThreat
 NP.CardPad = cardPad
-local function cardInset() return ns:Modern() and CARD_PAD or edge() end
+local function cardInset() return ns:Modern() and lookPad() or edge() end
 NP.CardInset = cardInset
 
 -- A rounded track, faintly lighter than the card it sits on, as the unit
@@ -227,8 +233,11 @@ local function track(bar, alpha)
     local bg = bar:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
     if ns:Modern() then
-        bg:SetTexture(ns.Media.rounded)
-        if bg.SetTextureSliceMargins then bg:SetTextureSliceMargins(3, 3, 3, 3) end
+        -- The look's capsule track where it has one (Cartridge).
+        local pill = Chrome.Media and Chrome.Media.pillTrack
+        bg:SetTexture(pill or ns.Media.rounded)
+        local m = pill and 6 or 3
+        if bg.SetTextureSliceMargins then bg:SetTextureSliceMargins(m, m, m, m) end
         bg:SetVertexColor(1, 1, 1, 0.07)
     else
         bg:SetColorTexture(C.void[1], C.void[2], C.void[3], alpha)
@@ -306,7 +315,7 @@ local function style(self, unit)
 
     local health = newBar(self)
     health:SetPoint("CENTER")
-    health.backdrop = ns:CreateBackdrop(health, "Default", cardInset(), ns:Modern() and { shadow = false } or nil)
+    health.backdrop = ns:CreateBackdrop(health, "Default", cardInset(), ns:Modern() and { shadow = false, shape = "pill" } or nil)
     health.wuiTrack = track(health, 0.9)
     health.colorTapping = true
     health.colorDisconnected = true
@@ -368,6 +377,7 @@ local function style(self, unit)
     icon:SetPoint("TOPLEFT", 1, -1)
     icon:SetPoint("BOTTOMRIGHT", -1, 1)
     ns:CropIcon(icon)
+    ns:PixelIcon(icon)
     cb.Icon = icon
     cb.wuiIconHolder = iconHolder
     local locked = cb:CreateTexture(nil, "ARTWORK", nil, 1)
@@ -423,7 +433,7 @@ local function style(self, unit)
         a.PostCreateButton = function(_, button)
             if game then NP:GameAura(button, size) return end
             ns:AuraCountdown(button, d.debuffSize, true)
-            if button.Icon then ns:CropIcon(button.Icon) end
+            if button.Icon then ns:CropIcon(button.Icon); if ns:PixelAuras() then ns:PixelIcon(button.Icon) end end
             ns:CreateBackdrop(button, "Default", edge())
         end
         a:AddGroup("HARMFUL|PLAYER", { maxFrameCount = d.debuffCount })
@@ -440,7 +450,7 @@ local function style(self, unit)
         -- Before AddGroup, so the buttons it makes get it.
         b.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, nil, false)
-            if button.Icon then ns:CropIcon(button.Icon) end
+            if button.Icon then ns:CropIcon(button.Icon); if ns:PixelAuras() then ns:PixelIcon(button.Icon) end end
             ns:CreateBackdrop(button, "Default", edge())
         end
         b:AddGroup("HELPFUL|RAID", { maxFrameCount = 4 })

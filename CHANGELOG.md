@@ -1,5 +1,36 @@
 # Wick's UI
 
+## Unreleased
+
+### Fixed
+
+- In Cartridge your chat size no longer changes by itself. A new chat
+  window, a whisper tab for one, copies the size the chat is drawn at, and
+  that was taken as a size you had picked.
+
+### Changed
+
+- In Cartridge the minimap is square and sits in the look's own window,
+  even where the other looks are set to the round map.
+- In Cartridge, chat, whisper windows and the typing box draw in the
+  look's letters at exactly the size you pick, in the chat tab's Font
+  Size menu or on the Chat page. A chat font you picked yourself is kept.
+- In Cartridge, unit frame text, cast bars, the info bar, the minimap's
+  zone, clock and coordinates, and button keybinds, counts and macro
+  names stay at one pixel a dot, so they fit their slots.
+- In Cartridge the game's own windows draw in the look's letters too: the
+  quest log, the world map, tooltips and every other window that uses the
+  game's fonts. Ordinary text at one pixel a dot and big titles at two,
+  their outlines kept. Fonts other addons bring stay theirs. Not while
+  Wick's UI stands aside for the controller.
+- In Cartridge, action bar and cast bar icons are drawn in dots, and on
+  TBC Anniversary the aura icons too. On Forever the client fills aura
+  icons itself, so they stay as they are.
+- In Cartridge, nameplates are capsules with rounded ends, the shape of a
+  16-bit action game's life bar. The other looks keep their plates.
+- Changing the look says that names and damage numbers over the world
+  change at your next login, as the game reads their font only then.
+
 ## 0.14.0 (2026-11-05)
 
 ### Added

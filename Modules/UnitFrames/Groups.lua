@@ -90,7 +90,7 @@ local function addHealerPieces(self, d)
         -- Before the slot or group is added, so the buttons it makes get it.
         a.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, nil, false)
-            if button.Icon then ns:CropIcon(button.Icon) end
+            if button.Icon then ns:CropIcon(button.Icon); if ns:PixelAuras() then ns:PixelIcon(button.Icon) end end
             ns:CreateBackdrop(button, "Default", ns.mult)
         end
         a:AddSlot("HARMFUL|RAID")
@@ -109,7 +109,7 @@ local function addHealerPieces(self, d)
         -- Before the slot or group is added, so the buttons it makes get it.
         a.PostCreateButton = function(_, button)
         ns:AuraCountdown(button, nil, false)
-            if button.Icon then ns:CropIcon(button.Icon, 0.15) end
+            if button.Icon then ns:CropIcon(button.Icon, 0.15); if ns:PixelAuras() then ns:PixelIcon(button.Icon) end end
             ns:CreateBackdrop(button, "None", ns.mult)
         end
         a:AddGroup("HELPFUL|PLAYER|RAID", { maxFrameCount = 3 })

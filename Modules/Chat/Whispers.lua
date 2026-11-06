@@ -110,7 +110,10 @@ local function fontFor(msg)
     local size = cd and cd.fontSize or 13
     local outline = cd and cd.fontOutline or "NONE"
     if outline == "look" then outline = Chrome:StyleDef().textOutline or "NONE" end
-    ns.Media:Face(msg, ns.Media:Font(face), size, outline == "NONE" and "" or outline)
+    local flags = outline == "NONE" and "" or outline
+    if not ns.Media:BodyFace(msg, face, size, flags) then
+        ns.Media:Face(msg, ns.Media:Font(face), size, flags)
+    end
     if msg.SetShadowOffset then ns.Media:Shadow(msg) end
 end
 

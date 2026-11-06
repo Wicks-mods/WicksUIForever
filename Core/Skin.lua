@@ -108,6 +108,7 @@ end
 
 local function modernTemplate(f, template, opts)
     local t = MODERN[template or "Default"] or MODERN.Default
+    if opts.shape and Chrome.SetPanelShape then Chrome:SetPanelShape(f, opts.shape) end
     if not f.wuiBG then
         f.wuiBG = f:CreateTexture(nil, "BACKGROUND", nil, -7)
         f.wuiBG:SetAllPoints()
@@ -413,6 +414,20 @@ function ns:CropIcon(tex, zoom, whole)
             masks[tex] = m
         end
     end
+end
+
+-- An icon of ours drawn in dots, where the look asks for it (Cartridge);
+-- nothing elsewhere. Only icons Wick's UI's own code fills (its action
+-- buttons, its cast bars, its auras on a client without the aura
+-- container): the dots follow the icon through hooks on its methods,
+-- which the game's own icons must never get, and which the client never
+-- calls when it fills an aura container's icons itself.
+function ns:PixelIcon(tex)
+    if tex and Chrome.PixelIcon then Chrome:PixelIcon(tex) end
+end
+-- Auras whose icons our Lua fills: the client without the aura container.
+function ns:PixelAuras()
+    return ns.Core.Client and ns.Core.Client.isTBC or false
 end
 
 -- The ring a tile is picked out with (a selected tab, a chosen slot, a

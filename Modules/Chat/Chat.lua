@@ -39,6 +39,11 @@ ns.defaults.profile.chat = {
 
 local function db() return CH:db() end
 local styled = setmetatable({}, { __mode = "k" })
+-- The sizes chat text is drawn at, where a look draws it at a size of its
+-- own (whole screen pixels a dot): the game copies a window's drawn size
+-- to a new one (a whisper tab), and that is not the player choosing it.
+local drawnSizes = {}
+local function sizeKey(v) return string.format("%.2f", v) end
 local ours = setmetatable({}, { __mode = "k" })   -- our additions, keyed by their frame
 
 local TEXTURES = {
@@ -197,8 +202,13 @@ function CH:StyleFrame(frame)
     local _, size = frame:GetFont()
     local outline = d.fontOutline
     if outline == "look" then outline = Chrome:StyleDef().textOutline or "NONE" end
-    ns.Media:Face(frame, ns.Media:Font(d.font), d.fontSize or size or 13, outline == "NONE" and "" or outline)
+    local flags = outline == "NONE" and "" or outline
+    if not ns.Media:BodyFace(frame, d.font, d.fontSize or size or 13, flags) then
+        ns.Media:Face(frame, ns.Media:Font(d.font), d.fontSize or size or 13, flags)
+    end
     if frame.SetShadowOffset then ns.Media:Shadow(frame) end
+    local _, drawn = frame:GetFont()
+    if drawn and math.abs(drawn - (d.fontSize or 0)) > 0.01 then drawnSizes[sizeKey(drawn)] = true end
     if frame.SetFading then frame:SetFading(d.fade) end
     if frame.SetTimeVisible then frame:SetTimeVisible(d.fadeAfter) end
     if frame.SetMaxLines and (frame:GetMaxLines() or 0) < d.maxLines then frame:SetMaxLines(d.maxLines) end
@@ -373,7 +383,7 @@ function CH:ShowCopy(frame)
         eb:SetMultiLine(true)
         eb:SetAutoFocus(false)
         eb:SetWidth(570)
-        ns.Media:SetFont(eb, 12, "NONE")
+        if not ns.Media:BodyFace(eb, db().font, 12, "") then ns.Media:SetFont(eb, 12, "NONE") end
         eb:SetScript("OnEscapePressed", function() win:Hide() end)
         sf:SetScrollChild(eb)
         win.eb = eb
@@ -506,11 +516,17 @@ function CH:Initialize()
         hooksecurefunc("FCF_SetChatWindowFontSize", function(_, frame, size)
             frame = frame or (FCF_GetCurrentChatFrame and FCF_GetCurrentChatFrame())
             size = tonumber(size) or (frame and frame.GetFont and select(2, frame:GetFont()))
-            if not size or size == db().fontSize then return end
+            if not size or size <= 0 or size == db().fontSize then return end
+            -- Our own drawn size echoed back (the game copying it to a new
+            -- window) is not a size the player picked.
+            if drawnSizes[sizeKey(size)] then CH:Update() return end
             db().fontSize = size
             CH:Update()
         end)
     end
+    -- Chat in a look's body face is sized in screen pixels, so it is sized
+    -- again when the interface scale or the screen changes.
+    ns:OnRescale(function() if Chrome:StyleDef().bodyFont then CH:Update() end end)
     -- Whisper windows are made on the fly.
     if FCF_OpenTemporaryWindow then
         hooksecurefunc("FCF_OpenTemporaryWindow", function() C_Timer.After(0, function() CH:StyleAll() end) end)

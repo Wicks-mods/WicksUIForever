@@ -45,7 +45,7 @@ local function db() return AU:db() end
 -- our border round it, the count in our font.
 local function dress(button, size, showTime)
     ns:AuraCountdown(button, size, showTime)
-    if button.Icon then ns:CropIcon(button.Icon) end
+    if button.Icon then ns:CropIcon(button.Icon); if ns:PixelAuras() then ns:PixelIcon(button.Icon) end end
     ns:CreateBackdrop(button, "Default", ns.mult)
     if button.Count then ns.Media:SetFont(button.Count, math.max(10, math.floor(size * 0.38)), "OUTLINE") end
     if button.Duration then

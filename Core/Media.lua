@@ -120,14 +120,29 @@ function M:Face(fs, path, size, flags)
     return fs:SetFont(path, size, flags)
 end
 
+-- Long text a player reads (chat, whispers) where the look has a face of
+-- its own for it and the setting is the Wick font: that face, at whole
+-- screen pixels a dot. False elsewhere, and the caller sets its font as
+-- it always has.
+function M:BodyFace(fs, name, size, flags)
+    local Chrome = ns.Core and ns.Core.Chrome
+    local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    if not (st and st.bodyFont and Chrome.BodySize) or (name or "Wick") ~= "Wick" then return false end
+    fs:SetFont(st.bodyFont, Chrome:BodySize(fs, size or 13), Chrome:WithLookFlags(flags))
+    return true
+end
+
 -- The soft one-pixel drop shadow the skins give their text, or, on text
 -- in a pixel look's own face, the look's shadow (whole dots).
 function M:Shadow(fs, alpha)
     local Chrome = ns.Core and ns.Core.Chrome
     local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
     local o = 1
-    if st and st.snap and st.shadowOffset and fs.GetFont and Chrome:IsLookFace((fs:GetFont())) then
-        o = st.shadowOffset
+    if st and st.snap and st.shadowOffset and fs.GetFont then
+        local path = fs:GetFont()
+        if Chrome:IsLookFace(path) or (Chrome.IsBodyFace and Chrome:IsBodyFace(path)) then
+            o = Chrome.ShadowFor and Chrome:ShadowFor((select(2, fs:GetFont()))) or st.shadowOffset
+        end
     end
     fs:SetShadowOffset(o, -o)
     if alpha then fs:SetShadowColor(0, 0, 0, alpha) end
@@ -198,6 +213,7 @@ function M:SetFont(fs, size, outline, face, unit)
     fs:SetFont(path or self:Font(face), size, outline)
     if plain then
         local o = st and st.shadowOffset or 1
+        if st and st.snap and Chrome.ShadowFor and (face or g.font) == "Wick" then o = Chrome:ShadowFor(size) end
         fs:SetShadowOffset(o, -o)
         fs:SetShadowColor(0, 0, 0, 1)
     else
@@ -281,6 +297,51 @@ function M:WorldFonts()
     end
 end
 M.UnitNameFont = M.WorldFonts
+
+-- The game's own windows in the look's pixel face, where the look asks
+-- for it (Cartridge): every font object the game has that still uses one
+-- of the game's font files, so another addon's own fonts stay its own.
+-- Whole screen pixels a dot at the interface's scale, one for ordinary
+-- text, as the game's windows are made for narrow letters, two for its
+-- big titles; the outline kept, the look's flags added, a shadow one dot.
+-- What each was is kept, so a new interface scale is worked out from the
+-- game's own sizes. The fonts over the world keep their own policy
+-- (WorldFonts). Latin clients only, as there.
+local WORLD = { ZoneTextFont = true, SubZoneTextFont = true, PVPInfoTextFont = true, CombatTextFont = true }
+local gameOrig = {}
+local function isGameFile(path)
+    return type(path) == "string" and path:lower():gsub("/", "\\"):find("^fonts\\") ~= nil
+end
+function M:GameFonts()
+    if not LATIN[(GetLocale and GetLocale()) or "enUS"] then return end
+    local Chrome = ns.Core and ns.Core.Chrome
+    local st = Chrome and Chrome.StyleDef and Chrome:StyleDef()
+    if not (st and st.gameFonts and st.snap and Chrome.Font) then return end
+    if not next(gameOrig) then
+        for name, fo in pairs(_G) do
+            if type(name) == "string" and not WORLD[name] and type(fo) == "table" then
+                local ok, isFont = pcall(function() return fo.GetObjectType and fo:GetObjectType() == "Font" end)
+                if ok and isFont then
+                    local okF, path, size, flags = pcall(fo.GetFont, fo)
+                    if okF and isGameFile(path) and size and size > 0 then
+                        local ox, oy = 0, 0
+                        if fo.GetShadowOffset then ox, oy = fo:GetShadowOffset() end
+                        gameOrig[fo] = { size = size, flags = flags or "", shadow = (ox or 0) ~= 0 or (oy or 0) ~= 0 }
+                    end
+                end
+            end
+        end
+    end
+    local path = Chrome:Font()
+    for fo, o in pairs(gameOrig) do
+        local size = st.snap(o.size, nil, o.size >= 18 and 2 or (st.compactDots or 1))
+        pcall(fo.SetFont, fo, path, size, Chrome:WithLookFlags(o.flags))
+        if o.shadow and fo.SetShadowOffset then
+            local d = size / (st.pixelEm or 8)
+            fo:SetShadowOffset(d, -d)
+        end
+    end
+end
 M:WorldFonts()
 -- Again at login, once the character (and so its look) is known.
 do

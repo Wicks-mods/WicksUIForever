@@ -54,11 +54,18 @@ local function db() return MM:db() end
 -- for the other looks.
 local GAME = { square = false, ring = true, fill = false, hideZoom = false, hideBlizzardText = false,
     zone = false, clock = false, coords = false, mail = false, strip = false }
+-- A look may ask for a shape of its own (Cartridge: square, in its own
+-- window), whatever the player set for the other looks.
+local LOOK_SQUARE = { square = true, ring = false }
+local function lookStyle()
+    return Chrome.StyleDef and Chrome:StyleDef() or {}
+end
 local function opts()
     local d = db()
-    if not ns:Game() then return d end
+    local over = ns:Game() and GAME or (lookStyle().minimapShape == "square" and LOOK_SQUARE) or nil
+    if not over then return d end
     return setmetatable({}, { __index = function(_, k)
-        local v = GAME[k]
+        local v = over[k]
         if v ~= nil then return v end
         return d[k]
     end })
@@ -159,6 +166,35 @@ function MM:Fill()
     end
 end
 
+-- The look's window round the square map, where the look asks for one:
+-- on a frame of its own one level under the map, so the map draws over
+-- the window's middle and the window shows only as a frame round it. The
+-- map's own edge line would double it, so it rests while the frame shows.
+function MM:Frame(d)
+    local pad = lookStyle().minimapFrame
+    local framed = d.square and type(pad) == "number" and not ns:Game()
+    if framed and not self.frame then
+        local fr = CreateFrame("Frame", "WicksUI_MinimapFrame", Minimap:GetParent() or UIParent)
+        fr:SetFrameStrata(Minimap:GetFrameStrata())
+        fr:SetFrameLevel(math.max(0, Minimap:GetFrameLevel() - 1))
+        self.frame = fr
+    end
+    if framed then
+        local fr = self.frame
+        fr:ClearAllPoints()
+        fr:SetPoint("TOPLEFT", Minimap, "TOPLEFT", -pad, pad)
+        fr:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", pad, -pad)
+        ns:SetTemplate(fr, "Default", { shadow = false })
+        fr:Show()
+        ns:SetBorderColor(self.chrome, { 0, 0, 0 }, 0)
+        self.frameRests = true
+    else
+        if self.frame then self.frame:Hide() end
+        if self.frameRests and not ns:Game() then ns:SetBorderColor(self.chrome, "border") end
+        self.frameRests = nil
+    end
+end
+
 function MM:Shape()
     local d = opts()
     self:Fill()
@@ -193,6 +229,7 @@ function MM:Shape()
     placeLauncher()
     -- The soft lift is square-cornered; it only belongs under the square map.
     if self.chrome.wuiLift then self.chrome.wuiLift:SetShown(d.square) end
+    self:Frame(d)
     local zoom = { Minimap.ZoomIn, Minimap.ZoomOut, rawget(_G, "MinimapZoomIn"), rawget(_G, "MinimapZoomOut") }
     for _, b in pairs(zoom) do if b then b:SetAlpha(d.hideZoom and 0 or 1); b:EnableMouse(not d.hideZoom) end end
     local zt = MinimapCluster and MinimapCluster.ZoneTextButton
@@ -316,6 +353,10 @@ function MM:BuildText()
     self.zone:SetWordWrap(false)
     self.clock = ns:CreateText(chrome, 12, "CENTER")
     self.coords = ns:CreateText(chrome, 11, "CENTER")
+    -- The map's text sits in the map's width: a wide pixel face stays small.
+    if Chrome.Compact then
+        Chrome:Compact(self.zone); Chrome:Compact(self.clock); Chrome:Compact(self.coords)
+    end
     local mail = chrome:CreateTexture(nil, "OVERLAY")
     mail:SetSize(20, 14)
     mail:SetTexture("Interface\\Minimap\\Tracking\\Mailbox")
@@ -894,6 +935,8 @@ ns.Config:AddPage("minimap", "Minimap", function(L)
     L:Note("Move the minimap with Edit Mode. Its shape, ring and fill are kept for each look: set them in Wick Modern and in Wick OG, and each look comes back with its own.")
     if ns:Game() then
         L:Note(Chrome:Esc("fel") .. "The Classic look keeps the game's own minimap: round in its ring, with its zone, clock, zoom and mail. Gathering addon buttons still works.|r")
+    elseif lookStyle().minimapShape == "square" then
+        L:Note(Chrome:Esc("fel") .. "This look keeps the minimap square, in a window of its own. Square and the ring come back with the other looks.|r")
     end
     L:Toggle("Square", "square", { tooltip = "Off gives back Blizzard's round map and its ring." })
     L:Toggle("Ring around the round map", "ring", { tooltip = "Blizzard's gold ring and north marker, on the round map only. With the ring the map keeps Blizzard's size so the ring fits; without it the map fills the box." })

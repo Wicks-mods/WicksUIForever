@@ -23,6 +23,17 @@ local W = ns.Widgets
 -- because they are drawn at the physical pixel size, not a fixed one.
 ns.SCALE_MIN, ns.SCALE_FLOOR, ns.SCALE_MAX = 0.4, 0.64, 1.15
 
+-- Things sized in screen pixels (chat in a pixel look) ask to hear when
+-- the interface scale changes, the game's own or ours below its floor.
+local rescaled = {}
+function ns:OnRescale(fn) rescaled[#rescaled + 1] = fn end
+local function rescale()
+    for _, fn in ipairs(rescaled) do
+        local ok, err = pcall(fn)
+        if not ok and ns.A then ns.A:Print("rescale: " .. tostring(err)) end
+    end
+end
+
 local function cvar(name, value)
     local CV = rawget(_G, "C_CVar")
     if CV and CV.SetCVar then return pcall(CV.SetCVar, name, value) end
@@ -73,6 +84,7 @@ local function holdBelowFloor()
         UIParent:SetScale(s)
         ns:UpdatePixel()
         ns:RefreshBorders()
+        rescale()
     end)
 end
 
@@ -105,14 +117,15 @@ function ns:ApplyScale()
             gameScale = nil
             ns:UpdatePixel()
             ns:RefreshBorders()
+            rescale()
         end)
     end
     ns:UpdatePixel()
     ns:RefreshBorders()
 end
 
-ns:On("UI_SCALE_CHANGED", function() holdBelowFloor(); ns:UpdatePixel(); ns:RefreshBorders() end)
-ns:On("DISPLAY_SIZE_CHANGED", function() holdBelowFloor(); ns:UpdatePixel(); ns:RefreshBorders() end)
+ns:On("UI_SCALE_CHANGED", function() holdBelowFloor(); ns:UpdatePixel(); ns:RefreshBorders(); rescale() end)
+ns:On("DISPLAY_SIZE_CHANGED", function() holdBelowFloor(); ns:UpdatePixel(); ns:RefreshBorders(); rescale() end)
 ns:On("PLAYER_ENTERING_WORLD", function() holdBelowFloor() end)
 
 -- ============================================================
@@ -398,6 +411,12 @@ function A:OnEnable()
     local ok, err = xpcall(function()
         ns:UpdatePixel()
         ns:ApplyScale()
+        -- The game's own windows in the look's face, where it asks; not
+        -- while the game's own interface runs for the controller.
+        if not ns.Pad.standingAside and ns.Media.GameFonts then
+            ns.Media:GameFonts()
+            ns:OnRescale(function() ns.Media:GameFonts() end)
+        end
         if ns.Pad.standingAside then
             self:Print("standing aside for the controller: the game's own interface runs. It comes back with a reload once you take up the mouse and keyboard. To run it on the controller, switch Stand aside off under Action bars, Controller.")
             return
@@ -579,7 +598,7 @@ ns.Config:AddPage("general", "General", function(L)
         setter = function(v)
             if v == Chrome:StyleID() then return end
             local st = Chrome.StyleByID[v]
-            ns.Widgets:Confirm(("%s: %s\n\nChanging the look rebuilds every frame, and every Wick addon follows it, so the interface reloads. Reload now?"):format(st.name, st.blurb), function()
+            ns.Widgets:Confirm(("%s: %s\n\nChanging the look rebuilds every frame, and every Wick addon follows it, so the interface reloads. The names and damage numbers over the world change at your next login, as the game reads their font only then. Reload now?"):format(st.name, st.blurb), function()
                 -- The suite's style lives in WickCore; the whole suite follows.
                 Chrome:SetStyle(v)
             end, "Reload", nil, { reload = true })
