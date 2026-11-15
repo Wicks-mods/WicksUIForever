@@ -1,6 +1,6 @@
 # Wick's UI
 
-## Unreleased
+## 0.15.2 (2026-11-15)
 
 - Shows in the game's addon list with an icon and the two-tone Wick title, under a Wick's Mods heading.
 
