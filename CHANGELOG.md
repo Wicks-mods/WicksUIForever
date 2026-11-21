@@ -7,6 +7,12 @@
 - Nameplates: a Friendly pet plates switch, for pets, guardians and
   minions. They were the last friendly names still drawn by the game.
 
+### Fixed
+
+- CurseForge now installs WickCore along with this addon. No file said it
+  was needed, so the app installed the addon alone and it could not run.
+- The message shown when WickCore is missing says where to get it.
+
 ## 0.16.0 (2026-11-21)
 
 ### Added
