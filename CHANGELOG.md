@@ -1,5 +1,14 @@
 # Wick's UI
 
+## Unreleased
+
+### Added
+
+- Nameplates: a Friendly NPC plates switch, beside the one for friendly
+  players. The game keeps the two apart.
+- A friendly NPC's plate says what it does under its name, such as
+  Innkeeper or Raptor Handler. It can be switched off.
+
 ## 0.15.2 (2026-11-15)
 
 - Shows in the game's addon list with an icon and the two-tone Wick title, under a Wick's Mods heading.

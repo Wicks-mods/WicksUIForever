@@ -51,12 +51,14 @@ ns.defaults.profile.nameplates = {
     classMarker = true,               -- a diamond on the bar for elites and rares
     lockMark = true,                  -- a lock on casts you cannot interrupt
     friendlyNameOnly = true,
+    npcTitle = true,
     execute = 0,                      -- percent; 0 is off
     executeColor = { 0.95, 0.25, 0.25, 1 },
     -- The game's own settings, surfaced.
     maxDistance = 41,
     stacking = true,
     showFriends = false,
+    showFriendlyNPCs = false,
     clickThroughFriendly = true,
 }
 
@@ -694,6 +696,33 @@ function NP:PlaceMarks(self)
     R:SetPoint("LEFT", h, "RIGHT", 3 + pad + right, 0)
 end
 
+-- What a friendly NPC does ("Raptor Handler", "Innkeeper"): the second
+-- line of its tooltip, where the game writes it. A line that gives its
+-- level is an NPC with no title. Kept per name, since the tooltip is read
+-- once and the answer does not change; nothing is read or kept while the
+-- client is withholding the text.
+local titles = {}
+local LEVEL_WORD = (rawget(_G, "LEVEL") or "Level"):lower()
+local function npcTitle(unit)
+    local name = plain(UnitName(unit))
+    if type(name) ~= "string" then return nil end
+    local known = titles[name]
+    if known ~= nil then return known or nil end
+    local TI = rawget(_G, "C_TooltipInfo")
+    if not (TI and TI.GetUnit) then return nil end
+    local ok, data = pcall(TI.GetUnit, unit)
+    local line = ok and type(data) == "table" and type(data.lines) == "table" and data.lines[2]
+    local text = line and plain(line.leftText)
+    if type(text) ~= "string" then return nil end
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    if text == "" or text:lower():find(LEVEL_WORD, 1, true) or text:find("%d") then
+        titles[name] = false
+        return nil
+    end
+    titles[name] = text
+    return text
+end
+
 -- Things that depend on the unit as well as the settings: friendly
 -- name-only plates, whether this is the target.
 function NP:Refresh(self)
@@ -725,6 +754,28 @@ function NP:Refresh(self)
         self.wuiName:SetPoint("CENTER", self, "CENTER", 0, 0)
     else
         self.wuiName:SetPoint("BOTTOM", self.Health, "TOP", 0, 3 + cardPad())
+    end
+
+    -- A friendly NPC's title, a size down, under its name.
+    local title = d.npcTitle and friendly and not plain(UnitIsPlayer(unit)) and npcTitle(unit) or nil
+    if title then
+        if not self.wuiTitle then
+            self.wuiTitle = ns:CreateText(self.wuiName:GetParent(), d.nameSize, "CENTER")
+        end
+        local ufd = ns.UnitFrames and ns.UnitFrames.db and ns.UnitFrames:db()
+        ns.Media:SetFont(self.wuiTitle, math.max(8, d.nameSize - 2), ufd and ufd.fontOutline, ufd and ufd.font, true)
+        self.wuiTitle:SetText("<" .. title .. ">")
+        self.wuiTitle:SetTextColor(C.text[1], C.text[2], C.text[3], 0.85)
+        self.wuiTitle:ClearAllPoints()
+        if nameOnly then
+            self.wuiTitle:SetPoint("TOP", self.wuiName, "BOTTOM", 0, -1)
+        else
+            -- With the bar shown the name sits on it, so the title goes above.
+            self.wuiTitle:SetPoint("BOTTOM", self.wuiName, "TOP", 0, 1)
+        end
+        self.wuiTitle:Show()
+    elseif self.wuiTitle then
+        self.wuiTitle:Hide()
     end
 
     if self.Health.backdrop then
@@ -775,6 +826,7 @@ function NP:CVars()
         nameplateMaxDistance = tostring(d.maxDistance),
         nameplateMotion = d.stacking and "1" or "0",
         nameplateShowFriends = d.showFriends and "1" or "0",
+        nameplateShowFriendlyNpcs = d.showFriendlyNPCs and "1" or "0",
     }
 end
 
@@ -945,6 +997,7 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Toggle("Health percent", "percent")
     L:Slider("Percent size", "percentSize", 6, 20, 1, { disabled = function() return not db().percent end })
     L:Toggle("Friendly plates show the name only", "friendlyNameOnly")
+    L:Toggle("What a friendly NPC does, under its name", "npcTitle")
 
     L:Heading("Cast bar and auras")
     -- A greyed-out setting takes no pointer, so cannot say why it is grey.
@@ -973,5 +1026,6 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Slider("How far away plates show", "maxDistance", 20, 41, 1)
     L:Toggle("Stack plates instead of overlapping", "stacking")
     L:Toggle("Friendly player plates", "showFriends")
+    L:Toggle("Friendly NPC plates", "showFriendlyNPCs")
     L:Toggle("Click through friendly plates", "clickThroughFriendly")
 end, { onChange = function() NP:Update() end, order = 30 })
