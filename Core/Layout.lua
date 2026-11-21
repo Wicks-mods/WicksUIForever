@@ -592,6 +592,7 @@ local LAYOUT = {
         },
         friendlyNameOnly = true,
         npcTitle = true,
+        npcTitleColors = true,
         healthColor = "look",
         height = 14,
         levelShown = true,

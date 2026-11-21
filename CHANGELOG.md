@@ -6,6 +6,11 @@
 
 - Nameplates: a Friendly pet plates switch, for pets, guardians and
   minions. They were the last friendly names still drawn by the game.
+- What a friendly NPC does is written in yellow under its name, and in a
+  color of its own for a trainer, a vendor, someone who repairs, a flight
+  master, an innkeeper, a banker or auctioneer and a stable master. The
+  colors go by the words of the title, so they are for English clients;
+  they can be switched off.
 
 ### Fixed
 

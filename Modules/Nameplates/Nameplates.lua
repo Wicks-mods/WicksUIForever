@@ -52,6 +52,7 @@ ns.defaults.profile.nameplates = {
     lockMark = true,                  -- a lock on casts you cannot interrupt
     friendlyNameOnly = true,
     npcTitle = true,
+    npcTitleColors = true,
     execute = 0,                      -- percent; 0 is off
     executeColor = { 0.95, 0.25, 0.25, 1 },
     -- The game's own settings, surfaced.
@@ -724,6 +725,54 @@ local function npcTitle(unit)
     return text
 end
 
+-- A colour for the title by what the NPC is for, so a trainer, a vendor
+-- and somebody who repairs can be told apart across a town square. The
+-- game does not say what an NPC offers until you talk to it, so this goes
+-- by the words of the title: the first kind with a word in it wins, and a
+-- title with none of them is the plain yellow. English words; on another
+-- language's client every title is the plain one.
+local ROLE_ORDER = { "trainer", "flight", "inn", "bank", "stable", "repair", "vendor" }
+local ROLE_WORDS = {
+    trainer = { "trainer", "instructor" },
+    flight  = { "wind rider", "gryphon", "hippogryph", "bat handler", "flight master", "zeppelin", "dragonhawk" },
+    inn     = { "innkeeper" },
+    bank    = { "banker", "auctioneer", "guild master", "vault" },
+    stable  = { "stable master" },
+    repair  = { "repair", "armorer", "armor", "weaponsmith", "weapon", "blacksmith", "smith", "bowyer",
+                "fletcher", "gunsmith", "blade", "shield", "mail", "plate" },
+    vendor  = { "merchant", "vendor", "supplies", "supplier", "goods", "trade", "grocer", "baker", "butcher",
+                "cook", "fish", "food", "drink", "bartender", "reagent", "quartermaster", "dealer", "seller",
+                "alchem", "herbal", "tailor", "leather", "cloth", "wine", "mushroom", "fruit", "meat",
+                "poison", "engineer", "jewel", "tabard", "bags" },
+}
+local ROLE_COLOR = {
+    plain   = { 1.00, 0.82, 0.30 },
+    trainer = { 0.45, 0.75, 1.00 },
+    vendor  = { 0.45, 0.90, 0.50 },
+    repair  = { 1.00, 0.60, 0.20 },
+    flight  = { 0.40, 0.90, 0.90 },
+    inn     = { 1.00, 0.70, 0.85 },
+    bank    = { 1.00, 0.84, 0.00 },
+    stable  = { 0.85, 0.70, 0.50 },
+}
+local roles = {}
+local function roleColor(title)
+    local kind = roles[title]
+    if not kind then
+        kind = "plain"
+        local low = title:lower()
+        for _, k in ipairs(ROLE_ORDER) do
+            for _, word in ipairs(ROLE_WORDS[k]) do
+                if low:find(word, 1, true) then kind = k break end
+            end
+            if kind ~= "plain" then break end
+        end
+        roles[title] = kind
+    end
+    return ROLE_COLOR[kind], kind
+end
+NP.RoleColor = roleColor
+
 -- Things that depend on the unit as well as the settings: friendly
 -- name-only plates, whether this is the target.
 function NP:Refresh(self)
@@ -766,7 +815,8 @@ function NP:Refresh(self)
         local ufd = ns.UnitFrames and ns.UnitFrames.db and ns.UnitFrames:db()
         ns.Media:SetFont(self.wuiTitle, math.max(8, d.nameSize - 2), ufd and ufd.fontOutline, ufd and ufd.font, true)
         self.wuiTitle:SetText("<" .. title .. ">")
-        self.wuiTitle:SetTextColor(C.text[1], C.text[2], C.text[3], 0.85)
+        local rc = d.npcTitleColors ~= false and roleColor(title) or ROLE_COLOR.plain
+        self.wuiTitle:SetTextColor(rc[1], rc[2], rc[3], 1)
         self.wuiTitle:ClearAllPoints()
         if nameOnly then
             self.wuiTitle:SetPoint("TOP", self.wuiName, "BOTTOM", 0, -1)
@@ -1053,6 +1103,7 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Slider("Percent size", "percentSize", 6, 20, 1, { disabled = function() return not db().percent end })
     L:Toggle("Friendly plates show the name only", "friendlyNameOnly")
     L:Toggle("What a friendly NPC does, under its name", "npcTitle")
+    L:Toggle("Color it by trainer, vendor, repairs and the rest", "npcTitleColors")
 
     L:Heading("Cast bar and auras")
     -- A greyed-out setting takes no pointer, so cannot say why it is grey.
