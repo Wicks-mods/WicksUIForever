@@ -11,7 +11,9 @@
 
 - CurseForge now installs WickCore along with this addon. No file said it
   was needed, so the app installed the addon alone and it could not run.
-- The message shown when WickCore is missing says where to get it.
+- On Forever the Friendly player plates switch did nothing: it set a
+  setting that client does not have. Each friendly switch now uses the
+  names of the client it is running on.
 
 ## 0.16.0 (2026-11-21)
 
