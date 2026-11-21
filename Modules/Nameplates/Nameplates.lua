@@ -821,15 +821,64 @@ end
 -- ============================================================
 -- Game settings
 -- ============================================================
+-- /wui plates: the game's settings for which units get a plate. The names
+-- differ between clients (Forever spells the NPC one "Npcs"), so this asks
+-- the client which it has: every console variable with "nameplateshow" in
+-- its name where the client will list them, a list of likely names where
+-- it will not. Kept in the saved settings as well as printed.
+function NP:ReportCVars()
+    local found, seen = {}, {}
+    local function add(name)
+        if seen[name] then return end
+        local ok, v = pcall(GetCVar, name)
+        local okD, d = pcall(GetCVarDefault, name)
+        if ok and v ~= nil then
+            seen[name] = true
+            found[#found + 1] = ("%s = %s (default %s)"):format(name, tostring(v), tostring(okD and d or "?"))
+        end
+    end
+    local CC = rawget(_G, "C_Console")
+    if CC and CC.GetAllCommands then
+        local ok, all = pcall(CC.GetAllCommands)
+        if ok and type(all) == "table" then
+            for _, c in ipairs(all) do
+                local n = type(c) == "table" and c.command
+                if type(n) == "string" and n:lower():find("nameplateshow", 1, true) then add(n) end
+            end
+        end
+    end
+    for _, who in ipairs({ "Friendly", "FriendlyPlayer", "Enemy", "EnemyPlayer" }) do
+        for _, what in ipairs({ "Pets", "Minions", "Guardians", "Totems", "Npcs", "NPCs", "Players", "Minus" }) do
+            add("nameplateShow" .. who .. what)
+        end
+    end
+    for _, n in ipairs({ "nameplateShowAll", "nameplateShowFriends", "nameplateShowEnemies", "nameplateShowOnlyNames",
+                         "nameplateShowOnlyNameForFriendlyPlayerUnits" }) do add(n) end
+    table.sort(found)
+    ns:G().plateCVars = found
+    ns.A:Print(("%d nameplate settings on this client:"):format(#found))
+    for _, line in ipairs(found) do ns.A:Print("  " .. line) end
+end
+
 function NP:CVars()
     local d = db()
     return {
         nameplateMaxDistance = tostring(d.maxDistance),
         nameplateMotion = d.stacking and "1" or "0",
+        -- The game's names for these differ by client, and one it does not
+        -- have is passed over, so both spellings are set (/wui plates lists
+        -- what a client has). Forever: FriendlyPlayers, FriendlyNpcs and
+        -- FriendlyPlayerPets; the older client: Friends, FriendlyNPCs and
+        -- FriendlyPets.
         nameplateShowFriends = d.showFriends and "1" or "0",
+        nameplateShowFriendlyPlayers = d.showFriends and "1" or "0",
         nameplateShowFriendlyNpcs = d.showFriendlyNPCs and "1" or "0",
+        nameplateShowFriendlyNPCs = d.showFriendlyNPCs and "1" or "0",
         -- Pets, guardians and minions are three settings to the game and one
         -- thing to a player: whatever follows somebody around.
+        nameplateShowFriendlyPlayerPets = d.showFriendlyPets and "1" or "0",
+        nameplateShowFriendlyPlayerGuardians = d.showFriendlyPets and "1" or "0",
+        nameplateShowFriendlyPlayerMinions = d.showFriendlyPets and "1" or "0",
         nameplateShowFriendlyPets = d.showFriendlyPets and "1" or "0",
         nameplateShowFriendlyGuardians = d.showFriendlyPets and "1" or "0",
         nameplateShowFriendlyMinions = d.showFriendlyPets and "1" or "0",

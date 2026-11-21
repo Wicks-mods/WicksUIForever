@@ -527,6 +527,10 @@ local function slash(_, msg)
         if ns.PanelSkins then ns.PanelSkins:Unskin((msg or ""):match("^%S+%s+(%S+)")) end
     elseif cmd == "install" or cmd == "setup" then
         if ns.Install then ns.Install:Start(true) end
+    elseif cmd == "plates" then
+        -- Which of the game's nameplate settings this client has, and what
+        -- each is set to: their names differ from client to client.
+        if ns.Nameplates and ns.Nameplates.ReportCVars then ns.Nameplates:ReportCVars() end
     elseif cmd == "errors" then
         if not ns.errors or #ns.errors == 0 then
             A:Print("nothing reported.")
