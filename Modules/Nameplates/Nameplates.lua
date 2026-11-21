@@ -59,6 +59,7 @@ ns.defaults.profile.nameplates = {
     stacking = true,
     showFriends = false,
     showFriendlyNPCs = false,
+    showFriendlyPets = false,
     clickThroughFriendly = true,
 }
 
@@ -827,6 +828,11 @@ function NP:CVars()
         nameplateMotion = d.stacking and "1" or "0",
         nameplateShowFriends = d.showFriends and "1" or "0",
         nameplateShowFriendlyNpcs = d.showFriendlyNPCs and "1" or "0",
+        -- Pets, guardians and minions are three settings to the game and one
+        -- thing to a player: whatever follows somebody around.
+        nameplateShowFriendlyPets = d.showFriendlyPets and "1" or "0",
+        nameplateShowFriendlyGuardians = d.showFriendlyPets and "1" or "0",
+        nameplateShowFriendlyMinions = d.showFriendlyPets and "1" or "0",
     }
 end
 
@@ -1027,5 +1033,6 @@ ns.Config:AddPage("nameplates", "Nameplates", function(L)
     L:Toggle("Stack plates instead of overlapping", "stacking")
     L:Toggle("Friendly player plates", "showFriends")
     L:Toggle("Friendly NPC plates", "showFriendlyNPCs")
+    L:Toggle("Friendly pet plates", "showFriendlyPets")
     L:Toggle("Click through friendly plates", "clickThroughFriendly")
 end, { onChange = function() NP:Update() end, order = 30 })

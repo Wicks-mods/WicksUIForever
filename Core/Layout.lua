@@ -604,6 +604,7 @@ local LAYOUT = {
         raidIcon = true,
         showFriends = false,
         showFriendlyNPCs = false,
+        showFriendlyPets = false,
         stacking = true,
         targetBorder = true,
         targetScale = 1.2,

@@ -1,5 +1,12 @@
 # Wick's UI
 
+## Unreleased
+
+### Added
+
+- Nameplates: a Friendly pet plates switch, for pets, guardians and
+  minions. They were the last friendly names still drawn by the game.
+
 ## 0.16.0 (2026-11-21)
 
 ### Added
